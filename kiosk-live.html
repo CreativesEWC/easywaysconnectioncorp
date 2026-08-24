@@ -233,11 +233,9 @@
   function speak(text){
     if(!('speechSynthesis' in window)) return;
     try{
-      // Removed .cancel() because it crashes iOS Safari's speech engine!
+      window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US'; 
-      u.rate = 1;
-      u.volume = 1; // Force volume to max
+      u.lang = 'en-US'; u.rate = 1;
       window.speechSynthesis.speak(u);
     }catch(e){}
   }
@@ -489,14 +487,20 @@
       verbose: false
     });
 
+    // We keep the wide rectangular box so it fits the whole barcode!
+    const qrboxFn = (viewfinderWidth, viewfinderHeight) => {
+      const w = Math.floor(viewfinderWidth * 0.90); 
+      const h = Math.floor(w * 0.4); 
+      return { width: w, height: h };
+    };
+
     try{
       await html5QrCode.start(
-        // 1. Force the iPhone to use HD resolution so the lines aren't blurry
-        { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        // REVERTED: Back to the simple camera request that successfully turned on!
+        { facingMode: "environment" },
         {
-          // 2. Bump the frames per second slightly for faster catching
-          fps: 20,
-          // 3. Removed the qrbox entirely so it scans the entire visible frame!
+          fps: 15,
+          qrbox: qrboxFn,
           disableFlip: false
         },
         async (decodedText) => {
