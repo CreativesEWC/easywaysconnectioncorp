@@ -443,6 +443,28 @@
       
       // SCENARIO 1: They have a valid unfinished shift (under 16 hours old)
       if (latestShift && latestShift.time_in && !latestShift.time_out && !isGhostShift) {
+        
+        // NEW: The 5-Minute Safety Lock to prevent instant Time-Outs
+        const minutesOpen = (Date.now() - new Date(latestShift.time_in).getTime()) / (1000 * 60);
+        if (minutesOpen < 5) { 
+            showCard(`
+              <div class="badge-top">
+                <span class="co-name">Easy Ways Connection Corp.</span>
+                <span class="badge-id">${id}</span>
+              </div>
+              <div class="badge-body">
+                <div>
+                  <div class="badge-name">ALREADY TIMED IN</div>
+                  <div class="badge-position">Attendance Confirmed</div>
+                </div>
+              </div>
+              <div class="badge-message">Your Time In was just recorded. Have a great shift!</div>
+            `, false, 3000);
+            speak('Already verified.');
+            busy = false;
+            return;
+        }
+
         const { data: updated, error: updErr } = await supabaseClient
           .from('attendance_logs')
           .update({ time_out: nowIso() })
@@ -451,7 +473,7 @@
           .single();
         if(updErr){ console.error(updErr); busy = false; return; }
         row = updated; kind = 'out';
-      } 
+      }
       // SCENARIO 2: They already successfully completed a shift today
       else if (latestShift && latestShift.log_date === today && latestShift.time_out) {
         row = latestShift; kind = 'complete';
