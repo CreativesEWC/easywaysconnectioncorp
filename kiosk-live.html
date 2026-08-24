@@ -218,7 +218,7 @@
   // ---- Clock ----
   function tickClock(){
     const now = new Date();
-    document.getElementById('liveTime').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    document.getElementById('liveTime').textContent = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true});
     document.getElementById('liveDate').textContent = now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric', year:'numeric'});
   }
   tickClock(); setInterval(tickClock, 1000);
@@ -284,8 +284,8 @@
 
   function renderAcceptedCard(employee, row, kind, birthday){
     const { display, initials } = firstAndLast(employee.name);
-    const timeInDisplay = row.time_in ? new Date(row.time_in).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : null;
-    const timeOutDisplay = row.time_out ? new Date(row.time_out).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : null;
+    const timeInDisplay = row.time_in ? new Date(row.time_in).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}) : null;
+    const timeOutDisplay = row.time_out ? new Date(row.time_out).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}) : null;
     const inVal = timeInDisplay ? `<div class="stamp-mark in">IN · ${timeInDisplay}</div>` : `<div class="value">— not yet —</div>`;
     const outVal = timeOutDisplay ? `<div class="stamp-mark out">OUT · ${timeOutDisplay}</div>` : `<div class="value">— not yet —</div>`;
     let message = '';
@@ -432,8 +432,17 @@
 
       let row, kind;
       
-      // SCENARIO 1: They have an unfinished shift (Fixes the 12:00 AM & 2:00 AM bug!)
+      // Calculate how old the shift is to prevent "Ghost Shifts"
+      let isGhostShift = false;
       if (latestShift && latestShift.time_in && !latestShift.time_out) {
+        const hoursOpen = (Date.now() - new Date(latestShift.time_in).getTime()) / (1000 * 60 * 60);
+        if (hoursOpen > 16) {
+           isGhostShift = true; // They forgot to time out yesterday!
+        }
+      }
+      
+      // SCENARIO 1: They have a valid unfinished shift (under 16 hours old)
+      if (latestShift && latestShift.time_in && !latestShift.time_out && !isGhostShift) {
         const { data: updated, error: updErr } = await supabaseClient
           .from('attendance_logs')
           .update({ time_out: nowIso() })
@@ -447,7 +456,7 @@
       else if (latestShift && latestShift.log_date === today && latestShift.time_out) {
         row = latestShift; kind = 'complete';
       } 
-      // SCENARIO 3: They are starting a brand new shift
+      // SCENARIO 3: They are starting a brand new shift (or bypassing a ghost shift)
       else {
         const { data: inserted, error: insErr } = await supabaseClient
           .from('attendance_logs')
