@@ -71,6 +71,41 @@
     border-radius:10px; padding:1px 7px; font-size:10px;
   }
 
+  /* ---- SUB-NAVIGATION MENU STYLES ---- */
+.sub-nav-group {
+  display: none;
+  flex-direction: column;
+  background: rgba(10, 15, 30, 0.2); /* Slight indent shading */
+  border-left: 2px solid var(--line);
+  margin-left: 28px;
+  padding-left: 4px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+.sub-nav-group.open {
+  display: flex;
+}
+.nav-group-btn .chevron {
+  margin-left: auto; /* Pushes the arrow to the far right */
+  transition: transform 0.2s ease;
+  color: #7488b6;
+}
+.nav-group-btn.open .chevron {
+  transform: rotate(180deg); /* Flips the arrow when open */
+  color: var(--amber-500);
+}
+.nav-group-btn.open {
+  color: var(--paper) !important;
+}
+
+/* Hide sub-menus entirely if the main sidebar is collapsed */
+aside.sidebar.collapsed .sub-nav-group {
+  display: none !important;
+}
+aside.sidebar.collapsed .nav-group-btn .chevron {
+  display: none;
+}
+
   main{ max-width:960px; margin:0 auto; padding:20px 20px 60px; }
   .tab-panel{ display:none; }
   .tab-panel.active{ display:block; }
@@ -499,35 +534,45 @@ aside.sidebar.collapsed ~ main.main-content {
     <span>Team Schedules</span>
   </button>
 
-  <!-- CAREER POSTINGS -->
-  <button data-tab="careers">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    <span>Career Postings</span>
-  </button>
+ <!-- WEBDEV TOOLS FOLDER -->
+      <button type="button" class="nav-group-btn" onclick="toggleSubNav('webdevToolsNav', this)">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <!-- A code/web icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>Webdev Tools</span>
+        </div>
+        <!-- The Dropdown Arrow -->
+        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      
+      <!-- THE HIDDEN CONTAINER -->
+      <div id="webdevToolsNav" class="sub-nav-group">
+        
+        <!-- Drop your existing 5 buttons right in here! -->
+        <button data-tab="career-postings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Career Postings</span>
+        </button>
+        
+        <button data-tab="applications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>Applications</span>
+        </button>
+        
+        <button data-tab="site-photos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>Site Photos</span>
+        </button>
 
-  <!-- APPLICATIONS -->
-  <button data-tab="applications">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-    <span>Applications <span class="badge-count" id="appBadge" style="display:none;">0</span></span>
-  </button>
+        <button data-tab="blog-news">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Blog & News</span>
+        </button>
 
-  <!-- SITE PHOTOS -->
-  <button data-tab="photos">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    <span>Site Photos</span>
-  </button>
-
-     <!-- BLOG POSTS -->
-  <button data-tab="blog">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
-    <span>Blog & News</span>
-  </button>
-
-  <!-- TIMELINE -->
-  <button data-tab="timeline">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    <span>Company Timeline</span>
-  </button>
+        <button data-tab="company-timeline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Company Timeline</span>
+        </button>
 
 </nav> <!-- Nav closes here -->
   </div>
@@ -1162,8 +1207,20 @@ aside.sidebar.collapsed ~ main.main-content {
 </div>
   
 <script src="supabase-config.js"></script>
+
 <script>
-  // JAVA SECTUIB
+
+  // ---- SUB-NAVIGATION TOGGLE ----
+function toggleSubNav(containerId, btnElement) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    // Toggle the open class on both the container and the button
+    container.classList.toggle('open');
+    btnElement.classList.toggle('open');
+}
+  
+  // JAVA SECTION
 (async function(){
 
   // ---- CROSS-DASHBOARD THEME ENGINE ----
