@@ -978,10 +978,11 @@ aside.sidebar.collapsed ~ main.main-content {
               <th>Employee</th>
               <th>Platform Link</th>
               <th>Raw File</th>
+              <th>Actions</th> <!-- NEW HEADER HERE -->
             </tr>
           </thead>
           <tbody id="adminVideoTable">
-            <tr class="empty-row"><td colspan="4">Loading video submissions...</td></tr>
+            <tr class="empty-row"><td colspan="5">Loading video submissions...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1295,6 +1296,26 @@ aside.sidebar.collapsed ~ main.main-content {
         <button class="btn primary" id="saveAttBtn">Save Changes</button>
       </div>
     </div>
+  </div>
+</div>
+
+  <!-- IMAGE VIEWER POP-UP MODAL -->
+<div class="modal-overlay" id="imageViewerModal" style="z-index: 9999;">
+  <div class="modal-box" style="max-width: 900px; background: transparent; border: none; box-shadow: none; text-align: center; padding: 0;">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+        <button class="btn2 danger" onclick="document.getElementById('imageViewerModal').classList.remove('open')">✖ Close Viewer</button>
+    </div>
+    <img id="viewerImageSrc" src="" style="max-width: 100%; max-height: 85vh; border-radius: 8px; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+  </div>
+</div>
+
+  <!-- VIDEO VIEWER POP-UP MODAL -->
+<div class="modal-overlay" id="videoViewerModal" style="z-index: 9999;">
+  <div class="modal-box" style="max-width: 900px; background: transparent; border: none; box-shadow: none; text-align: center; padding: 0;">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+        <button class="btn2 danger" onclick="closeVideoViewer()">✖ Close Viewer</button>
+    </div>
+    <video id="viewerVideoSrc" controls autoplay style="max-width: 100%; max-height: 85vh; border-radius: 8px; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0,0,0,0.8); background: #0a0f1e;"></video>
   </div>
 </div>
   
@@ -3741,9 +3762,9 @@ if (calcDeltaBtn) {
                           ${deltaPrefix}₱${delta.toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                       <td>
-                          <a href="${report.screenshot_url}" target="_blank" class="btn" style="display: inline-block; padding: 4px 8px; font-size: 11px; text-decoration: none; border-color: var(--mint-500); color: var(--mint-400);">
+                          <button type="button" class="btn" onclick="openImageViewer('${report.screenshot_url}')" style="display: inline-block; padding: 4px 8px; font-size: 11px; border-color: var(--mint-500); color: var(--mint-400); background: transparent; cursor: pointer;">
                               🖼️ View Dashboard
-                          </a>
+                          </button>
                       </td>
                   </tr>
               `;
@@ -3754,14 +3775,19 @@ if (calcDeltaBtn) {
       }
   };
 
+  window.openImageViewer = function(url) {
+      document.getElementById('viewerImageSrc').src = url;
+      document.getElementById('imageViewerModal').classList.add('open');
+  };
+
   // ==========================================================
-  // INBOX: LOAD VIDEO AUDITS
+  // INBOX: LOAD VIDEO AUDITS (WITH APPROVAL WORKFLOW)
   // ==========================================================
   window.loadAdminVideoAudits = async function() {
       const tbody = document.getElementById('adminVideoTable');
       if (!tbody) return;
 
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Fetching latest videos...</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Fetching latest videos...</td></tr>';
 
       try {
           const { data, error } = await supabaseClient
@@ -3773,7 +3799,7 @@ if (calcDeltaBtn) {
           if (error) throw error;
 
           if (!data || data.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No videos submitted yet.</td></tr>';
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No videos submitted yet.</td></tr>';
               return;
           }
 
@@ -3781,26 +3807,76 @@ if (calcDeltaBtn) {
               const empName = vid.employees ? vid.employees.name : 'Unknown Seller';
               const dateStr = new Date(vid.upload_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               
+              // Determine the current status badge
+              const statusBadge = vid.status === 'approved' ? '<span class="pill approved">Approved</span>' :
+                                  vid.status === 'rejected' ? '<span class="pill rejected">Rejected</span>' :
+                                  '<span class="pill pending">Pending</span>';
+
+              // Only show the Approve/Reject buttons if it hasn't been processed yet
+              const actionButtons = (!vid.status || vid.status === 'pending') ? `
+                  <button class="btn2 success" onclick="updateVideoStatus('${vid.id}', 'approved', this)" style="padding: 4px 8px; font-size: 11px;">✔️ Approve</button>
+                  <button class="btn2 danger" onclick="updateVideoStatus('${vid.id}', 'rejected', this)" style="padding: 4px 8px; font-size: 11px;">✖️ Reject</button>
+              ` : `<span style="font-size: 11px; color: #7488b6; font-family: var(--font-mono);">Audited</span>`;
+
               return `
                   <tr>
                       <td style="font-family: var(--font-mono); font-size: 12px; color: var(--amber-400);">${dateStr}</td>
-                      <td style="font-weight: 600;">${empName}</td>
+                      <td style="font-weight: 600;">${empName}<br><div style="margin-top: 4px;">${statusBadge}</div></td>
                       <td>
                           <a href="${vid.video_link}" target="_blank" style="color: #7488b6; text-decoration: underline; font-size: 12px;">
                               View Post &nearr;
                           </a>
                       </td>
                       <td>
-                          <a href="${vid.video_file_url}" target="_blank" class="btn" style="display: inline-block; padding: 4px 8px; font-size: 11px; text-decoration: none; border-color: var(--amber-500); color: var(--amber-400);">
-                              ▶ Play Raw Video
-                          </a>
+                          <button type="button" class="btn" onclick="openVideoViewer('${vid.video_file_url}')" style="display: inline-block; padding: 4px 8px; font-size: 11px; border-color: var(--amber-500); color: var(--amber-400); background: transparent; cursor: pointer;">
+                              ▶ Play Video
+                          </button>
+                      </td>
+                      <td style="display: flex; gap: 6px; align-items: center;">
+                          ${actionButtons}
                       </td>
                   </tr>
               `;
           }).join('');
       } catch (err) {
           console.error("Error loading video audits:", err);
-          tbody.innerHTML = `<tr class="empty-row"><td colspan="4" style="color: var(--coral-500);">Failed to load videos: ${err.message}</td></tr>`;
+          tbody.innerHTML = `<tr class="empty-row"><td colspan="5" style="color: var(--coral-500);">Failed to load videos: ${err.message}</td></tr>`;
+      }
+  };
+
+  // ---- VIDEO VIEWER CONTROLS ----
+  window.openVideoViewer = function(url) {
+      const vid = document.getElementById('viewerVideoSrc');
+      vid.src = url;
+      document.getElementById('videoViewerModal').classList.add('open');
+  };
+
+  window.closeVideoViewer = function() {
+      const vid = document.getElementById('viewerVideoSrc');
+      vid.pause(); // Stop playing when closed!
+      vid.src = '';
+      document.getElementById('videoViewerModal').classList.remove('open');
+  };
+
+  // ---- VIDEO APPROVAL DATABASE LOGIC ----
+  window.updateVideoStatus = async function(id, newStatus, btnElement) {
+      btnElement.textContent = '...';
+      btnElement.disabled = true;
+
+      try {
+          const { error } = await supabaseClient
+              .from('video_submissions')
+              .update({ status: newStatus })
+              .eq('id', id);
+
+          if (error) throw error;
+          
+          // Instantly refresh the table to show the new badge
+          loadAdminVideoAudits(); 
+      } catch (err) {
+          console.error("Error updating status:", err);
+          alert("Failed to update status: " + err.message);
+          btnElement.disabled = false;
       }
   };
 
