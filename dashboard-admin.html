@@ -3037,47 +3037,69 @@ async function reviewTicket(ticketId, status, approverName) {
         .eq('status', 'approved')
         .like('date_from', `${currentMonth}%`); // Matches anything in the current month
 
-      let html = '';
+     // 3. Fetch all attendance logs for this month
+    const { data: logs } = await supabaseClient
+      .from('attendance_logs')
+      .select('employee_id, late_penalty_minutes, earned_ot_minutes')
+      .like('log_date', `${currentMonth}%`);
 
-      // 3. Loop through every employee and run the Audit
-      emps.forEach(emp => {
-        // Isolate tickets that belong to this specific employee
-        const empTickets = tickets?.filter(t => t.employee_id === emp.id) || [];
-        
-        // AUDIT RULE: Do they have any attendance offenses this month?
-        const hasOffenses = empTickets.some(t => 
-           ['absence', 'leave', 'emergency_leave', 'undertime'].includes(t.ticket_type)
-        );
+    let html = '';
 
-        // 4. Calculate the Bonus!
-        const perfectAttendanceBonus = hasOffenses ? 0 : 1000;
-        
-        // (Placeholder for Base Pay - can be pulled from DB later)
-        const basePay = 0; 
-        const totalBaseAndBonus = basePay + perfectAttendanceBonus;
+    // 4. Loop through every employee and run the Audit
+    emps.forEach(emp => {
+      // Isolate tickets that belong to this specific employee
+      const empTickets = tickets?.filter(t => t.employee_id === emp.id) || [];
+      
+      // ---- NEW: LATE & OT MATH ----
+      // Isolate attendance logs that belong to this specific employee
+      const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
+      let totalLateMins = 0;
+      let totalOtMins = 0;
+      
+      empLogs.forEach(log => {
+        totalLateMins += (log.late_penalty_minutes || 0);
+        totalOtMins += (log.earned_ot_minutes || 0);
+      });
+
+      // AUDIT RULE: Do they have any attendance offenses this month?
+      const hasOffenses = empTickets.some(t => 
+        ['absence', 'leave', 'emergency_leave', 'undertime'].includes(t.ticket_type)
+      );
+
+      // Calculate the Bonus!
+      const perfectAttendanceBonus = hasOffenses ? 0 : 1000;
+      
+      // (Placeholder for Base Pay - can be pulled from DB later)
+      const basePay = 0;
+      const totalBaseAndBonus = basePay + perfectAttendanceBonus;
 
         // 5. Build the Table Row
-        html += `
-          <tr style="border-bottom: 1px solid var(--navy-700);">
-            <td style="padding: 12px;">
-              <strong style="color: var(--paper);">${escapeHtml(emp.name)}</strong><br>
-              <span style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(emp.badge_id)}</span>
-            </td>
-            <td style="padding: 12px;">
-              <div style="font-size: 13px; color: #9fb0d6;">Base: ₱${basePay.toLocaleString()}</div>
-              <div style="color: ${perfectAttendanceBonus > 0 ? 'var(--mint-500)' : 'var(--coral-500)'}; font-size: 12px; font-weight: bold; margin-top: 4px;">
-                + Bonus: ₱${perfectAttendanceBonus.toLocaleString()}
-              </div>
-            </td>
-            <td style="padding: 12px; color: #7488b6;">₱0.00</td>
-            <td style="padding: 12px; color: #7488b6;">₱0.00</td>
-            <td style="padding: 12px; color: #7488b6;">₱0.00</td>
-            <td style="padding: 12px;">
-             <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Proof</button>
-            </td>
-          </tr>
-        `;
-      });
+      html += `
+        <tr style="border-bottom: 1px solid var(--navy-700);">
+          <td style="padding: 12px;">
+            <strong style="color: var(--paper);">${escapeHtml(emp.name)}</strong><br>
+            <span style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(emp.badge_id)}</span>
+          </td>
+          <td style="padding: 12px;">
+            <div style="font-size: 13px; color: #9fb0d6;">Base: ₱${basePay.toLocaleString()}</div>
+            <div style="color: ${perfectAttendanceBonus > 0 ? 'var(--mint-500)' : 'var(--coral-500)'}; font-size: 12px; font-weight: bold; margin-top: 4px;">
+              + Bonus: ₱${perfectAttendanceBonus.toLocaleString()}
+            </div>
+          </td>
+          <!-- NEW: Late and OT Minutes dynamically injected -->
+          <td style="padding: 12px; color: var(--coral-500); font-family: var(--font-mono); font-size: 13px;">
+            ${totalLateMins} mins
+          </td>
+          <td style="padding: 12px; color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">
+            ${totalOtMins} mins
+          </td>
+          <!-- Placeholder for Delta Commissions / Video Audits -->
+          <td style="padding: 12px; color: #7488b6;">₱0.00</td>
+          <td style="padding: 12px;">
+            <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">View Proof</button>
+          </td>
+        </tr>
+      `;
 
       tbody.innerHTML = html;
 
