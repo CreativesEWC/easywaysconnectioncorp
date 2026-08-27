@@ -3073,7 +3073,7 @@ async function reviewTicket(ticketId, status, approverName) {
             <td style="padding: 12px; color: #7488b6;">₱0.00</td>
             <td style="padding: 12px; color: #7488b6;">₱0.00</td>
             <td style="padding: 12px;">
-              <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Proof</button>
+             <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Proof</button>
             </td>
           </tr>
         `;
@@ -3088,24 +3088,27 @@ async function reviewTicket(ticketId, status, approverName) {
   }
 
     // ---- 2. LIVE SELLER DELTA COMMISSION ENGINE ----
-  
-  // A temporary local variable to store the "Last Known Totals" for the day
-  let lastShiftTotals = {
-    buyers: 0,
-    commi: 0,
-    sold: 0,
-    gmv: 0
-  };
+  let lastShiftTotals = { buyers: 0, commi: 0, sold: 0, gmv: 0 };
 
   async function populateDeltaSellers() {
     const sellerSelect = document.getElementById('deltaSeller');
     if (!sellerSelect) return;
 
-    // Fetch only employees who are Live Sellers
+    // 1. Dynamically find the exact UUID for 'Live Seller'
+    const { data: posData } = await supabaseClient
+      .from('positions')
+      .select('id')
+      .eq('name', 'Live Seller')
+      .single();
+
+    if (!posData) return;
+
+    // 2. Fetch only employees with that specific position ID
     const { data: sellers } = await supabaseClient
       .from('employees')
       .select('id, name')
-      .eq('position_id', '5f2ba83f-0773-42a0-b436-1834bd28e680'); // Replace with your exact Live Seller position UUID if different!
+      .eq('position_id', posData.id)
+      .order('name');
 
     if (sellers) {
       sellerSelect.innerHTML = '<option value="">Select Seller...</option>' + 
@@ -3189,15 +3192,25 @@ async function reviewTicket(ticketId, status, approverName) {
   }
 
   // ---- 3. VIDEO MATRIX AUDIT (LIVE SELLERS ONLY) ----
-  async function populateVideoAuditSellers() {
+ async function populateVideoAuditSellers() {
     const auditSelect = document.getElementById('auditEmployee');
     if (!auditSelect) return;
 
-    // Fetch ONLY employees who are Live Sellers
+    // 1. Dynamically find the exact UUID for 'Live Seller'
+    const { data: posData } = await supabaseClient
+      .from('positions')
+      .select('id')
+      .eq('name', 'Live Seller')
+      .single();
+
+    if (!posData) return;
+
+    // 2. Fetch only employees with that specific position ID
     const { data: sellers } = await supabaseClient
       .from('employees')
       .select('id, name')
-      .eq('position_id', '5f2ba83f-0773-42a0-b436-1834bd28e680'); // Using the exact Live Seller UUID from your CSR rotation script!
+      .eq('position_id', posData.id)
+      .order('name');
 
     if (sellers) {
       auditSelect.innerHTML = '<option value="">Select Live Seller...</option>' + 
