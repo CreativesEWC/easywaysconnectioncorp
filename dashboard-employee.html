@@ -741,15 +741,13 @@ aside.sidebar.collapsed ~ main.main-content {
       <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
         <h2 style="color: var(--amber-400);">Submit Daily Video Requirement</h2>
         <form id="videoSubmitForm" style="display: flex; flex-direction: column; gap: 15px;">
-            <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date Uploaded</label>
-                <input type="date" id="vidUploadDate" required style="width: 100%; max-width: 250px; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-            </div>
-
             <!-- The Container holding the dynamic rows -->
             <div id="videoRowsContainer" style="display: flex; flex-direction: column; gap: 10px;">
                 <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
-                    <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                        <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                        <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                    </div>
                     <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
                 </div>
             </div>
@@ -2759,7 +2757,8 @@ if (ticketBtn) {
     loadTwoWeekCalendar();
 
   // ==========================================================
-  // DYNAMIC MULTI-VIDEO BATCH UPLOADER
+  // // ==========================================================
+  // DYNAMIC MULTI-VIDEO BATCH UPLOADER (ROW-LEVEL DATES)
   // ==========================================================
   
   const addVideoRowBtn = document.getElementById('addVideoRowBtn');
@@ -2778,12 +2777,14 @@ if (ticketBtn) {
           newRow.className = 'video-upload-row';
           newRow.style = 'background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line); position: relative;';
           newRow.innerHTML = `
-              <button type="button" class="remove-vid-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1;">&times;</button>
-              <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px;">
+              <button type="button" class="remove-vid-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1; z-index: 10;">&times;</button>
+              <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                  <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                  <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+              </div>
               <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
           `;
 
-          // Add delete functionality to the tiny red "X"
           newRow.querySelector('.remove-vid-row').addEventListener('click', () => newRow.remove());
           videoRowsContainer.appendChild(newRow);
       });
@@ -2800,26 +2801,23 @@ if (ticketBtn) {
 
           const submitBtn = document.getElementById('vidSubmitBtn');
           submitBtn.disabled = true;
-
-          const uploadDate = document.getElementById('vidUploadDate').value;
           let successCount = 0;
 
           try {
-              // Loop through and upload ONE BY ONE to prevent crashing the browser
+              // Loop through and upload ONE BY ONE
               for (let i = 0; i < rows.length; i++) {
                   submitBtn.textContent = `Uploading video ${i + 1} of ${rows.length}... Please wait.`;
 
                   const row = rows[i];
+                  const rowDate = row.querySelector('.vid-date').value;
                   const linkInput = row.querySelector('.vid-link').value;
                   const fileInput = row.querySelector('.vid-file').files[0];
 
-                  if (!fileInput) continue; 
+                  if (!fileInput || !rowDate) continue; 
 
-                  // Create unique file name
                   const fileExt = fileInput.name.split('.').pop();
                   const fileName = `public/${emp.id}_${Date.now()}_${i}.${fileExt}`;
 
-                  // Upload to Supabase Storage
                   const { error: uploadErr } = await supabaseClient
                       .storage
                       .from('daily-videos')
@@ -2827,18 +2825,16 @@ if (ticketBtn) {
 
                   if (uploadErr) throw uploadErr;
 
-                  // Get Public URL
                   const { data: publicUrlData } = supabaseClient
                       .storage
                       .from('daily-videos')
                       .getPublicUrl(fileName);
 
-                  // Save record to database table
                   const { error: dbErr } = await supabaseClient
                       .from('video_submissions')
                       .insert({
                           employee_id: emp.id,
-                          upload_date: uploadDate,
+                          upload_date: rowDate,  // Pulled strictly from this specific row!
                           video_link: linkInput,
                           video_file_url: publicUrlData.publicUrl
                       });
@@ -2850,10 +2846,13 @@ if (ticketBtn) {
               alert(`Successfully uploaded ${successCount} videos!`);
               videoSubmitForm.reset();
               
-              // Reset the form back to a single empty row
+              // Reset the form back to a single empty row layout
               videoRowsContainer.innerHTML = `
                   <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
-                      <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px;">
+                      <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                          <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                          <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                      </div>
                       <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
                   </div>
               `;
