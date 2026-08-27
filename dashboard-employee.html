@@ -1219,13 +1219,21 @@ aside.sidebar.collapsed ~ main.main-content {
         const monday = new Date(today);
         monday.setDate(today.getDate() + diffToMonday);
 
-        // 2. Define shift times
-        let shiftTime = '<span style="color: #7488b6;">Unassigned</span>';
-        if (scheduleData.mon_sat_shift === 'morning') {
+        // 2. Define shift times based on Position
+    let shiftTime = '<span style="color: #7488b6;">Unassigned</span>';
+    const myPos = emp.positions ? emp.positions.name : '';
+
+    if (myPos === 'Live Seller') {
+        // Live Sellers bypass the standard math completely
+        shiftTime = '<span style="color: var(--amber-500); font-size: 12px;">See Monthly Roster</span>';
+    } else {
+        // Admins, MAs, and CSRs use the standard Morning/Night logic
+        if (emp.mon_sat_shift === 'morning') {
             shiftTime = '<strong style="color: var(--paper);">Shift 1 (6:00 AM - 3:00 PM)</strong>';
-        } else if (scheduleData.mon_sat_shift === 'night') {
+        } else if (emp.mon_sat_shift === 'night') {
             shiftTime = '<strong style="color: var(--paper);">Shift 2 (3:00 PM - 12:00 AM)</strong>';
         }
+    }
 
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         let scheduleHTML = `<div style="background: var(--navy-900); padding: 15px; border-radius: 6px; border: 1px solid var(--navy-600);">`;
