@@ -185,13 +185,17 @@
 
   // --------- JAVA SCRIPT --------
 
-  // ---- TIME CLOCK FILTER: 9AM to 6PM SHIFTS ----
-function calculateFixedShiftHours(timeInDate, timeOutDate) {
+ // ---- UPGRADED TIME CLOCK FILTER: DYNAMIC SHIFTS ----
+function calculateDynamicShiftHours(timeInDate, timeOutDate, scheduleStartStr, scheduleEndStr) {
   const shiftStart = new Date(timeInDate);
-  shiftStart.setHours(9, 0, 0, 0); // 9:00 AM
+  // Break down "08:00" or "09:00" into hours and minutes
+  const [startHour, startMin] = scheduleStartStr.split(':');
+  shiftStart.setHours(parseInt(startHour), parseInt(startMin), 0, 0); 
   
   const shiftEnd = new Date(timeOutDate);
-  shiftEnd.setHours(18, 0, 0, 0); // 6:00 PM
+  // Break down "18:00" or "17:00" into hours and minutes
+  const [endHour, endMin] = scheduleEndStr.split(':');
+  shiftEnd.setHours(parseInt(endHour), parseInt(endMin), 0, 0); 
 
   let latePenaltyMinutes = 0;
   let validOtMinutes = 0;
@@ -498,7 +502,7 @@ function calculateFixedShiftHours(timeInDate, timeOutDate) {
       let isGhostShift = false;
       if (latestShift && latestShift.time_in && !latestShift.time_out) {
         const hoursOpen = (Date.now() - new Date(latestShift.time_in).getTime()) / (1000 * 60 * 60);
-        if (hoursOpen > 10) {
+        if (hoursOpen > 18) { // Changed to 18 hours to safely allow massive overtime!
            isGhostShift = true; // They forgot to time out yesterday!
         }
       }
@@ -535,14 +539,44 @@ function calculateFixedShiftHours(timeInDate, timeOutDate) {
         const posName = employee.positions ? employee.positions.name : '';
         
         if (posName === 'Multimedia Artist' || posName === 'RTS Admin') {
+            // FIXED SHIFT: Strictly 9:00 AM to 6:00 PM
             const shiftData = calculateFixedShiftHours(latestShift.time_in, exactTimeOut);
             
-            // Append the math to the database save request!
             updatePayload.late_penalty_minutes = shiftData.latePenalty;
             updatePayload.earned_ot_minutes = shiftData.earnedOt;
             
-            // Log to console so you can see it working live!
-            console.log(`[${posName}] Late: ${shiftData.latePenalty}m | OT: ${shiftData.earnedOt}m`);
+            console.log(`[${posName}] FIXED - Late: ${shiftData.latePenalty}m | OT: ${shiftData.earnedOt}m`);
+            
+        } else if (posName === 'Live Seller' || posName === 'CSR' || posName === 'Customer Service Representative') {
+            // DYNAMIC SHIFT: Fetch their specific hours for today from Supabase
+            
+            // 1. Point to the correct table based on their position
+            const targetTable = (posName === 'Live Seller') ? 'live_seller_schedule' : 'csr_schedules';
+            
+            // 2. Ask Supabase for today's start and end times for this specific employee
+            const { data: schedData, error: schedErr } = await supabaseClient
+                .from(targetTable)
+                .select('shift_start, shift_end')
+                .eq('employee_id', employee.id)
+                .eq('schedule_date', today) // 'today' is already defined higher up in your code!
+                .maybeSingle();
+
+            if (schedErr) {
+                console.error(`Error fetching dynamic schedule from ${targetTable}:`, schedErr);
+            }
+
+            // 3. If a schedule exists for them today, run the dynamic math
+            if (schedData && schedData.shift_start && schedData.shift_end) {
+                const shiftData = calculateDynamicShiftHours(latestShift.time_in, exactTimeOut, schedData.shift_start, schedData.shift_end);
+                
+                // Append the calculated penalties and OT to the database save request
+                updatePayload.late_penalty_minutes = shiftData.latePenalty;
+                updatePayload.earned_ot_minutes = shiftData.earnedOt;
+                
+                console.log(`[${posName}] DYNAMIC - Late: ${shiftData.latePenalty}m | OT: ${shiftData.earnedOt}m`);
+            } else {
+                console.log(`[${posName}] No schedule found for today. Skipping Late/OT calculation.`);
+            }
         }
 
         // 3. Send it to the database
