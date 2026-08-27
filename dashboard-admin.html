@@ -3217,13 +3217,13 @@ if (saveScheduleBtn) {
       });
     }
 
-    // ---- 1. MASTER TOTALS & PERFECT ATTENDANCE ENGINE ----
+    // ---- 1. MASTER TOTALS & PERFECT ATTENDANCE ENGINE (UPGRADED) ----
   async function loadMasterTotalsSheet() {
     const tbody = document.getElementById('masterTotalsBody');
     if (!tbody) return;
 
     // Show loading state
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning attendance records and calculating bonuses...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
     // Get the current month (Format: YYYY-MM) to filter records
     const today = new Date();
@@ -3236,50 +3236,58 @@ if (saveScheduleBtn) {
         .select('id, name, badge_id, position')
         .order('name');
 
-      // 2. Fetch all APPROVED tickets for this month (Leaves, Absences, Undertimes)
+      // 2. Fetch Tickets (for perfect attendance check)
       const { data: tickets } = await supabaseClient
         .from('tickets')
         .select('*')
         .eq('status', 'approved')
-        .like('date_from', `${currentMonth}%`); // Matches anything in the current month
+        .like('date_from', `${currentMonth}%`); 
 
-     // 3. Fetch all attendance logs for this month
+     // 3. Fetch Attendance Logs (for late, OT, and LIVE COMMISSIONS)
     const { data: logs } = await supabaseClient
       .from('attendance_logs')
-      .select('employee_id, late_penalty_minutes, earned_ot_minutes')
+      .select('employee_id, late_penalty_minutes, earned_ot_minutes, earned_commission')
       .like('log_date', `${currentMonth}%`);
+
+     // 4. Fetch APPROVED Video Submissions (for VIDEO COMMISSIONS)
+    const { data: videos } = await supabaseClient
+      .from('video_submissions')
+      .select('employee_id')
+      .eq('status', 'approved')
+      .like('upload_date', `${currentMonth}%`);
 
     let html = '';
 
-    // 4. Loop through every employee and run the Audit
+    // Loop through every employee and run the Audit
     emps.forEach(emp => {
-      // Isolate tickets that belong to this specific employee
       const empTickets = tickets?.filter(t => t.employee_id === emp.id) || [];
-      
-      // ---- NEW: LATE & OT MATH ----
-      // Isolate attendance logs that belong to this specific employee
       const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
+      const empVideos = videos?.filter(v => v.employee_id === emp.id) || [];
+      
       let totalLateMins = 0;
       let totalOtMins = 0;
+      let liveCommission = 0;
       
+      // Sum up late mins, OT mins, and Delta Live Commissions
       empLogs.forEach(log => {
         totalLateMins += (log.late_penalty_minutes || 0);
         totalOtMins += (log.earned_ot_minutes || 0);
+        liveCommission += (parseFloat(log.earned_commission) || 0);
       });
 
-      // AUDIT RULE: Do they have any attendance offenses this month?
+      // Perfect Attendance Logic
       const hasOffenses = empTickets.some(t => 
         ['absence', 'leave', 'emergency_leave', 'undertime'].includes(t.ticket_type)
       );
-
-      // Calculate the Bonus!
       const perfectAttendanceBonus = hasOffenses ? 0 : 1000;
+      
+      // Video Commission Logic (₱100 per approved video)
+      const videoCommission = empVideos.length * 100;
       
       // (Placeholder for Base Pay - can be pulled from DB later)
       const basePay = 0;
-      const totalBaseAndBonus = basePay + perfectAttendanceBonus;
 
-        // 5. Build the Table Row
+      // Build the Table Row
       html += `
         <tr style="border-bottom: 1px solid var(--navy-700);">
           <td style="padding: 12px;">
@@ -3292,21 +3300,24 @@ if (saveScheduleBtn) {
               + Bonus: ₱${perfectAttendanceBonus.toLocaleString()}
             </div>
           </td>
-          <!-- NEW: Late Minutes and OT Hours dynamically injected -->
-          <td style="padding: 12px; color: var(--coral-500); font-family: var(--font-mono); font-size: 13px;">
-            ${totalLateMins} mins
-          </td>
-          <td style="padding: 12px; color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">
-            ${(totalOtMins / 60).toFixed(1)} hrs
-          </td>
-          <!-- Placeholder for Delta Commissions / Video Audits -->
-          <td style="padding: 12px; color: #7488b6;">₱0.00</td>
           <td style="padding: 12px;">
-            <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">View Proof</button>
+            <div style="color: var(--amber-400); font-weight: bold;">₱${videoCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div style="font-size: 10px; color: #7488b6;">${empVideos.length} approved</div>
+          </td>
+          <td style="padding: 12px;">
+            <div style="color: var(--mint-400); font-weight: bold;">₱${liveCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div style="font-size: 10px; color: #7488b6;">From Shift Deltas</div>
+          </td>
+          <td style="padding: 12px;">
+             <div style="color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">+${(totalOtMins / 60).toFixed(1)} hrs</div>
+             <div style="color: var(--coral-500); font-family: var(--font-mono); font-size: 11px;">-${totalLateMins} mins</div>
+          </td>
+          <td style="padding: 12px;">
+            <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Payslip</button>
           </td>
         </tr>
       `;
-      });
+    });
 
       tbody.innerHTML = html;
 
