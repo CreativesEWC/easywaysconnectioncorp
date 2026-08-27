@@ -1378,15 +1378,21 @@ aside.sidebar.collapsed ~ main.main-content {
 
         if (empErr) throw empErr;
 
-        // 2. Filter for fellow Multimedia Artists and RTS Admins
+        // 2. Filter for fellow teammates strictly by assignment
         let team = [];
         const myPos = emp.positions ? emp.positions.name : '';
         
         if (myPos === 'Multimedia Artist' || myPos === 'RTS Admin') {
+            // MAs and Admins see each other
             team = allEmps.filter(e => e.positions && (e.positions.name === 'Multimedia Artist' || e.positions.name === 'RTS Admin'));
         } else {
-            // Fallback for rotating shift teams (Live Sellers/CSRs) to see their brand mates
-            team = allEmps.filter(e => e.brand_id === emp.brand_id);
+            // Live Sellers & CSRs must have a strict brand match. 
+            // If brand_id is null/empty, they get an empty array (0).
+            if (emp.brand_id && emp.brand_id !== null && emp.brand_id !== '') {
+                team = allEmps.filter(e => e.brand_id === emp.brand_id);
+            } else {
+                team = [];
+            }
         }
 
         // 3. Fetch today's attendance logs for the team
