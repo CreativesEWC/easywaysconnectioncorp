@@ -464,7 +464,7 @@
       let isGhostShift = false;
       if (latestShift && latestShift.time_in && !latestShift.time_out) {
         const hoursOpen = (Date.now() - new Date(latestShift.time_in).getTime()) / (1000 * 60 * 60);
-        if (hoursOpen > 16) {
+        if (hoursOpen > 10) {
            isGhostShift = true; // They forgot to time out yesterday!
         }
       }
