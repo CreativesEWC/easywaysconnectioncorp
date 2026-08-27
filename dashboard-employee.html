@@ -906,6 +906,37 @@ aside.sidebar.collapsed ~ main.main-content {
 
 <script src="supabase-config.js"></script>
 <script>
+
+// ---- TIME CLOCK FILTER: 9AM to 6PM SHIFTS ----
+  function calculateFixedShiftHours(timeInDate, timeOutDate) {
+    const shiftStart = new Date(timeInDate);
+    shiftStart.setHours(9, 0, 0, 0); // 9:00 AM
+    
+    const shiftEnd = new Date(timeOutDate);
+    shiftEnd.setHours(18, 0, 0, 0); // 6:00 PM
+
+    let latePenaltyMinutes = 0;
+    let validOtMinutes = 0;
+
+    // LATENESS LOGIC: 1 min late = 5 min deduction
+    if (timeInDate > shiftStart) {
+      const exactMinutesLate = (timeInDate - shiftStart) / (1000 * 60);
+      latePenaltyMinutes = Math.ceil(exactMinutesLate / 5) * 5;
+    }
+
+    // OVERTIME LOGIC: Must be in exact 30-minute blocks
+    if (timeOutDate > shiftEnd) {
+      const exactOtMinutes = (timeOutDate - shiftEnd) / (1000 * 60);
+      validOtMinutes = Math.floor(exactOtMinutes / 30) * 30;
+    }
+
+    return {
+      latePenalty: latePenaltyMinutes,
+      earnedOt: validOtMinutes
+    };
+  }
+  
+  //<<------------------ JAVA SCRIPT --------------->>
 (async function(){
 
   // ---- CROSS-DASHBOARD THEME ENGINE ----
