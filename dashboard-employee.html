@@ -666,7 +666,7 @@ aside.sidebar.collapsed ~ main.main-content {
       <div style="margin-bottom: 24px;">
         <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">My Attendance</h1>
       </div>      
-      <div class="stats-row">
+      <div class="stats-row" style="grid-template-columns: repeat(3, 1fr);">
         <div class="stat-box">
           <div class="num" id="statThisMonth">0</div>
           <div class="label">Days This Month</div>
@@ -678,6 +678,18 @@ aside.sidebar.collapsed ~ main.main-content {
         <div class="stat-box">
           <div class="num" id="statPending">0</div>
           <div class="label">Missing Time Out</div>
+        </div>
+      </div>
+      
+      <!-- NEW: Late and Overtime Trackers -->
+      <div class="stats-row" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="stat-box" style="border-color: rgba(217, 97, 79, 0.3);">
+          <div class="num" id="statTotalLate" style="color: var(--coral-500);">0</div>
+          <div class="label">Total Lates (Mins)</div>
+        </div>
+        <div class="stat-box" style="border-color: rgba(79, 178, 134, 0.3);">
+          <div class="num" id="statTotalOt" style="color: var(--mint-500);">0</div>
+          <div class="label">Total OT (Mins)</div>
         </div>
       </div>
 
@@ -2020,16 +2032,31 @@ if (digitalIdBtn) {
 
   const list = rows || [];
 
-  // ---- Stats ----
+ // ---- Stats ----
   const now = new Date();
   const thisMonthPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
   const thisMonthRows = list.filter(r => r.log_date.startsWith(thisMonthPrefix));
   const completed = thisMonthRows.filter(r => r.time_in && r.time_out).length;
   const pending = thisMonthRows.filter(r => r.time_in && !r.time_out).length;
 
+  // NEW: Calculate accumulated late and OT minutes
+  let totalLateMins = 0;
+  let totalOtMins = 0;
+  thisMonthRows.forEach(r => {
+    // Assuming you add 'late_penalty_minutes' and 'earned_ot_minutes' to your DB table
+    totalLateMins += (r.late_penalty_minutes || 0);
+    totalOtMins += (r.earned_ot_minutes || 0);
+  });
+
   document.getElementById('statThisMonth').textContent = thisMonthRows.length;
   document.getElementById('statOnTime').textContent = completed;
   document.getElementById('statPending').textContent = pending;
+  
+  // NEW: Inject into the dashboard
+  const lateEl = document.getElementById('statTotalLate');
+  const otEl = document.getElementById('statTotalOt');
+  if (lateEl) lateEl.textContent = totalLateMins;
+  if (otEl) otEl.textContent = totalOtMins;
 
   // ---- Table ----
   function fmtTime(iso){
