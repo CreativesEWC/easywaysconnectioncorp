@@ -522,11 +522,39 @@ aside.sidebar.collapsed ~ main.main-content {
      <span class="icon" id="financeLockIcon">🔒</span> <span id="financeNavText">Finance (Locked)</span>
   </button>
 
-  <!-- TICKETS -->
-  <button data-tab="tickets">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-    <span>Tickets</span>
-  </button>
+  <!-- SUBMISSION FORMS FOLDER -->
+      <button type="button" class="nav-group-btn" onclick="toggleSubNav('submissionsNav', this)">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <!-- Folder/Inbox Icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>Submissions</span>
+        </div>
+        <!-- The Dropdown Arrow -->
+        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      
+      <!-- THE HIDDEN CONTAINER -->
+      <div id="submissionsNav" class="sub-nav-group">
+        
+        <!-- TICKETS -->
+        <button data-tab="tickets">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Tickets</span>
+        </button>
+
+        <!-- LIVE COMMISSION -->
+        <button data-tab="live-commission">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Live Commission</span>
+        </button>
+
+        <!-- VIDEO COMMISSION -->
+        <button data-tab="video-commission">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          <span>Video Commission</span>
+        </button>
+        
+      </div>
 
   <!-- TEAM SCHEDULES -->
   <button data-tab="schedule" id="scheduleNavBtn">
