@@ -2732,6 +2732,71 @@ if (ticketBtn) {
     loadHomeShiftStatus();
     loadTwoWeekCalendar();
 
+  // ==========================================================
+  // DAILY VIDEO SUBMISSION FUNCTIONALITY
+  // ==========================================================
+  const videoSubmitForm = document.getElementById('videoSubmitForm');
+  if (videoSubmitForm) {
+      videoSubmitForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const submitBtn = document.getElementById('vidSubmitBtn');
+          submitBtn.textContent = 'Uploading to server... Please wait.';
+          submitBtn.disabled = true;
+
+          try {
+              const uploadDate = document.getElementById('vidUploadDate').value;
+              const videoLink = document.getElementById('vidLink').value;
+              const fileInput = document.getElementById('vidFile');
+              const file = fileInput.files[0];
+
+              if (!file) throw new Error("Please select a video file.");
+
+              // 1. Create a unique file path using the employee ID
+              const fileExt = file.name.split('.').pop();
+              const fileName = `public/${emp.id}_${Date.now()}.${fileExt}`;
+
+              // 2. Upload the raw video file to the Supabase Storage Bucket
+              const { error: uploadErr } = await supabaseClient
+                  .storage
+                  .from('daily-videos')
+                  .upload(fileName, file, { upsert: false });
+
+              if (uploadErr) throw uploadErr;
+
+              // 3. Get the Public URL of the uploaded video
+              const { data: publicUrlData } = supabaseClient
+                  .storage
+                  .from('daily-videos')
+                  .getPublicUrl(fileName);
+
+              const videoFileUrl = publicUrlData.publicUrl;
+
+              // 4. Insert the record into the video_submissions table
+              const { error: dbErr } = await supabaseClient
+                  .from('video_submissions')
+                  .insert({
+                      employee_id: emp.id,
+                      upload_date: uploadDate,
+                      video_link: videoLink,
+                      video_file_url: videoFileUrl
+                  });
+
+              if (dbErr) throw dbErr;
+
+              alert('Video submitted successfully!');
+              videoSubmitForm.reset();
+
+          } catch (err) {
+              console.error("Video Upload Error:", err);
+              alert(`Upload failed: ${err.message}`);
+          } finally {
+              submitBtn.textContent = 'Upload & Submit Video';
+              submitBtn.disabled = false;
+          }
+      });
+  }Ss
+
   // THIS BRACKET CLOSES THE ASYNC FUNCTION PROPERLY
 })(); 
 </script>
