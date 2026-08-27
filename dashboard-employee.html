@@ -1351,80 +1351,102 @@ aside.sidebar.collapsed ~ main.main-content {
 }
 
  async function loadHomeShiftStatus() {
-    // Targets the Home Screen card exactly
-    const container = document.getElementById('teamLoading');
-    if (!container) return;
-    if (!emp || !emp.id) return;
+    const container = document.getElementById('teamMonitoringGrid');
+    const countSpan = document.getElementById('teamCount');
+    const loadingNote = document.getElementById('teamLoading');
 
-    container.innerHTML = '<p style="color: #7488b6; margin-top: 15px;">Loading your shifts...</p>';
+    if (!container || !emp || !emp.id) return;
+
+    loadingNote.style.display = 'block';
+    loadingNote.textContent = 'Loading team status...';
+    container.innerHTML = '';
+    
+    // Inject grid styling dynamically
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+    container.style.gap = '12px';
+    container.style.marginTop = '15px';
 
     try {
-        const { data: scheduleData, error } = await supabaseClient
+        const todayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
+
+        // 1. Fetch all employees to map out the team
+        const { data: allEmps, error: empErr } = await supabaseClient
             .from('employees')
-            .select('mon_sat_shift, sunday_duty')
-            .eq('id', emp.id)
-            .single();
+            .select('id, name, avatar_url, brand_id, positions(name)')
+            .order('name');
 
-        if (error) throw error;
+        if (empErr) throw empErr;
 
-        // 1. Calculate this week's dates
-        const today = new Date();
-        const day = today.getDay();
-        const diffToMonday = day === 0 ? -6 : 1 - day; 
-        const monday = new Date(today);
-        monday.setDate(today.getDate() + diffToMonday);
-
-        // 2. Define shift times
-        let shiftTime = '<span style="color: #7488b6;">Unassigned</span>';
-        if (scheduleData.mon_sat_shift === 'morning') {
-            shiftTime = '<strong style="color: var(--paper);">Shift 1 (6:00 AM - 3:00 PM)</strong>';
-        } else if (scheduleData.mon_sat_shift === 'night') {
-            shiftTime = '<strong style="color: var(--paper);">Shift 2 (3:00 PM - 12:00 AM)</strong>';
-        }
-
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        // 2. Filter for fellow Multimedia Artists and RTS Admins
+        let team = [];
+        const myPos = emp.positions ? emp.positions.name : '';
         
-        // Removed the extra box background here so it looks seamless on the Home card
-        let scheduleHTML = `<div style="margin-top: 15px;">`;
-
-        // 3. Loop through Monday - Saturday
-        for (let i = 0; i < 6; i++) {
-            const currentDay = new Date(monday);
-            currentDay.setDate(monday.getDate() + i);
-            const dateStr = currentDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            
-            scheduleHTML += `
-                <div style="padding: 8px 0; border-bottom: 1px solid var(--navy-600); display: flex; font-size: 13px;">
-                    <span style="color: var(--amber-400); width: 65px;">${dateStr}</span> 
-                    <span style="color: #7488b6; width: 90px;">| ${days[i]}</span> 
-                    <span>- ${shiftTime}</span>
-                </div>`;
+        if (myPos === 'Multimedia Artist' || myPos === 'RTS Admin') {
+            team = allEmps.filter(e => e.positions && (e.positions.name === 'Multimedia Artist' || e.positions.name === 'RTS Admin'));
+        } else {
+            // Fallback for rotating shift teams (Live Sellers/CSRs) to see their brand mates
+            team = allEmps.filter(e => e.brand_id === emp.brand_id);
         }
 
-        // 4. Calculate and append Sunday
-        const upcomingSunday = new Date(monday);
-        upcomingSunday.setDate(monday.getDate() + 6);
-        const sunStr = upcomingSunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        
-        let sunDuty = '<span style="color: #7488b6;">Day Off</span>';
-        if (scheduleData.sunday_duty) {
-            sunDuty = '<strong style="color: var(--amber-400);">Sunday Duty (9:00 AM - 6:00 PM)</strong>';
-        }
+        // 3. Fetch today's attendance logs for the team
+        const teamIds = team.map(t => t.id);
+        const { data: todayLogs, error: logErr } = await supabaseClient
+            .from('attendance_logs')
+            .select('employee_id, time_in, time_out')
+            .eq('log_date', todayStr)
+            .in('employee_id', teamIds);
 
-        scheduleHTML += `
-                <div style="padding: 8px 0; display: flex; font-size: 13px;">
-                    <span style="color: var(--amber-400); width: 65px;">${sunStr}</span> 
-                    <span style="color: #7488b6; width: 90px;">| Sunday</span> 
-                    <span>- ${sunDuty}</span>
+        if (logErr) throw logErr;
+
+        // 4. Build the UI Status Cards
+        let html = '';
+        team.forEach(member => {
+            const log = todayLogs?.find(l => l.employee_id === member.id);
+            let statusColor = '#5c6d99'; 
+            let statusText = 'Not Timed In';
+            let timeText = '—';
+            let dotColor = '#2a3a63'; // Default border line
+
+            if (log) {
+                if (log.time_in && !log.time_out) {
+                    statusColor = 'var(--mint-500)';
+                    statusText = 'Active Now';
+                    dotColor = 'var(--mint-500)';
+                    timeText = 'In: ' + new Date(log.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                } else if (log.time_in && log.time_out) {
+                    statusColor = '#7488b6';
+                    statusText = 'Shift Complete';
+                    dotColor = 'var(--amber-500)';
+                    timeText = 'Out: ' + new Date(log.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+            }
+
+            // Fallback avatar if they haven't uploaded a photo yet
+            const avatar = member.avatar_url 
+                ? `<img src="${member.avatar_url}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid ${dotColor}; flex-shrink: 0;">`
+                : `<div style="width: 42px; height: 42px; border-radius: 50%; background: var(--navy-950); border: 2px solid ${dotColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: var(--font-display); color: ${dotColor}; flex-shrink: 0;">${member.name.charAt(0)}</div>`;
+
+            html += `
+                <div style="background: var(--navy-900); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                    ${avatar}
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 13px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${member.name}">${member.name}</div>
+                        <div style="font-size: 11px; color: ${statusColor}; font-family: var(--font-mono); margin-top: 3px; letter-spacing: 0.05em; text-transform: uppercase;">${statusText}</div>
+                        <div style="font-size: 10px; color: #7488b6; margin-top: 2px;">${timeText}</div>
+                    </div>
                 </div>
-            </div>`; 
+            `;
+        });
 
-        container.className = '';
-        container.innerHTML = scheduleHTML;
+        loadingNote.style.display = 'none';
+        if (countSpan) countSpan.textContent = `(${team.length})`;
+        container.innerHTML = html;
 
     } catch (err) {
-        console.error("Failed to load full schedule:", err);
-        container.innerHTML = '<p style="color: #d9614f; margin-top: 15px;">Error loading schedule.</p>';
+        console.error("Failed to load team status:", err);
+        loadingNote.textContent = 'Error loading team status.';
+        loadingNote.className = 'empty-note';
     }
 }
 
