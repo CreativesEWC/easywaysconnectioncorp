@@ -1391,14 +1391,21 @@ aside.sidebar.collapsed ~ main.main-content {
         const myPos = emp.positions ? emp.positions.name : '';
         
         if (myPos === 'Multimedia Artist' || myPos === 'RTS Admin') {
-            // MAs and Admins see each other
+            // Admins and MAs see each other
             team = allEmps.filter(e => e.positions && (e.positions.name === 'Multimedia Artist' || e.positions.name === 'RTS Admin'));
+            
         } else {
-            // Live Sellers & CSRs must have a strict brand match. 
-            // If brand_id is null/empty, they get an empty array (0).
             if (emp.brand_id && emp.brand_id !== null && emp.brand_id !== '') {
+                // FIXED LIVE SELLERS: They see their assigned shop mates
                 team = allEmps.filter(e => e.brand_id === emp.brand_id);
+                
+            } else if (myPos === 'Live Seller') {
+                // ---- NEW: INSIDE FREELANCERS ----
+                // Floating Live Sellers with no fixed brand see the other floaters!
+                team = allEmps.filter(e => e.positions && e.positions.name === 'Live Seller' && (!e.brand_id || e.brand_id === ''));
+                
             } else {
+                // Unassigned non-sellers (like the Kiosk) stay at 0
                 team = [];
             }
         }
