@@ -813,6 +813,8 @@ aside.sidebar.collapsed ~ main.main-content {
     </section>
   </div>
 </div>
+
+        
   <!-- 5. NOTIFICATIONS TAB -->
   <div id="tab-notifications" class="tab-panel" style="display:none;">
     <section class="panel">
@@ -2965,156 +2967,154 @@ async function reviewTicket(ticketId, status, approverName) {
   // Turn on the receiver to start listening
   dashboardChannel.subscribe();
 
-  // ---- PAYROLL: LOAD EMPLOYEES ----
-  async function loadPayrollTable() {
-    const tbody = document.getElementById('payrollBody');
-    if (!tbody) return;
+  // ==========================================================
+  // PART 4.5 — MASTER FINANCE & COMMISSION ENGINE
+  // ==========================================================
 
-    // Fetch all active employees, sorted alphabetically
-    const { data: employees } = await supabaseClient
-      .from('employees')
-      .select('id, name, position')
-      .order('name');
+  async function initFinanceTab() {
+    // 1. Role-Based View Routing
+    const superAdminView = document.getElementById('superAdminFinanceView');
+    const videoView = document.getElementById('videoAuditView');
+    const delegationPanel = document.getElementById('delegationPanel');
 
-    if (!employees) return;
+    if (isDeveloper && emp.finance_unlocked !== true) {
+      // Creatives default view (Locked)
+      if(superAdminView) superAdminView.style.display = 'none';
+      if(videoView) videoView.style.display = 'block';
+      if(delegationPanel) delegationPanel.style.display = 'none';
+    } else {
+      // Super Admin View (or Unlocked Creatives View)
+      if(superAdminView) superAdminView.style.display = 'block';
+      if(videoView) videoView.style.display = 'block';
+      loadMasterTotalsSheet(); // <-- ADD THIS LINE HERE!
+      if(delegationPanel && !isSuperAdmin) delegationPanel.style.display = 'none'; // Hide delegation switch from Creatives
+    }
 
-    // Build a row for each employee
-    tbody.innerHTML = employees.map(emp => `
-      <tr style="border-bottom: 1px solid var(--navy-700);">
-        <td style="padding: 12px; color: var(--paper);">
-          <strong>${escapeHtml(emp.name)}</strong><br>
-          <span style="font-size: 11px; color: #7488b6;">${escapeHtml(emp.position || 'Staff')}</span>
-        </td>
-        <td style="padding: 12px;">
-          <input type="number" class="base-pay" placeholder="0.00" style="padding: 6px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-800); color: white; width: 100px;">
-        </td>
-        <td style="padding: 12px;">
-          <input type="number" class="net-total" placeholder="0.00" style="padding: 6px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-800); color: white; width: 100px;" readonly>
-        </td>
-      </tr>
-    `).join('');
-  }
-
-  // Trigger the load when the dashboard starts
-  loadPayrollTable();
-
-  // ---- PAYROLL: EXPORT TO CSV ----
-  const exportCsvBtn = document.getElementById('exportCsvBtn');
-  if (exportCsvBtn) {
-    exportCsvBtn.addEventListener('click', () => {
-      const table = document.getElementById('payrollTable');
-      let csvContent = "";
-      
-      // Loop through every row in the table
-      for (let i = 0; i < table.rows.length; i++) {
-        let rowData = [];
-        let cols = table.rows[i].querySelectorAll("td, th");
-        
-        // Loop through every column and grab the text or input value
-        for (let j = 0; j < cols.length; j++) {
-          let cellData = cols[j].innerText;
-          
-          // If the cell has an input box, grab the value inside it instead
-          const input = cols[j].querySelector('input');
-          if (input) cellData = input.value;
-          
-          // Clean up the text to prevent CSV breaking
-          cellData = cellData.replace(/"/g, '""');
-          rowData.push('"' + cellData + '"');
-        }
-        csvContent += rowData.join(",") + "\r\n";
+    // 2. Build the Video Matrix (15 Videos = 100 PHP each)
+    const videoGrid = document.getElementById('videoCheckboxGrid');
+    if (videoGrid && videoGrid.innerHTML.trim() === '') {
+      let gridHTML = '';
+      for(let i = 1; i <= 15; i++) {
+         gridHTML += `<label class="wd-check"><input type="checkbox" class="video-matrix-cb" value="100"> Vid ${i}</label>`;
       }
+      videoGrid.innerHTML = gridHTML;
 
-      // ---- PAYROLL: ADD DYNAMIC COLUMN ----
-  const addColBtn = document.getElementById('addColBtn');
-  if (addColBtn) {
-    addColBtn.addEventListener('click', () => {
-      // 1. Ask the manager for the column name
-      const colName = prompt("Enter the new column name (e.g., Bonus, Tax, Deduction):");
-      if (!colName) return; // Cancel if they leave it blank
-
-      const table = document.getElementById('payrollTable');
-      const theadRow = table.querySelector('thead tr');
-      const tbodyRows = table.querySelectorAll('#payrollBody tr');
-
-      // 2. Add the Header right before "Net Total"
-      const th = document.createElement('th');
-      th.style.padding = '12px';
-      th.style.color = 'var(--amber-400)';
-      th.textContent = colName;
-      theadRow.insertBefore(th, theadRow.lastElementChild);
-
-      // 3. Add an input box for every employee right before their "Net Total"
-      tbodyRows.forEach(row => {
-        const td = document.createElement('td');
-        td.style.padding = '12px';
-        td.innerHTML = `<input type="number" class="dynamic-col" data-name="${colName}" placeholder="0.00" style="padding: 6px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-800); color: white; width: 100px;">`;
-        row.insertBefore(td, row.lastElementChild);
+      // Add the auto-calculator listener
+      document.querySelectorAll('.video-matrix-cb').forEach(cb => {
+         cb.addEventListener('change', () => {
+            const checkedCount = document.querySelectorAll('.video-matrix-cb:checked').length;
+            document.getElementById('videoTotalCalc').textContent = (checkedCount * 100).toLocaleString();
+         });
       });
-    });
+    }
+
+    // ---- 2. LIVE SELLER DELTA COMMISSION ENGINE ----
+  
+  // A temporary local variable to store the "Last Known Totals" for the day
+  let lastShiftTotals = {
+    buyers: 0,
+    commi: 0,
+    sold: 0,
+    gmv: 0
+  };
+
+  async function populateDeltaSellers() {
+    const sellerSelect = document.getElementById('deltaSeller');
+    if (!sellerSelect) return;
+
+    // Fetch only employees who are Live Sellers
+    const { data: sellers } = await supabaseClient
+      .from('employees')
+      .select('id, name')
+      .eq('position_id', '5f2ba83f-0773-42a0-b436-1834bd28e680'); // Replace with your exact Live Seller position UUID if different!
+
+    if (sellers) {
+      sellerSelect.innerHTML = '<option value="">Select Seller...</option>' + 
+        sellers.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    }
   }
 
-  // ---- PAYROLL: CALCULATE FORMULA ----
-  const calculateBtn = document.getElementById('calculateBtn');
-  if (calculateBtn) {
-    calculateBtn.addEventListener('click', () => {
-      const formulaInput = document.getElementById('formulaInput').value;
-      
-      if (!formulaInput) {
-        alert("Please enter a formula first (e.g., Base + Bonus - Tax)");
+  const calcDeltaBtn = document.getElementById('calcDeltaBtn');
+  if (calcDeltaBtn) {
+    calcDeltaBtn.addEventListener('click', () => {
+      // 1. Grab the raw inputs from the dashboard
+      const currentBuyers = parseFloat(document.getElementById('deltaBuyer').value) || 0;
+      const currentCommi = parseFloat(document.getElementById('deltaCommi').value) || 0;
+      const currentSold = parseFloat(document.getElementById('deltaSold').value) || 0;
+      const currentGmv = parseFloat(document.getElementById('deltaGmv').value) || 0;
+      const sellerId = document.getElementById('deltaSeller').value;
+
+      if (!sellerId) {
+        alert("Please select a Live Seller first!");
         return;
       }
 
-      const tbodyRows = document.querySelectorAll('#payrollBody tr');
+      // 2. The Delta Math (Current Shift Total MINUS Previous Shift Total)
+      const shiftBuyers = currentBuyers - lastShiftTotals.buyers;
+      const shiftCommi = currentCommi - lastShiftTotals.commi;
+      const shiftSold = currentSold - lastShiftTotals.sold;
+      const shiftGmv = currentGmv - lastShiftTotals.gmv;
 
-      tbodyRows.forEach(row => {
-        let mathString = formulaInput;
+      // Prevent negative numbers if someone enters data wrong
+      if (shiftCommi < 0 || shiftSold < 0) {
+         alert("Error: The totals you entered are LOWER than the previous shift. Please check your numbers.");
+         return;
+      }
 
-        // 1. Swap the word "Base" for the actual Base Pay number
-        const baseInput = row.querySelector('.base-pay');
-        const baseVal = parseFloat(baseInput?.value) || 0;
-        mathString = mathString.replace(/Base/g, baseVal);
+      // 3. Update the "Last Known Totals" so the next seller's math is ready
+      lastShiftTotals = {
+        buyers: currentBuyers,
+        commi: currentCommi,
+        sold: currentSold,
+        gmv: currentGmv
+      };
 
-        // 2. Swap any dynamic column names (like "Bonus") for their numbers
-        const dynamicInputs = row.querySelectorAll('.dynamic-col');
-        dynamicInputs.forEach(input => {
-          const colName = input.getAttribute('data-name');
-          const val = parseFloat(input.value) || 0;
+      // 4. Alert the calculated yield (This is where we would save it to the database!)
+      alert(`✅ SHIFT YIELD CALCULATED!\n\nThis seller generated:\nBuyers: ${shiftBuyers}\nCommission: ₱${shiftCommi.toLocaleString()}\nItems Sold: ${shiftSold}\nGMV: ₱${shiftGmv.toLocaleString()}\n\n(The system is now primed for the next seller's shift.)`);
+      
+      // Clear the input boxes for the next person
+      document.getElementById('deltaBuyer').value = '';
+      document.getElementById('deltaCommi').value = '';
+      document.getElementById('deltaSold').value = '';
+      document.getElementById('deltaGmv').value = '';
+    });
+  }
+
+  // Initialize the seller dropdown
+  populateDeltaSellers();
+
+    // 3. Delegation Toggle Logic (For Eden/Catherine to unlock Creatives)
+    const toggleFinance = document.getElementById('toggleCreativesFinance');
+    if (toggleFinance && isSuperAdmin) {
+       // Fetch current status of Creatives account
+       const { data: creativesEmp } = await supabaseClient.from('employees').select('finance_unlocked').eq('badge_id', 'CREATIVES-01').single();
+       if (creativesEmp) toggleFinance.checked = creativesEmp.finance_unlocked;
+
+       toggleFinance.addEventListener('change', async (e) => {
+          const isUnlocked = e.target.checked;
+          toggleFinance.disabled = true;
           
-          // Find the exact word in the formula and replace it with the number
-          const regex = new RegExp(colName, 'g');
-          mathString = mathString.replace(regex, val);
-        });
-
-        // 3. Do the math and put the result in the Net Total box
-        try {
-          // This safely calculates the math string (e.g., turns "100 + 50" into 150)
-          const result = new Function('return ' + mathString)();
-          const netTotalInput = row.querySelector('.net-total');
-          if (netTotalInput) netTotalInput.value = parseFloat(result).toFixed(2);
-        } catch (error) {
-          console.error("Formula error:", error);
-          const netTotalInput = row.querySelector('.net-total');
-          if (netTotalInput) netTotalInput.value = "Error";
-        }
-      });
-    });
+          const { error } = await supabaseClient.from('employees')
+            .update({ finance_unlocked: isUnlocked })
+            .eq('badge_id', 'CREATIVES-01');
+            
+          toggleFinance.disabled = false;
+          if(error) {
+              alert('Error updating permissions: ' + error.message);
+              e.target.checked = !isUnlocked; // Revert switch if fail
+          } else {
+              alert(`Finance tab is now ${isUnlocked ? 'UNLOCKED' : 'LOCKED'} for the Creatives team.`);
+          }
+       });
+    }
   }
 
-      // Trigger the browser to download the file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      
-      link.setAttribute("href", url);
-      link.setAttribute("download", `Payroll_Export_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-  }
+  // Run the init engine
+  initFinanceTab();
+
+  
+
+  
   // ---- CSR SUNDAY ROTATION LOADER ----
   async function loadCSRRoster() {
     // Check your HTML to make sure these IDs match your code!
