@@ -760,6 +760,34 @@ aside.sidebar.collapsed ~ main.main-content {
         </form>
       </section>
 
+      <!-- NEW: Sales Report Form -->
+      <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
+        <h2 style="color: var(--mint-500);">Submit Daily Sales Report</h2>
+        <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 120px;">
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
+                    <input type="date" id="salesDate" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
+                <div style="flex: 1; min-width: 120px;">
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Target Sales (₱)</label>
+                    <input type="number" step="0.01" id="salesTarget" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
+                <div style="flex: 1; min-width: 120px;">
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Actual Sales (₱)</label>
+                    <input type="number" step="0.01" id="salesActual" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
+                <input type="file" id="salesScreenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+            </div>
+
+            <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none;">Submit Sales Report</button>
+        </form>
+      </section>
+
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h2 style="margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber-400);">My Requests</h2>
         <!-- We reuse your existing ticketBtn ID so the modal opens automatically! -->
@@ -2835,6 +2863,73 @@ if (ticketBtn) {
               alert(`Batch upload interrupted! Failed on video ${successCount + 1}: ${err.message}`);
           } finally {
               submitBtn.textContent = 'Upload & Submit Videos';
+              submitBtn.disabled = false;
+          }
+      });
+  }
+
+  // ==========================================================
+  // DAILY SALES REPORT SUBMISSION
+  // ==========================================================
+  const salesReportForm = document.getElementById('salesReportForm');
+  if (salesReportForm) {
+      salesReportForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const submitBtn = document.getElementById('salesSubmitBtn');
+          submitBtn.textContent = 'Uploading... Please wait.';
+          submitBtn.disabled = true;
+
+          try {
+              const salesDate = document.getElementById('salesDate').value;
+              const salesTarget = document.getElementById('salesTarget').value;
+              const salesActual = document.getElementById('salesActual').value;
+              const fileInput = document.getElementById('salesScreenshot');
+              const file = fileInput.files[0];
+
+              if (!file) throw new Error("Please select a screenshot.");
+
+              // 1. Create a unique file path for the screenshot
+              const fileExt = file.name.split('.').pop();
+              const fileName = `public/${emp.id}_${Date.now()}_sales.${fileExt}`;
+
+              // 2. Upload to Supabase Storage (Make sure you create the 'sales-screenshots' bucket!)
+              const { error: uploadErr } = await supabaseClient
+                  .storage
+                  .from('sales-screenshots')
+                  .upload(fileName, file, { upsert: false });
+
+              if (uploadErr) throw uploadErr;
+
+              // 3. Get the Public URL
+              const { data: publicUrlData } = supabaseClient
+                  .storage
+                  .from('sales-screenshots')
+                  .getPublicUrl(fileName);
+
+              const screenshotUrl = publicUrlData.publicUrl;
+
+              // 4. Save to sales_reports table
+              const { error: dbErr } = await supabaseClient
+                  .from('sales_reports')
+                  .insert({
+                      employee_id: emp.id,
+                      report_date: salesDate,
+                      target_sales: parseFloat(salesTarget),
+                      actual_sales: parseFloat(salesActual),
+                      screenshot_url: screenshotUrl
+                  });
+
+              if (dbErr) throw dbErr;
+
+              alert('Sales report submitted successfully!');
+              salesReportForm.reset();
+
+          } catch (err) {
+              console.error("Sales Report Upload Error:", err);
+              alert(`Upload failed: ${err.message}`);
+          } finally {
+              submitBtn.textContent = 'Submit Sales Report';
               submitBtn.disabled = false;
           }
       });
