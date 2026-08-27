@@ -1270,167 +1270,136 @@ aside.sidebar.collapsed ~ main.main-content {
     return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  async function loadMySchedule() {
-    const container = document.getElementById('scheduleDaysList');
-    if (!container) return;
-    if (!emp || !emp.id) return;
+  // ==========================================================
+  // SMART SCHEDULE LOADER (ROUTES BASED ON EMPLOYEE ROLE)
+  // ==========================================================
+  window.loadMySchedule = async function() {
+      const scheduleList = document.getElementById('twoWeekCalendarGrid');
+      if (!scheduleList) return;
 
-    container.innerHTML = '<p style="color: #7488b6;">Loading your shifts...</p>';
+      scheduleList.innerHTML = '<div class="loading-note">Loading schedule...</div>';
 
-    try {
-        const { data: scheduleData, error } = await supabaseClient
-            .from('employees')
-            .select('mon_sat_shift, sunday_duty')
-            .eq('id', emp.id)
-            .single();
+      // 1. Identify the Employee's exact position
+      const positionName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || '');
+      const isLiveSeller = positionName.toLowerCase().includes('live seller');
 
-        if (error) throw error;
+      if (isLiveSeller) {
+          // ==========================================
+          // LIVE SELLER VIEW (Pulls from Admin assignments)
+          // ==========================================
+          const subTitle = document.getElementById('scheduleSubTitle');
+          if(subTitle) subTitle.textContent = "Your assigned live streams and days off.";
+          
+          // Get today's date formatted perfectly for Supabase (YYYY-MM-DD)
+          const today = new Date();
+          const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
 
-        // 1. Calculate this week's dates
-        const today = new Date();
-        const day = today.getDay();
-        const diffToMonday = day === 0 ? -6 : 1 - day; 
-        const monday = new Date(today);
-        monday.setDate(today.getDate() + diffToMonday);
+          const { data, error } = await supabaseClient
+              .from('live_seller_schedule')
+              .select('*, brands(name), platforms(name)')
+              .eq('employee_id', emp.id)
+              .gte('schedule_date', todayStr)
+              .order('schedule_date', { ascending: true })
+              .limit(14);
 
-        // 2. Define shift times based on Position
-    let shiftTime = '<span style="color: #7488b6;">Unassigned</span>';
-    const myPos = emp.positions ? emp.positions.name : '';
+          if (error) {
+              scheduleList.innerHTML = `<div class="error-note">Error: ${error.message}</div>`;
+              return;
+          }
 
-    if (myPos === 'Live Seller') {
-        // Live Sellers bypass the standard math completely
-        shiftTime = '<span style="color: var(--amber-500); font-size: 12px;">See Monthly Roster</span>';
-    } else {
-        // Admins, MAs, and CSRs use the standard Morning/Night logic
-        if (emp.mon_sat_shift === 'morning') {
-            shiftTime = '<strong style="color: var(--paper);">Shift 1 (6:00 AM - 3:00 PM)</strong>';
-        } else if (emp.mon_sat_shift === 'night') {
-            shiftTime = '<strong style="color: var(--paper);">Shift 2 (3:00 PM - 12:00 AM)</strong>';
-        }
-    }
+          if (!data || data.length === 0) {
+              scheduleList.innerHTML = `<div style="padding: 15px; border: 1px dashed var(--line); border-radius: 8px; color: #7488b6; text-align: center;">No upcoming shifts assigned yet.</div>`;
+              return;
+          }
 
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        let scheduleHTML = `<div style="background: var(--navy-900); padding: 15px; border-radius: 6px; border: 1px solid var(--navy-600);">`;
+          // Build the Live Seller Cards
+          scheduleList.innerHTML = data.map(shift => {
+              const d = new Date(shift.schedule_date + 'T00:00:00');
+              const dateFmt = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
 
-        // 3. Loop through Monday - Saturday
-        for (let i = 0; i < 6; i++) {
-            const currentDay = new Date(monday);
-            currentDay.setDate(monday.getDate() + i);
-            const dateStr = currentDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            
-            scheduleHTML += `
-                <div style="padding: 8px 0; border-bottom: 1px solid var(--navy-600); display: flex; font-size: 13px;">
-                    <span style="color: var(--amber-400); width: 65px;">${dateStr}</span> 
-                    <span style="color: #7488b6; width: 90px;">| ${days[i]}</span> 
-                    <span>- ${shiftTime}</span>
-                </div>`;
-        }
+              // Render a "Day Off" Card
+              if (shift.status === 'day_off') {
+                   return `
+                      <div style="background: var(--navy-900); border: 1px dashed var(--line); padding: 16px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; opacity: 0.6;">
+                          <strong style="color: var(--coral-500); font-size: 14px;">${dateFmt}</strong>
+                          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--coral-500);">DAY OFF</span>
+                      </div>
+                  `;
+              }
 
-        // 4. Calculate and append Sunday
-        const upcomingSunday = new Date(monday);
-        upcomingSunday.setDate(monday.getDate() + 6);
-        const sunStr = upcomingSunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        
-        let sunDuty = '<span style="color: #7488b6;">Day Off</span>';
-        if (scheduleData.sunday_duty) {
-            sunDuty = '<strong style="color: var(--amber-400);">Sunday Duty (9:00 AM - 6:00 PM)</strong>';
-        }
+              // Render an Active "Scheduled" Card
+              const brand = shift.brands ? shift.brands.name : 'TBA';
+              const plat = shift.platforms ? shift.platforms.name : 'TBA';
+              const time = (shift.shift_start && shift.shift_end) ? `${shift.shift_start} - ${shift.shift_end}` : 'TBA';
 
-        scheduleHTML += `
-                <div style="padding: 8px 0; display: flex; font-size: 13px;">
-                    <span style="color: var(--amber-400); width: 65px;">${sunStr}</span> 
-                    <span style="color: #7488b6; width: 90px;">| Sunday</span> 
-                    <span>- ${sunDuty}</span>
-                </div>
-            </div>`; // Close the main container
+              return `
+                  <div style="background: var(--navy-800); border: 1px solid var(--mint-700); padding: 16px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                          <strong style="color: var(--paper); font-size: 14px;">${dateFmt}</strong>
+                          <div style="font-size: 11px; color: var(--amber-400); margin-top: 6px; font-weight: bold; text-transform: uppercase;">${brand} &bull; ${plat}</div>
+                      </div>
+                      <div style="text-align: right;">
+                          <span class="pill approved" style="margin-bottom: 6px;">Scheduled</span>
+                          <div style="font-family: var(--font-mono); font-size: 11px; color: #7488b6; margin-top: 6px;">${time}</div>
+                      </div>
+                  </div>
+              `;
+          }).join('');
 
-        container.innerHTML = scheduleHTML;
+      } else {
+          // ==========================================
+          // CSR / OFFICE VIEW (The 14-Day Rotation)
+          // ==========================================
+          const subTitle = document.getElementById('scheduleSubTitle');
+          if(subTitle) subTitle.textContent = "Your 14-day shift rotation.";
+          
+          let html = '';
+          const today = new Date();
+          
+          for (let i = 0; i < 14; i++) {
+              const d = new Date(today);
+              d.setDate(today.getDate() + i);
+              const isSunday = d.getDay() === 0;
+              const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
 
-    } catch (err) {
-        console.error("Failed to load full schedule:", err);
-        container.innerHTML = '<p style="color: #d9614f;">Error loading schedule. Please contact Admin.</p>';
-    }
-}
+              let shiftStatus = 'Unassigned';
+              let rowColor = 'var(--navy-800)';
+              let statusColor = '#7488b6';
 
- async function loadTwoWeekCalendar() {
-    const container = document.getElementById('twoWeekCalendarGrid');
-    if (!container) return;
-    if (!emp || !emp.id) return;
+              if (isSunday) {
+                  if (emp.sunday_duty) {
+                      shiftStatus = 'Active Duty (9 AM - 6 PM)';
+                      rowColor = 'var(--navy-800)';
+                      statusColor = 'var(--amber-400)';
+                  } else {
+                      shiftStatus = 'Day Off';
+                      rowColor = 'rgba(10, 15, 30, 0.4)';
+                      statusColor = 'var(--coral-500)';
+                  }
+              } else {
+                  if (emp.mon_sat_shift === 'morning') { shiftStatus = 'Shift 1 (6 AM - 3 PM)'; statusColor = 'var(--mint-400)'; }
+                  else if (emp.mon_sat_shift === 'night') { shiftStatus = 'Shift 2 (3 PM - 12 AM)'; statusColor = 'var(--mint-400)'; }
+              }
 
-    container.innerHTML = '<p style="color: #7488b6;">Loading your 14-day calendar...</p>';
+              html += `
+                  <div style="background: ${rowColor}; border: 1px solid var(--line); padding: 14px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                      <div style="display: flex; gap: 15px; align-items: center;">
+                          <strong style="color: var(--amber-400); width: 55px; font-size: 13px;">${dateStr}</strong>
+                          <span style="color: #7488b6; font-size: 13px;">${dayName}</span>
+                      </div>
+                      <div style="font-size: 12px; color: ${statusColor}; text-align: right; font-weight: bold;">${shiftStatus}</div>
+                  </div>
+              `;
+          }
+          scheduleList.innerHTML = html;
+      }
+  };
 
-    try {
-        const { data: scheduleData, error } = await supabaseClient
-            .from('employees')
-            .select('mon_sat_shift, sunday_duty')
-            .eq('id', emp.id)
-            .single();
-
-        if (error) throw error;
-
-        // Find this week's Monday
-        const today = new Date();
-        const day = today.getDay();
-        const diffToMonday = day === 0 ? -6 : 1 - day; 
-        const monday = new Date(today);
-        monday.setDate(today.getDate() + diffToMonday);
-
-        let shiftTime = '<span style="color: #7488b6;">Unassigned</span>';
-        if (scheduleData.mon_sat_shift === 'morning') {
-            shiftTime = '<strong style="color: var(--paper);">Shift 1 (6:00 AM - 3:00 PM)</strong>';
-        } else if (scheduleData.mon_sat_shift === 'night') {
-            shiftTime = '<strong style="color: var(--paper);">Shift 2 (3:00 PM - 12:00 AM)</strong>';
-        }
-
-        let html = `<div style="display: flex; flex-direction: column; gap: 8px;">`;
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        
-        // NEW: A tracker to make sure we don't double-book their Sundays
-        let firstSundayProcessed = false;
-
-        // Loop for exactly 14 days (2 weeks)
-        for (let i = 0; i < 14; i++) {
-            const currentDay = new Date(monday);
-            currentDay.setDate(monday.getDate() + i);
-            const dateStr = currentDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const dayOfWeek = days[i % 7];
-            const isSunday = (i % 7) === 6;
-
-            let dayContent = shiftTime;
-            let rowStyle = "background: var(--navy-900); border: 1px solid var(--line);";
-
-            if (isSunday) {
-                // Check if they have duty AND we haven't already booked a Sunday for them
-                if (scheduleData.sunday_duty && !firstSundayProcessed) {
-                    dayContent = '<strong style="color: var(--navy-950);">Sunday Duty (9:00 AM - 6:00 PM)</strong>';
-                    rowStyle = "background: var(--amber-400); border: 1px solid var(--amber-500); color: var(--navy-950);";
-                } else {
-                    dayContent = '<span style="color: #7488b6;">Day Off</span>';
-                    rowStyle = "background: rgba(255,255,255,0.02); border: 1px dashed var(--line);";
-                }
-                // Mark that we have passed the first Sunday so the second one is forced to a Day Off
-                firstSundayProcessed = true; 
-            }
-
-            html += `
-                <div style="${rowStyle} border-radius: 8px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; gap: 15px; align-items: center; min-width: 150px;">
-                        <div style="font-family: var(--font-mono); font-size: 14px; font-weight: bold; width: 55px; ${isSunday && scheduleData.sunday_duty && (dayContent !== '<span style="color: #7488b6;">Day Off</span>') ? 'color: var(--navy-950);' : 'color: var(--amber-400);'}">${dateStr}</div>
-                        <div style="font-size: 13px; font-weight: 600; width: 80px; ${isSunday && scheduleData.sunday_duty && (dayContent !== '<span style="color: #7488b6;">Day Off</span>') ? 'color: var(--navy-950);' : 'color: #7488b6;'}">${dayOfWeek}</div>
-                    </div>
-                    <div style="font-size: 13px; text-align: right;">${dayContent}</div>
-                </div>
-            `;
-        }
-        
-        html += `</div>`;
-        container.innerHTML = html;
-
-    } catch (err) {
-        console.error("Failed to load 14-day calendar:", err);
-        container.innerHTML = '<p style="color: #d9614f;">Error loading schedule.</p>';
-    }
-}
+  // Trigger it on load
+  setTimeout(() => {
+      if(typeof loadMySchedule === 'function') loadMySchedule();
+  }, 1000);
 
  async function loadHomeShiftStatus() {
     const container = document.getElementById('teamMonitoringGrid');
