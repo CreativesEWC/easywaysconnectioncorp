@@ -735,7 +735,33 @@ aside.sidebar.collapsed ~ main.main-content {
     <div id="tab-submissions" class="tab-panel" style="display:none;">
       <div style="margin-bottom: 24px;">
         <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Submission Form</h1>
-      </div>
+     </div>
+
+      <!-- NEW: Video Submissions Form -->
+      <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
+        <h2 style="color: var(--amber-400);">Submit Daily Video Requirement</h2>
+        <form id="videoSubmitForm" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+            
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date Uploaded</label>
+                    <input type="date" id="vidUploadDate" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
+                <div style="flex: 2;">
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Platform Link (TikTok/Shopee)</label>
+                    <input type="url" id="vidLink" placeholder="https://..." required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Raw Video File (.mp4)</label>
+                <input type="file" id="vidFile" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+            </div>
+
+            <button type="submit" id="vidSubmitBtn" class="btn2 primary" style="width: 100%; padding: 12px; font-size: 14px;">Upload & Submit Video</button>
+        </form>
+      </section>
+
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h2 style="margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber-400);">My Requests</h2>
         <!-- We reuse your existing ticketBtn ID so the modal opens automatically! -->
