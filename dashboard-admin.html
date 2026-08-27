@@ -482,9 +482,9 @@ aside.sidebar.collapsed ~ main.main-content {
     <span>Notifications</span>
   </button>
 
-  <!-- PAYROLL -->
-     <button data-tab="payroll">
-     <span class="icon">💰</span> Payroll
+ <!-- FINANCE & COMMISSIONS -->
+  <button data-tab="finance" id="navFinanceBtn">
+     <span class="icon" id="financeLockIcon">🔒</span> <span id="financeNavText">Finance (Locked)</span>
   </button>
 
   <!-- TICKETS -->
@@ -741,52 +741,78 @@ aside.sidebar.collapsed ~ main.main-content {
       </table>
     </section>
   </div>
-        <!-- ==== 4. PAYROLL TAB PANEL ==== -->
-  <div id="tab-payroll" class="tab-panel" style="display:none;">
-    <div style="margin-bottom: 24px;">
-      <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Payroll Calculator</h1>
-      <p style="color: #7488b6; font-size: 13px; margin-top: 4px;">Locally generated. No formulas are saved to the public repository.</p>
-    </div>
+        <!-- ==== 4. FINANCE & COMMISSIONS TAB ==== -->
+<div id="tab-finance" class="tab-panel" style="display:none;">
+  <div style="margin-bottom: 24px;">
+    <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Master Finance Engine</h1>
+  </div>
 
+  <!-- SUPER ADMIN VIEW (Hidden from Creatives unless unlocked) -->
+  <div id="superAdminFinanceView" style="display: none;">
+    
+    <!-- Delegation Control Panel (Only Eden/Catherine see this) -->
+    <section class="panel" id="delegationPanel" style="border-color: var(--mint-500);">
+      <h2>Super Admin Controls</h2>
+      <div class="form-row">
+        <label class="wd-check" style="color: var(--mint-500);">
+          <input type="checkbox" id="toggleCreativesFinance"> Unlock Finance for Creatives
+        </label>
+      </div>
+    </section>
+
+    <!-- Master Totals Sheet -->
     <section class="panel">
-      <!-- Toolbar for Managers -->
-      <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
-        
-        <!-- NEW: Smart Cutoff Selector -->
-        <select id="cutoffSelect" style="padding: 8px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-800); color: var(--amber-400); font-weight: bold;">
-          <option value="">Select Cutoff Period...</option>
-          <option value="28-12">28th to 12th (Payday: 15th)</option>
-          <option value="13-27">13th to 27th (Payday: 30th/31st)</option>
-        </select>
-        <button class="btn" id="fetchHoursBtn" style="background: var(--navy-700); border: 1px solid var(--navy-600);">⏱️ Fetch Hours</button>
-        
-        <div style="width: 2px; height: 30px; background: var(--navy-600); margin: 0 8px;"></div> <!-- Divider -->
+      <h2>Master Totals Sheet</h2>
+      <table id="masterTotalsTable">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Base / Perfect Att.</th>
+            <th>Video Comms</th>
+            <th>Live Comms</th>
+            <th>Overtime</th>
+            <th>Upload Proof</th>
+          </tr>
+        </thead>
+        <tbody id="masterTotalsBody"></tbody>
+      </table>
+    </section>
 
-        <!-- Existing Calculator Tools -->
-        <button class="btn" id="addColBtn" style="background: var(--navy-700);">+ Add Column</button>
-        <input type="text" id="formulaInput" placeholder="e.g. (Base + Comm) - Ded" style="padding: 8px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-800); color: var(--paper); flex-grow: 1;">
-        <button class="btn" id="calculateBtn" style="background: var(--mint-500); color: var(--navy-900);">Calculate</button>
-        <button class="btn" id="exportCsvBtn" style="background: #d9614f; color: white;">Download CSV</button>
+    <!-- Delta Commission Input Engine -->
+    <section class="panel">
+      <h2>Live Seller Commission Engine (Delta Calc)</h2>
+      <div class="form-row">
+        <input type="date" id="deltaDate">
+        <select id="deltaSeller"><option value="">Select Seller...</option></select>
+        <input type="time" id="deltaShiftEnd">
       </div>
-
-      <!-- The Dynamic Table -->
-      <div style="overflow-x: auto;">
-        <table id="payrollTable" style="width: 100%; border-collapse: collapse; text-align: left;">
-          <thead>
-            <tr style="border-bottom: 2px solid var(--navy-600);">
-              <th style="padding: 12px; color: var(--amber-400);">Employee</th>
-              <th style="padding: 12px; color: var(--amber-400);">Base Pay</th>
-              <th style="padding: 12px; color: var(--amber-400);">Net Total</th>
-            </tr>
-          </thead>
-          <tbody id="payrollBody">
-            <!-- Employee rows will be injected here -->
-          </tbody>
-        </table>
+      <div class="form-row">
+        <input type="number" id="deltaBuyer" placeholder="Total Buyers">
+        <input type="number" id="deltaCommi" placeholder="Comm. Value">
+        <input type="number" id="deltaSold" placeholder="Total Sold">
+        <input type="number" id="deltaGmv" placeholder="Total GMV">
       </div>
+      <button class="btn primary" id="calcDeltaBtn">Calculate & Post Shift Yield</button>
     </section>
   </div>
 
+  <!-- CREATIVES VIDEO AUDIT VIEW -->
+  <div id="videoAuditView" style="display: none;">
+    <section class="panel">
+      <h2>Video Matrix Audit (15 Videos max)</h2>
+      <div class="form-row">
+        <select id="auditEmployee"><option value="">Select Employee...</option></select>
+      </div>
+      <div class="form-row" id="videoCheckboxGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+        <!-- JS will generate 15 checkboxes here -->
+      </div>
+      <div style="margin-top: 15px; font-weight: bold; color: var(--mint-500);">
+        Calculated Bonus: ₱<span id="videoTotalCalc">0</span>
+      </div>
+      <button class="btn primary" style="margin-top: 10px;" id="saveVideoAuditBtn">Save Audit to Payroll</button>
+    </section>
+  </div>
+</div>
   <!-- 5. NOTIFICATIONS TAB -->
   <div id="tab-notifications" class="tab-panel" style="display:none;">
     <section class="panel">
@@ -1268,29 +1294,31 @@ aside.sidebar.collapsed ~ main.main-content {
     return; 
   }
 
-  // ==== STRICT ROLE-BASED ACCESS CONTROL ====
-  
-  // 1. Developer Access (Website Management)
-  // (If Ming also needs to see the Website tabs, change this to: emp.badge_id === 'CREATIVES-01' || emp.badge_id === 'EW-0000-2023')
+ // ==== STRICT ROLE-BASED ACCESS CONTROL ====
   const isDeveloper = emp.badge_id === 'CREATIVES-01'; 
+  const isSuperAdmin = emp.role === 'president' || (emp.role === 'admin' && emp.badge_id !== 'CREATIVES-01');
   
-  // 2. HR/Financial Access (Granted to Eden, Catherine, and Ming)
-  const isHR = emp.badge_id === 'EW-0076-2024' || emp.badge_id === 'EW-0001-2023' || emp.badge_id === 'EW-0000-2023';
-  
-  // Hide Website Management tabs from everyone except the Developer
-  if (!isDeveloper) {
-    const devTabs = ['photos', 'blog', 'timeline']; 
-    devTabs.forEach(tab => {
-      const btn = document.querySelector(`.sidebar-nav button[data-tab="${tab}"]`);
-      if (btn) btn.style.display = 'none';
-    });
+  // Dynamic Permission Check
+  const canAccessFinance = isSuperAdmin || (isDeveloper && emp.finance_unlocked === true);
+
+  // Configure Finance Navigation Button
+  const financeBtn = document.getElementById('navFinanceBtn');
+  if (financeBtn) {
+    if (canAccessFinance) {
+      document.getElementById('financeLockIcon').textContent = '📊';
+      document.getElementById('financeNavText').textContent = 'Finance & Payroll';
+    } else {
+      financeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        alert("Access Restricted: Please request a Finance unlock from Super Admin.");
+      }, { capture: true });
+    }
   }
 
-  // Hide Sensitive Financial/HR tabs from everyone except Eden, Catherine, and Ming
-  if (!isHR) {
-    // Add your future HR data-tab names here when you build them!
-    const hrTabs = ['payroll', 'commissions', 'payslips']; 
-    hrTabs.forEach(tab => {
+  // Hide Website Management tabs from non-developers
+  if (!isDeveloper) {
+    ['photos', 'blog', 'timeline'].forEach(tab => {
       const btn = document.querySelector(`.sidebar-nav button[data-tab="${tab}"]`);
       if (btn) btn.style.display = 'none';
     });
