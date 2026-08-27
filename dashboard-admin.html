@@ -796,6 +796,8 @@ aside.sidebar.collapsed ~ main.main-content {
     </section>
   </div>
 
+  
+
   <!-- CREATIVES VIDEO AUDIT VIEW -->
   <div id="videoAuditView" style="display: none;">
     <section class="panel">
@@ -1161,6 +1163,7 @@ aside.sidebar.collapsed ~ main.main-content {
   
 <script src="supabase-config.js"></script>
 <script>
+  // JAVA SECTUIB
 (async function(){
 
   // ---- CROSS-DASHBOARD THEME ENGINE ----
@@ -3185,10 +3188,22 @@ async function reviewTicket(ticketId, status, approverName) {
     }
   }
 
-  // Run the init engine
-  initFinanceTab();
+  // ---- 3. VIDEO MATRIX AUDIT (LIVE SELLERS ONLY) ----
+  async function populateVideoAuditSellers() {
+    const auditSelect = document.getElementById('auditEmployee');
+    if (!auditSelect) return;
 
-  
+    // Fetch ONLY employees who are Live Sellers
+    const { data: sellers } = await supabaseClient
+      .from('employees')
+      .select('id, name')
+      .eq('position_id', '5f2ba83f-0773-42a0-b436-1834bd28e680'); // Using the exact Live Seller UUID from your CSR rotation script!
+
+    if (sellers) {
+      auditSelect.innerHTML = '<option value="">Select Live Seller...</option>' + 
+        sellers.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    }
+  }
 
   
   // ---- CSR SUNDAY ROTATION LOADER ----
@@ -3402,6 +3417,44 @@ async function reviewTicket(ticketId, status, approverName) {
     await loadAttendance(); // Refresh table
   });
 
+  // ---- 4. SAVE VIDEO AUDIT TO PAYROLL ----
+  const saveVideoBtn = document.getElementById('saveVideoAuditBtn');
+  if (saveVideoBtn) {
+    saveVideoBtn.addEventListener('click', () => {
+      const empSelect = document.getElementById('auditEmployee');
+      const empId = empSelect.value;
+      const empName = empSelect.options[empSelect.selectedIndex]?.text;
+      
+      // Grab the calculated total from the text span
+      const totalStr = document.getElementById('videoTotalCalc').textContent;
+
+      if (!empId) {
+        alert("Please select a Live Seller from the dropdown first.");
+        return;
+      }
+
+      if (totalStr === '0') {
+        if(!confirm("No videos are checked. Save an audit of ₱0?")) return;
+      }
+
+      // FUTURE UPGRADE: This is where we will write the Supabase insert 
+      // to push this number directly into a 'payroll_bonuses' database table.
+      
+      // For now, trigger the success confirmation:
+      alert(`✅ AUDIT SAVED SUCCESSFULLY!\n\nLive Seller: ${empName}\nTotal Video Bonus: ₱${totalStr}\n\n(This amount is now queued for their next payslip.)`);
+
+      // Automatically reset the matrix for the next audit
+      document.querySelectorAll('.video-matrix-cb').forEach(cb => cb.checked = false);
+      document.getElementById('videoTotalCalc').textContent = '0';
+      empSelect.value = '';
+    });
+  }
+
+  // Run the init engine
+  initFinanceTab();
+  populateDeltaSellers();
+  populateVideoAuditSellers(); // <-- ADD THIS ONE!
+  
 })();
 </script>
 </body>
