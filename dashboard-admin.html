@@ -3008,6 +3008,82 @@ async function reviewTicket(ticketId, status, approverName) {
       });
     }
 
+    // ---- 1. MASTER TOTALS & PERFECT ATTENDANCE ENGINE ----
+  async function loadMasterTotalsSheet() {
+    const tbody = document.getElementById('masterTotalsBody');
+    if (!tbody) return;
+
+    // Show loading state
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning attendance records and calculating bonuses...</td></tr>';
+
+    // Get the current month (Format: YYYY-MM) to filter records
+    const today = new Date();
+    const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+
+    try {
+      // 1. Fetch all active employees
+      const { data: emps } = await supabaseClient
+        .from('employees')
+        .select('id, name, badge_id, position')
+        .order('name');
+
+      // 2. Fetch all APPROVED tickets for this month (Leaves, Absences, Undertimes)
+      const { data: tickets } = await supabaseClient
+        .from('tickets')
+        .select('*')
+        .eq('status', 'approved')
+        .like('date_from', `${currentMonth}%`); // Matches anything in the current month
+
+      let html = '';
+
+      // 3. Loop through every employee and run the Audit
+      emps.forEach(emp => {
+        // Isolate tickets that belong to this specific employee
+        const empTickets = tickets?.filter(t => t.employee_id === emp.id) || [];
+        
+        // AUDIT RULE: Do they have any attendance offenses this month?
+        const hasOffenses = empTickets.some(t => 
+           ['absence', 'leave', 'emergency_leave', 'undertime'].includes(t.ticket_type)
+        );
+
+        // 4. Calculate the Bonus!
+        const perfectAttendanceBonus = hasOffenses ? 0 : 1000;
+        
+        // (Placeholder for Base Pay - can be pulled from DB later)
+        const basePay = 0; 
+        const totalBaseAndBonus = basePay + perfectAttendanceBonus;
+
+        // 5. Build the Table Row
+        html += `
+          <tr style="border-bottom: 1px solid var(--navy-700);">
+            <td style="padding: 12px;">
+              <strong style="color: var(--paper);">${escapeHtml(emp.name)}</strong><br>
+              <span style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(emp.badge_id)}</span>
+            </td>
+            <td style="padding: 12px;">
+              <div style="font-size: 13px; color: #9fb0d6;">Base: ₱${basePay.toLocaleString()}</div>
+              <div style="color: ${perfectAttendanceBonus > 0 ? 'var(--mint-500)' : 'var(--coral-500)'}; font-size: 12px; font-weight: bold; margin-top: 4px;">
+                + Bonus: ₱${perfectAttendanceBonus.toLocaleString()}
+              </div>
+            </td>
+            <td style="padding: 12px; color: #7488b6;">₱0.00</td>
+            <td style="padding: 12px; color: #7488b6;">₱0.00</td>
+            <td style="padding: 12px; color: #7488b6;">₱0.00</td>
+            <td style="padding: 12px;">
+              <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Proof</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+
+    } catch (error) {
+      console.error("Error loading master totals:", error);
+      tbody.innerHTML = `<tr><td colspan="6" class="error-note">Failed to load totals: ${error.message}</td></tr>`;
+    }
+  }
+
     // ---- 2. LIVE SELLER DELTA COMMISSION ENGINE ----
   
   // A temporary local variable to store the "Last Known Totals" for the day
