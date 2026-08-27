@@ -2881,28 +2881,58 @@ async function reviewTicket(ticketId, status, approverName) {
 
   if (schedFilters.length > 0) {
     schedFilters.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        // Remove active class from all
-        schedFilters.forEach(b => b.classList.remove('active'));
-        // Add to clicked
-        e.target.classList.add('active');
+        btn.addEventListener('click', (e) => {
+            // Remove active class from all
+            schedFilters.forEach(b => b.classList.remove('active'));
+            // Add to clicked
+            e.target.classList.add('active');
 
-        // Switch the display containers
-        if (e.target.dataset.sched === 'liveseller') {
-          viewLiveSeller.style.display = 'block';
-          viewCsr.style.display = 'none';
-        } else {
-      viewLiveSeller.style.display = 'none';
-      viewCsr.style.display = 'block';
-      
-      // Call the function we just added at the bottom of your file!
-      loadCSRRoster(); 
-
-          
-    }
-      });
+            // Switch the display containers
+            if (e.target.dataset.sched === 'liveseller') {
+                viewLiveSeller.style.display = 'block';
+                viewCsr.style.display = 'none';
+            } else {
+                viewLiveSeller.style.display = 'none';
+                viewCsr.style.display = 'block';
+                // Call the function we just added at the bottom of your file!
+                loadCSRRoster();
+            }
+        });
     });
-  }
+}
+
+// ---- TEAM SCHEDULES: BRAND ASSIGNMENT (Moved OUTSIDE the toggle loop!) ----
+const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+if (saveScheduleBtn) {
+    saveScheduleBtn.addEventListener('click', async () => {
+        // 1. Grab the values from your custom UI
+        const sellerId = document.getElementById('scheduleSellerId').value;
+        const selectedBrand = document.getElementById('scheduleBrand').value;
+
+        if (!sellerId || !selectedBrand) {
+            alert("Please select both a Live Seller and a Brand.");
+            return;
+        }
+
+        try {
+            // 2. Push the Brand assignment to the employees table
+            const { error } = await supabaseClient
+                .from('employees')
+                .update({ brand_id: selectedBrand })
+                .eq('id', sellerId);
+
+            if (error) throw error;
+
+            alert("Brand successfully assigned to the Live Seller!");
+
+            // (Future Step: Add the loop here to save the actual Date & Time rows)
+
+        } catch (err) {
+            console.error("Error assigning brand:", err);
+            alert("Failed to assign brand. Check console.");
+        }
+    });
+}
 
   // --- SIDEBAR COLLAPSE TOGGLE ---
   const collapseBtn = document.getElementById('collapseBtn');
