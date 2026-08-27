@@ -740,25 +740,23 @@ aside.sidebar.collapsed ~ main.main-content {
       <!-- NEW: Video Submissions Form -->
       <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
         <h2 style="color: var(--amber-400);">Submit Daily Video Requirement</h2>
-        <form id="videoSubmitForm" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-            
-            <div style="display: flex; gap: 15px;">
-                <div style="flex: 1;">
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date Uploaded</label>
-                    <input type="date" id="vidUploadDate" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div style="flex: 2;">
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Platform Link (TikTok/Shopee)</label>
-                    <input type="url" id="vidLink" placeholder="https://..." required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-            </div>
-
+        <form id="videoSubmitForm" style="display: flex; flex-direction: column; gap: 15px;">
             <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Raw Video File (.mp4)</label>
-                <input type="file" id="vidFile" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date Uploaded</label>
+                <input type="date" id="vidUploadDate" required style="width: 100%; max-width: 250px; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
             </div>
 
-            <button type="submit" id="vidSubmitBtn" class="btn2 primary" style="width: 100%; padding: 12px; font-size: 14px;">Upload & Submit Video</button>
+            <!-- The Container holding the dynamic rows -->
+            <div id="videoRowsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                    <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px;">
+                    <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                </div>
+            </div>
+
+            <button type="button" id="addVideoRowBtn" class="btn2" style="border: 1px dashed var(--amber-500); color: var(--amber-400); background: transparent; padding: 10px;">[+] Add Another Video</button>
+
+            <button type="submit" id="vidSubmitBtn" class="btn2 primary" style="width: 100%; padding: 12px; font-size: 14px;">Upload & Submit Videos</button>
         </form>
       </section>
 
@@ -2733,69 +2731,114 @@ if (ticketBtn) {
     loadTwoWeekCalendar();
 
   // ==========================================================
-  // DAILY VIDEO SUBMISSION FUNCTIONALITY
+  // DYNAMIC MULTI-VIDEO BATCH UPLOADER
   // ==========================================================
+  
+  const addVideoRowBtn = document.getElementById('addVideoRowBtn');
+  const videoRowsContainer = document.getElementById('videoRowsContainer');
+
+  // 1. Function to add new rows
+  if (addVideoRowBtn) {
+      addVideoRowBtn.addEventListener('click', () => {
+          const rowCount = document.querySelectorAll('.video-upload-row').length;
+          if (rowCount >= 15) {
+              alert('You can only upload up to 15 videos at a time.');
+              return;
+          }
+
+          const newRow = document.createElement('div');
+          newRow.className = 'video-upload-row';
+          newRow.style = 'background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line); position: relative;';
+          newRow.innerHTML = `
+              <button type="button" class="remove-vid-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1;">&times;</button>
+              <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px;">
+              <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+          `;
+
+          // Add delete functionality to the tiny red "X"
+          newRow.querySelector('.remove-vid-row').addEventListener('click', () => newRow.remove());
+          videoRowsContainer.appendChild(newRow);
+      });
+  }
+
+  // 2. Function to process and upload the batch
   const videoSubmitForm = document.getElementById('videoSubmitForm');
   if (videoSubmitForm) {
       videoSubmitForm.addEventListener('submit', async (e) => {
           e.preventDefault();
-          
+
+          const rows = document.querySelectorAll('.video-upload-row');
+          if (rows.length === 0) return;
+
           const submitBtn = document.getElementById('vidSubmitBtn');
-          submitBtn.textContent = 'Uploading to server... Please wait.';
           submitBtn.disabled = true;
 
+          const uploadDate = document.getElementById('vidUploadDate').value;
+          let successCount = 0;
+
           try {
-              const uploadDate = document.getElementById('vidUploadDate').value;
-              const videoLink = document.getElementById('vidLink').value;
-              const fileInput = document.getElementById('vidFile');
-              const file = fileInput.files[0];
+              // Loop through and upload ONE BY ONE to prevent crashing the browser
+              for (let i = 0; i < rows.length; i++) {
+                  submitBtn.textContent = `Uploading video ${i + 1} of ${rows.length}... Please wait.`;
 
-              if (!file) throw new Error("Please select a video file.");
+                  const row = rows[i];
+                  const linkInput = row.querySelector('.vid-link').value;
+                  const fileInput = row.querySelector('.vid-file').files[0];
 
-              // 1. Create a unique file path using the employee ID
-              const fileExt = file.name.split('.').pop();
-              const fileName = `public/${emp.id}_${Date.now()}.${fileExt}`;
+                  if (!fileInput) continue; 
 
-              // 2. Upload the raw video file to the Supabase Storage Bucket
-              const { error: uploadErr } = await supabaseClient
-                  .storage
-                  .from('daily-videos')
-                  .upload(fileName, file, { upsert: false });
+                  // Create unique file name
+                  const fileExt = fileInput.name.split('.').pop();
+                  const fileName = `public/${emp.id}_${Date.now()}_${i}.${fileExt}`;
 
-              if (uploadErr) throw uploadErr;
+                  // Upload to Supabase Storage
+                  const { error: uploadErr } = await supabaseClient
+                      .storage
+                      .from('daily-videos')
+                      .upload(fileName, fileInput, { upsert: false });
 
-              // 3. Get the Public URL of the uploaded video
-              const { data: publicUrlData } = supabaseClient
-                  .storage
-                  .from('daily-videos')
-                  .getPublicUrl(fileName);
+                  if (uploadErr) throw uploadErr;
 
-              const videoFileUrl = publicUrlData.publicUrl;
+                  // Get Public URL
+                  const { data: publicUrlData } = supabaseClient
+                      .storage
+                      .from('daily-videos')
+                      .getPublicUrl(fileName);
 
-              // 4. Insert the record into the video_submissions table
-              const { error: dbErr } = await supabaseClient
-                  .from('video_submissions')
-                  .insert({
-                      employee_id: emp.id,
-                      upload_date: uploadDate,
-                      video_link: videoLink,
-                      video_file_url: videoFileUrl
-                  });
+                  // Save record to database table
+                  const { error: dbErr } = await supabaseClient
+                      .from('video_submissions')
+                      .insert({
+                          employee_id: emp.id,
+                          upload_date: uploadDate,
+                          video_link: linkInput,
+                          video_file_url: publicUrlData.publicUrl
+                      });
 
-              if (dbErr) throw dbErr;
+                  if (dbErr) throw dbErr;
+                  successCount++;
+              }
 
-              alert('Video submitted successfully!');
+              alert(`Successfully uploaded ${successCount} videos!`);
               videoSubmitForm.reset();
+              
+              // Reset the form back to a single empty row
+              videoRowsContainer.innerHTML = `
+                  <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                      <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px;">
+                      <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                  </div>
+              `;
 
           } catch (err) {
               console.error("Video Upload Error:", err);
-              alert(`Upload failed: ${err.message}`);
+              alert(`Batch upload interrupted! Failed on video ${successCount + 1}: ${err.message}`);
           } finally {
-              submitBtn.textContent = 'Upload & Submit Video';
+              submitBtn.textContent = 'Upload & Submit Videos';
               submitBtn.disabled = false;
           }
       });
-  }Ss
+  }
 
   // THIS BRACKET CLOSES THE ASYNC FUNCTION PROPERLY
 })(); 
