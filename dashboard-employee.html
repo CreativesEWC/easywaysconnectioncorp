@@ -716,20 +716,20 @@ aside.sidebar.collapsed ~ main.main-content {
       </section>
     </div>
 
-    <!-- SCHEDULE TAB PANEL (NEW 14-DAY VIEW) -->
-    <div id="tab-schedule" class="tab-panel" style="display:none;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
-        <div>
-          <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">My Schedule</h1>
-          <p style="color: #7488b6; margin-top: 4px; font-size: 14px;">Your 14-day shift rotation.</p>
-        </div>
-        <button class="btn2 primary" id="openChangeReqBtn">Request Change</button>
-      </div>
+   <!-- -- SCHEDULE TAB PANEL (NEW 14-DAY VIEW) -- -->
+        <div id="tab-schedule" class="tab-panel" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+                <div>
+                    <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">My Schedule</h1>
+                    <p id="scheduleSubTitle" style="color: #7488b6; margin-top: 4px; font-size: 14px;">Your 14-day shift rotation.</p>
+                </div>
+                <button class="btn2 primary" id="openChangeReqBtn">Request Change</button>
+            </div>
 
-      <div id="twoWeekCalendarGrid">
-        <!-- The 14-day timeline will generate here -->
-      </div>
-    </div>
+            <div id="twoWeekCalendarGrid">
+                <!-- JS will inject the schedule here -->
+            </div>
+        </div>
 
     <!-- 5. SUBMISSION FORMS TAB PANEL -->
     <div id="tab-submissions" class="tab-panel" style="display:none;">
