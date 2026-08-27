@@ -3086,12 +3086,12 @@ async function reviewTicket(ticketId, status, approverName) {
               + Bonus: ₱${perfectAttendanceBonus.toLocaleString()}
             </div>
           </td>
-          <!-- NEW: Late and OT Minutes dynamically injected -->
+          <!-- NEW: Late Minutes and OT Hours dynamically injected -->
           <td style="padding: 12px; color: var(--coral-500); font-family: var(--font-mono); font-size: 13px;">
             ${totalLateMins} mins
           </td>
           <td style="padding: 12px; color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">
-            ${totalOtMins} mins
+            ${totalOtMins / 60} hrs
           </td>
           <!-- Placeholder for Delta Commissions / Video Audits -->
           <td style="padding: 12px; color: #7488b6;">₱0.00</td>
