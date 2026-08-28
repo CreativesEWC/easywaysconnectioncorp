@@ -3164,17 +3164,30 @@ if (ticketBtn) {
 
   // 5. SUPABASE REAL-TIME LISTENER
   const liveChatChannel = supabaseClient.channel('live-chat');
-  liveChatChannel.on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-      (payload) => {
-          // If a new message hits the database, check if we are currently looking at that channel
-          if (payload.new.channel_id === activeChatId) {
-              loadChatMessages(activeChatId);
+  
+  liveChatChannel
+      .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+          (payload) => {
+              // If a new message hits the active chat you are looking at, instantly refresh the feed
+              if (payload.new.channel_id === activeChatId) {
+                  loadChatMessages(activeChatId);
+              }
           }
-      }
-  ).subscribe();
-
+      )
+      .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_members' },
+          (payload) => {
+              // If YOU are invited to a brand new private DM room, instantly refresh your sidebar
+              if (payload.new.employee_id === emp.id) {
+                  loadDirectMessageSidebar();
+              }
+          }
+      )
+      .subscribe();
+  
   // Boot the channels up when the page loads
   setTimeout(() => {
       if (typeof loadChatChannels === 'function') loadChatChannels();
