@@ -503,6 +503,22 @@ aside.sidebar.collapsed ~ main.main-content {
     .panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     table { min-width: 600px; } 
   }
+
+  /* ---- FORCE WHITE BACKGROUND FOR TRANSPARENT PNG AVATARS ---- */
+  .avatar-img, 
+  .sidebar-user-block img, 
+  .emp-card img, 
+  .acct-avatar-wrap img,
+  #rosterTableBody img {
+      background-color: #ffffff !important;
+      /* Ensures the white background stays inside the perfect circle */
+      object-fit: cover; 
+  }
+  
+  /* Make sure the Digital ID photo fallback also has a clean background if it's a PNG */
+  .profile-photo {
+      background-color: #ffffff !important;
+  }
   
 </style>
 </head>
