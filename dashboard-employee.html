@@ -865,9 +865,9 @@ aside.sidebar.collapsed ~ main.main-content {
         
         <!-- Indented Sub-Menu Items -->
         <div id="submissionSubMenu" class="sidebar-sub-menu">
-          <button type="button" data-tab="submissions" onclick="openSubmissionForm('lh-requests', this)">My Requests</button>
-          <button type="button" data-tab="submissions" onclick="openSubmissionForm('lh-live-commi', this)" class="active">Live Commission</button>
-          <button type="button" data-tab="submissions" onclick="openSubmissionForm('lh-video-commi', this)">Video Commission</button>
+         <button type="button" data-tab="submissions" id="nav-requests" onclick="openSubmissionForm('lh-requests', this)">My Requests</button>
+          <button type="button" data-tab="submissions" id="nav-live-commi" onclick="openSubmissionForm('lh-live-commi', this)" class="active">Live Commission</button>
+          <button type="button" data-tab="submissions" id="nav-video-commi" onclick="openSubmissionForm('lh-video-commi', this)">Video Commission</button>
         </div>
       </div>
       
@@ -4380,6 +4380,27 @@ if (ticketBtn) {
           }
       }
   }, 500); // Check every 500 milliseconds (half-second)
+
+  // ==========================================================
+  // ROLE-BASED ACCESS: SUBMISSION FORMS
+  // ==========================================================
+  window.restrictSubmissionTabs = function(userRole) {
+      const liveBtn = document.getElementById('nav-live-commi');
+      const videoBtn = document.getElementById('nav-video-commi');
+      const requestBtn = document.getElementById('nav-requests');
+      
+      // Check if the user is NOT a Live Seller (Make sure this string matches your database exactly)
+      if (userRole !== 'Live Seller') {
+          // Hide the restricted buttons from the sidebar
+          if (liveBtn) liveBtn.style.display = 'none';
+          if (videoBtn) videoBtn.style.display = 'none';
+          
+          // Automatically route them to the "My Requests" tab so they don't see a blank screen
+          if (requestBtn) {
+              openSubmissionForm('lh-requests', requestBtn);
+          }
+      }
+  };
 
 })(); // <--- THIS IS THE FINAL WRAPPER CLOSING YOUR ENTIRE SCRIPT
 </script>
