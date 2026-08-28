@@ -11,7 +11,7 @@
   :root{
     --navy-950:#0a0f1e; --navy-900:#0f1830; --navy-800:#16213f; --navy-700:#22315a;
     --amber-500:#e8a13a; --amber-400:#f2b854; --paper:#f3efe6;
-    --mint-500:#4fb286; --coral-500:#d9614f; --line:#2a3a63;
+    --mint-500:#4fb286; --mint-700:#2f7a58; --coral-500:#d9614f; --line:#2a3a63;
     --font-display:'Rockwell',Georgia,serif; --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
     --font-mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
   }
@@ -1578,6 +1578,7 @@ aside.sidebar.collapsed ~ main.main-content {
         loadingNote.className = 'empty-note';
     }
 }
+  
 
   // Fetch Notifications
   async function loadNotifications() {
@@ -3164,6 +3165,152 @@ if (ticketBtn) {
       if (typeof loadChatChannels === 'function') loadChatChannels();
   }, 1500);
 
+  // ==========================================================
+  // DIRECT MESSAGING (DM) ENGINE
+  // ==========================================================
+  
+  const newDmBtn = document.getElementById('newDmBtn');
+  if (newDmBtn) {
+      newDmBtn.addEventListener('click', async () => {
+          document.getElementById('newDmModal').classList.add('open');
+          const list = document.getElementById('dmUserList');
+          list.innerHTML = '<div class="loading-note">Loading directory...</div>';
+          
+          // Fetch all other employees
+          const { data: users } = await supabaseClient.from('employees').select('id, name, avatar_url, positions(name)').neq('id', emp.id).order('name');
+          
+          if (users) {
+              list.innerHTML = users.map(u => {
+                  const pos = u.positions ? u.positions.name : 'Staff';
+                  return `
+                  <div class="dm-user-row" data-uid="${u.id}" data-uname="${escapeHtml(u.name)}" style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--navy-800); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--navy-700)'" onmouseout="this.style.background='var(--navy-800)'">
+                      <img src="${u.avatar_url || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #fff;">
+                      <div>
+                          <div style="font-size: 13px; color: var(--paper); font-weight: 600;">${escapeHtml(u.name)}</div>
+                          <div style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(pos)}</div>
+                      </div>
+                  </div>`;
+              }).join('');
+              
+              document.querySelectorAll('.dm-user-row').forEach(row => {
+                  row.addEventListener('click', () => startDirectMessage(row.dataset.uid, row.dataset.uname));
+              });
+          }
+      });
+  }
+  
+  const closeDmModalBtn = document.getElementById('closeDmModalBtn');
+  if (closeDmModalBtn) {
+      closeDmModalBtn.addEventListener('click', () => {
+          document.getElementById('newDmModal').classList.remove('open');
+      });
+  }
+
+  window.startDirectMessage = async function(otherUserId, otherUserName) {
+      document.getElementById('newDmModal').classList.remove('open');
+      
+      // We sort the two IDs alphabetically so the system always generates the exact same unique channel name for these two people
+      const uniqueName = [emp.id, otherUserId].sort().join('_');
+      
+      let { data: existingChannel } = await supabaseClient
+          .from('chat_channels')
+          .select('id')
+          .eq('name', uniqueName)
+          .single();
+          
+      let channelId;
+      
+      if (existingChannel) {
+          channelId = existingChannel.id;
+      } else {
+          // If they've never chatted before, generate a new private room
+          const { data: newChannel, error } = await supabaseClient
+              .from('chat_channels')
+              .insert({ name: uniqueName, type: 'direct' })
+              .select()
+              .single();
+              
+          if (error) return alert("Error creating DM.");
+          channelId = newChannel.id;
+          
+          // Lock both users into the private room
+          await supabaseClient.from('chat_members').insert([
+              { channel_id: channelId, employee_id: emp.id },
+              { channel_id: channelId, employee_id: otherUserId }
+          ]);
+      }
+      
+      // Update the UI to switch to this chat
+      activeChatId = channelId;
+      
+      document.querySelectorAll('.chat-channel-item, .chat-dm-item').forEach(i => {
+          i.style.background = 'transparent'; i.style.color = '#9fb0d6'; i.style.fontWeight = 'normal';
+      });
+      
+      document.getElementById('activeChatTitle').textContent = '💬 ' + otherUserName;
+      document.getElementById('activeChatDesc').textContent = 'Direct Message';
+      document.getElementById('chatInput').disabled = false;
+      document.getElementById('chatSendBtn').disabled = false;
+      
+      loadChatMessages(channelId);
+      loadDirectMessageSidebar(); // Refresh the sidebar so their name appears
+  };
+  
+  window.loadDirectMessageSidebar = async function() {
+      const dmList = document.getElementById('chatDmList');
+      if (!dmList) return;
+      
+      // 1. Find all private rooms I am allowed in
+      const { data: myDMs } = await supabaseClient
+          .from('chat_members')
+          .select('channel_id')
+          .eq('employee_id', emp.id);
+          
+      if (!myDMs || myDMs.length === 0) return;
+      const channelIds = myDMs.map(m => m.channel_id);
+      
+      // 2. Look inside those rooms and fetch the name of the *other* person
+      const { data: otherMembers } = await supabaseClient
+          .from('chat_members')
+          .select('channel_id, employees(name)')
+          .in('channel_id', channelIds)
+          .neq('employee_id', emp.id);
+          
+      if (otherMembers) {
+          dmList.innerHTML = otherMembers.map(m => {
+              const otherName = m.employees ? m.employees.name : 'Unknown';
+              return `<div class="chat-dm-item" data-id="${m.channel_id}" data-name="${escapeHtml(otherName)}" style="padding: 8px 10px; border-radius: 6px; cursor: pointer; color: #9fb0d6; font-size: 13px; transition: background 0.2s;">
+                  💬 ${escapeHtml(otherName.split(' ')[0])}
+              </div>`;
+          }).join('');
+          
+          // Wire up the clicks
+          document.querySelectorAll('.chat-dm-item').forEach(item => {
+              item.addEventListener('click', () => {
+                  document.querySelectorAll('.chat-channel-item, .chat-dm-item').forEach(i => {
+                      i.style.background = 'transparent'; i.style.color = '#9fb0d6'; i.style.fontWeight = 'normal';
+                  });
+                  item.style.background = 'var(--navy-800)';
+                  item.style.color = 'var(--amber-400)';
+                  item.style.fontWeight = 'bold';
+                  
+                  activeChatId = item.dataset.id;
+                  document.getElementById('activeChatTitle').textContent = '💬 ' + item.dataset.name;
+                  document.getElementById('activeChatDesc').textContent = 'Direct Message';
+                  document.getElementById('chatInput').disabled = false;
+                  document.getElementById('chatSendBtn').disabled = false;
+                  loadChatMessages(activeChatId);
+              });
+          });
+      }
+  };
+
+  // Boot up the channels and the DM sidebar when the page loads
+  setTimeout(() => {
+      if (typeof loadChatChannels === 'function') loadChatChannels();
+      if (typeof loadDirectMessageSidebar === 'function') loadDirectMessageSidebar();
+  }, 1500);
+
   // THIS BRACKET CLOSES THE ASYNC FUNCTION PROPERLY
 })(); 
 </script>
@@ -3229,6 +3376,19 @@ if (ticketBtn) {
     <div class="modal-actions">
       <button class="btn2" id="tkCancelBtn">Cancel</button>
       <button class="btn2 primary" id="tkSubmitBtn">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+  <!-- DIRECT MESSAGE MODAL -->
+<div class="modal-overlay" id="newDmModal" style="z-index: 9999;">
+  <div class="modal-box" style="max-width: 400px;">
+    <h2 style="font-family: var(--font-display); font-size: 18px; color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">New Direct Message</h2>
+    <div id="dmUserList" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Users will inject here -->
+    </div>
+    <div class="modal-actions" style="margin-top: 20px;">
+      <button class="btn2" id="closeDmModalBtn">Cancel</button>
     </div>
   </div>
 </div>
