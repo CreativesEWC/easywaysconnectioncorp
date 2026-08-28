@@ -4606,14 +4606,6 @@ if (calcDeltaBtn) {
       });
   }
 
-  // Wire up the Back button for mobile users
-  const igBackBtn = document.getElementById('igBackBtn');
-  if (igBackBtn) {
-      igBackBtn.addEventListener('click', () => {
-          document.getElementById('igChatWrapper').classList.remove('mobile-chat-open');
-      });
-  }
-
     // Wire up the Quick Reply "Enter" key in the Note View
   const replyNoteInput = document.getElementById('replyNoteInput');
   if (replyNoteInput) {
