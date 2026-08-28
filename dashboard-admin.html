@@ -4132,31 +4132,6 @@ if (calcDeltaBtn) {
       attachChatRowListeners();
   };
 
-      // 4. Wire up the clicks
-      document.querySelectorAll('.chat-channel-item').forEach(item => {
-          item.addEventListener('click', () => {
-              document.querySelectorAll('.chat-channel-item, .chat-dm-item').forEach(i => {
-                  i.style.background = 'transparent';
-                  i.style.color = '#9fb0d6';
-                  i.style.fontWeight = 'normal';
-              });
-              
-              item.style.background = 'var(--navy-800)';
-              item.style.color = 'var(--amber-400)';
-              item.style.fontWeight = 'bold';
-              
-              activeChatId = item.dataset.id;
-              document.getElementById('activeChatTitle').textContent = '# ' + item.dataset.name;
-              document.getElementById('activeChatDesc').textContent = 'Department Chat';
-              
-              document.getElementById('chatInput').disabled = false;
-              document.getElementById('chatSendBtn').disabled = false;
-              
-              loadChatMessages(activeChatId);
-          });
-      });
-  };
-
   window.loadChatMessages = async function(channelId) {
       const feed = document.getElementById('chatMessageFeed');
       if(feed.querySelector('.ig-empty-chat')) feed.innerHTML = ''; // Clear placeholder
