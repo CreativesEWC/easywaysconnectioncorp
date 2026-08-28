@@ -4409,12 +4409,13 @@ if (calcDeltaBtn) {
               document.getElementById('viewNoteModal').classList.add('open');
               
               // Clear previous reply text and focus
-              document.getElementById('replyNoteInput').value = '';
-              setTimeout(() => document.getElementById('replyNoteInput').focus(), 100);
-          });
-      });
+            document.getElementById('replyNoteInput').value = '';
+            setTimeout(() => document.getElementById('replyNoteInput').focus(), 100);
+        });
+    });
+}; // <--- ADD THIS BRACKET! THIS SAVES THE SCRIPT!
 
-  // Wire up Modal buttons
+// Wire up Modal buttons
   const cancelNoteBtn = document.getElementById('cancelNoteBtn');
   const saveNoteBtn = document.getElementById('saveNoteBtn');
 
@@ -4642,8 +4643,8 @@ if (calcDeltaBtn) {
           }
       });
   }
-
-})();
+  
+})(); /* <--- REPLACED THE } WITH THIS */
 </script>
 </body>
 </html>
