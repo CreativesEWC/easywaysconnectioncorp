@@ -10,14 +10,15 @@
 <style>
   :root {
     /* IG Dark Mode Foundation */
-    --navy-950: #000000; /* Main app background - Pure Black */
-    --navy-900: #000000; /* Panels, Sidebar, Header - Pure Black */
-    --navy-800: #121212; /* Secondary elements, inputs, hover states */
-    --navy-700: #262626; /* Tertiary elements, stronger hover */
-    --line: #262626;     /* IG signature subtle grey border */
-    --paper: #f5f5f5;    /* Crisp white text */
+    --navy-950: #000000;
+    --navy-900: #000000;
+    --navy-800: #121212;
+    --navy-700: #262626;
+    --line: #262626;
+    --paper: #ffffff;      /* Pure white for active/primary text */
+    --text-muted: #a8a8a8; /* Neutral IG grey for inactive text */
     
-    /* EWC Brand Accents (Kept intact!) */
+    /* EWC Brand Accents (Kept for buttons/badges) */
     --amber-500: #e8a13a; --amber-400: #f2b854; 
     --mint-500: #4fb286; --mint-700: #2f7a58; 
     --coral-500: #d9614f; --coral-700: #a63e2f;
@@ -26,6 +27,17 @@
     --font-display: 'Rockwell', Georgia, serif; 
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  /* ---- LIGHT MODE THEME OVERRIDES (IG STYLE) ---- */
+  html[data-theme="light"] {
+    --navy-950: #ffffff;
+    --navy-900: #ffffff;
+    --navy-800: #efefef;
+    --navy-700: #dbdbdb; 
+    --line: #dbdbdb;
+    --paper: #000000;      /* Pure black for active/primary text */
+    --text-muted: #737373; /* Neutral IG grey for inactive text */
   }
 
   /* ---- LIGHT MODE THEME OVERRIDES (IG STYLE) ---- */
@@ -155,8 +167,12 @@
   .stat-box .label{ font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#7488b6; margin-top:4px; }
 
   section.panel{ background:var(--navy-900); border:1px solid var(--line); border-radius:16px; padding:20px; }
-  .panel h2{ font-family:var(--font-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber-400); margin:0 0 14px; }
+  
+  .info-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+  .info-value { font-weight: bold; font-size: 14px; color: var(--paper); }
 
+  .panel h2 { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 14px; display: flex; justify-content: space-between; align-items: center; }
+  
   table{ width:100%; border-collapse:collapse; }
   th,td{ text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); font-size:13px; }
   th{ font-family:var(--font-mono); font-size:10px; color:#7488b6; text-transform:uppercase; letter-spacing:.06em; }
@@ -474,13 +490,13 @@
   body { display: flex; min-height: 100vh; margin: 0; background: var(--navy-950); color: var(--paper); font-family: var(--font-body); }
   aside.sidebar { width: 260px; background: var(--navy-900); border-right: 1px solid var(--line); display: flex; flex-direction: column; justify-content: space-between; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; }
   .sidebar-header { padding: 20px; border-bottom: 1px solid var(--line); }
-  .sidebar-brand { font-family: var(--font-display); font-size: 16px; color: var(--amber-500); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
-  .sidebar-sub { font-size: 11px; color: #7488b6; font-family: var(--font-mono); margin-top: 4px; }
+  .sidebar-brand { font-family: var(--font-display); font-size: 16px; color: var(--paper); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+  .sidebar-sub { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px; }
   
-  .sidebar-nav { padding: 20px 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; }
-  .sidebar-nav button { background: transparent; border: none; color: #7488b6; text-align: left; padding: 12px 20px; font-size: 13px; font-family: var(--font-mono); cursor: pointer; width: 100%; display: flex; align-items: center; gap: 10px; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 6px; margin-top: 15px; overflow-y: auto; flex-grow: 1; }
+  .sidebar-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 20px; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s ease; border-left: 3px solid transparent; }
   .sidebar-nav button:hover { color: var(--paper); background: var(--navy-800); }
-  .sidebar-nav button.active { color: var(--amber-500); background: var(--navy-800); border-left: 4px solid var(--amber-500); font-weight: bold; }
+  .sidebar-nav button.active { color: var(--paper); background: var(--navy-800); border-left: 4px solid var(--paper); font-weight: bold; }
   
   .sidebar-footer { padding: 20px; border-top: 1px solid var(--line); }
   
