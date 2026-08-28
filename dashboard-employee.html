@@ -170,6 +170,38 @@
     main.main-content { margin-right: 0 !important; }
   }
 
+  /* ---- SIDEBAR DROPDOWN MENU ---- */
+  .sidebar-sub-menu { 
+    display: none; 
+    flex-direction: column; 
+    margin-top: 5px; 
+    margin-bottom: 15px;
+    margin-left: 35px; 
+    padding-left: 15px;
+    border-left: 2px solid var(--line); 
+    gap: 8px; 
+  }
+  .sidebar-sub-menu.open { display: flex; }
+  
+  .sidebar-sub-menu button { 
+    background: transparent;
+    border: none;
+    color: var(--text-muted); 
+    text-align: left;
+    font-size: 13px; 
+    padding: 8px 10px; 
+    border-radius: 6px; 
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .sidebar-sub-menu button:hover, .sidebar-sub-menu button.active { 
+    color: var(--paper); 
+    background: rgba(255, 255, 255, 0.05); 
+  }
+  
+  .dropdown-arrow { margin-left: auto; transition: transform 0.3s ease; }
+  .dropdown-arrow.open { transform: rotate(180deg); }
+
   /* ==========================================================
      INSTAGRAM CHAT UI & MOBILE RESPONSIVENESS
      ========================================================== */
@@ -820,10 +852,25 @@ aside.sidebar.collapsed ~ main.main-content {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Schedule</span>
       </button>
-      <button data-tab="submissions">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span>Submission Forms</span>
-      </button>
+      
+      <!-- SUBMISSION FORMS ACCORDION -->
+      <div class="nav-accordion">
+        <button type="button" onclick="toggleSidebarDropdown(event, 'submissionSubMenu')" style="display:flex; justify-content:space-between; align-items:center; width: 100%;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+            <span>Submission Forms</span>
+          </div>
+          <svg class="dropdown-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        
+        <!-- Indented Sub-Menu Items -->
+        <div id="submissionSubMenu" class="sidebar-sub-menu">
+          <button type="button" data-tab="submissions" onclick="openSubmissionForm('lh-requests', this)">My Requests</button>
+          <button type="button" data-tab="submissions" onclick="openSubmissionForm('lh-live-commi', this)" class="active">Live Commission</button>
+          <button type="button" data-tab="submissions" onclick="openSubmissionForm('lh-video-commi', this)">Video Commission</button>
+        </div>
+      </div>
+      
       <button data-tab="account">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span>Account</span>
@@ -1007,110 +1054,74 @@ aside.sidebar.collapsed ~ main.main-content {
                 <!-- JS will inject the schedule here -->
             </div>
         </div>
+    
+    <!-- SUBMISSION PANEL -->
 
     <!-- 5. SUBMISSION FORMS TAB PANEL -->
     <div id="tab-submissions" class="tab-panel" style="display:none;">
       <div style="margin-bottom: 24px;">
         <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Submission Form</h1>
-     </div>
+      </div>
 
-      <!-- NEW: Video Submissions Form -->
-      <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
-        <h2 style="color: var(--amber-400);">Submit Daily Video Requirement</h2>
-        <form id="videoSubmitForm" style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- 1. VIDEO COMMISSION TAB -->
+      <div id="lh-video-commi" class="lh-tab-content" style="display: none;">
+        <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
+          <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Submit Daily Video Requirement</h2>
+          <form id="videoSubmitForm" style="display: flex; flex-direction: column; gap: 15px;">
             <!-- The Container holding the dynamic rows -->
             <div id="videoRowsContainer" style="display: flex; flex-direction: column; gap: 10px;">
-                <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
-                    <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
-                        <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
-                        <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
-                    </div>
-                    <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+              <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                  <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+                  <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
                 </div>
+                <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
+              </div>
             </div>
 
             <button type="button" id="addVideoRowBtn" class="btn2" style="border: 1px dashed var(--amber-500); color: var(--amber-400); background: transparent; padding: 10px;">[+] Add Another Video</button>
 
             <button type="submit" id="vidSubmitBtn" class="btn2 primary" style="width: 100%; padding: 12px; font-size: 14px;">Upload & Submit Videos</button>
-        </form>
-      </section>
-
-      <!-- NEW: Sales Report Form -->
-      <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
-        <h2 style="color: var(--mint-500);">Submit Daily Sales Report</h2>
-        
-      </section>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 style="margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber-400);">My Requests</h2>
-        <!-- We reuse your existing ticketBtn ID so the modal opens automatically! -->
-        <button id="ticketBtn" class="btn2 primary">Submit New Form</button>
+          </form>
+        </section>
       </div>
 
-      <!-- LIVE HOST PORTAL AREA -->
-<div class="lh-portal-wrapper">
-  
-  <!-- Sub-Navigation -->
-  <div class="lh-subnav">
-    <button class="lh-subnav-btn" onclick="switchLhTab('lh-requests')">My Request</button>
-    <button class="lh-subnav-btn active" onclick="switchLhTab('lh-live-commi')">Live Commission</button>
-    <button class="lh-subnav-btn" onclick="switchLhTab('lh-video-commi')">Video Commission</button>
-  </div>
+      <!-- 2. LIVE COMMISSION TAB -->
+      <div id="lh-live-commi" class="lh-tab-content">
+        <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
+          <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Submit Daily Sales Report</h2>
+          
+          <!-- PASTE YOUR EXISTING SALES REPORT FORM CODE HERE -->
+          <!-- (The grid with date, shift time, commi, sold, gmv, etc.) -->
+          
+        </section>
+      </div>
 
-  <!-- TAB: LIVE COMMISSION -->
-  <div id="lh-live-commi" class="lh-tab-content active">
-    
-    <!-- YOUR EXISTING FORM GOES HERE -->
-    <div class="lh-form-card">
-      <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 14px; letter-spacing: 1px;">SUBMIT DAILY SALES REPORT</h3>
-      <!-- [Paste your existing form inputs here] -->
-    </div>
-
-    <!-- DAILY TOTAL TALLY (READ-ONLY) -->
-    <div class="lh-form-card" style="margin-top: 20px;">
-      <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 14px; letter-spacing: 1px;">SUMMARY: OVERALL TOTAL (AUTO-TALLY)</h3>
-      <table class="lh-tally-table">
-        <thead>
-          <tr>
-            <th>DATE</th>
-            <th>TOTAL COMMI</th>
-            <th>LH SOLD</th>
-            <th>LH GMV</th>
-            <th>HISTORY</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td id="tallyDate">Today</td>
-            <td id="tallyCommi" class="highlight-val">0</td>
-            <td id="tallyLhSold" class="highlight-val">0</td>
-            <td id="tallyLhGmv" class="highlight-val">0</td>
-            <td><button class="lh-history-btn">View Shifts</button></td>
-          </tr>
-        </tbody>
-      </table>
-     
-  </div>
-
-</div>
-
-      <section class="panel">
-        <table style="width:100%; border-collapse:collapse;">
-  <thead>
-    <tr>
-      <th>Date Filed</th>
-      <th>Type</th>
-      <th>Dates</th>
-      <th>Reason</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-  <tbody id="ticketsTable">
-    <tr class="empty-row"><td colspan="6">Loading submissions...</td></tr>
-  </tbody>
-</table>
-      </section>
+      <!-- 3. MY REQUESTS TAB -->
+      <div id="lh-requests" class="lh-tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber-400);">My Requests</h2>
+          <!-- We reuse your existing ticketBtn ID so the modal opens automatically! -->
+          <button id="ticketBtn" class="btn2 primary">Submit New Form</button>
+        </div>
+        <section class="panel">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text-muted);">Date Filed</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text-muted);">Type</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text-muted);">Dates</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text-muted);">Reason</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text-muted);">Status</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--line); color: var(--text-muted);">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ticketsTable">
+              <tr class="empty-row"><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Loading submissions...</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
 
     </div>
 
@@ -4193,6 +4204,33 @@ if (ticketBtn) {
   window.showChatInbox = function() {
       document.getElementById('chatActiveView').classList.add('hidden');
       document.getElementById('chatInboxView').classList.remove('hidden');
+  };
+
+  // ==========================================================
+  // SIDEBAR ACCORDION & FORM ROUTING
+  // ==========================================================
+  
+  // 1. Opens and closes the sidebar dropdown menu
+  window.toggleSidebarDropdown = function(event, menuId) {
+      event.preventDefault();
+      const menu = document.getElementById(menuId);
+      const arrow = event.currentTarget.querySelector('.dropdown-arrow');
+      menu.classList.toggle('open');
+      if (arrow) arrow.classList.toggle('open');
+  };
+
+  // 2. Switches the main dashboard view when a sub-item is clicked
+  window.openSubmissionForm = function(formId, clickedBtn) {
+      // Hide all sub-forms inside the submissions tab
+      document.querySelectorAll('.lh-tab-content').forEach(form => form.style.display = 'none');
+      
+      // Show the specifically targeted form
+      const targetForm = document.getElementById(formId);
+      if (targetForm) targetForm.style.display = 'block';
+
+      // Move the active highlight to the clicked sidebar sub-menu button
+      document.querySelectorAll('.sidebar-sub-menu button').forEach(btn => btn.classList.remove('active'));
+      clickedBtn.classList.add('active');
   };
 
 })(); // <--- THIS IS THE FINAL WRAPPER CLOSING YOUR ENTIRE SCRIPT
