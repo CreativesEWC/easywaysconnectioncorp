@@ -1059,15 +1059,30 @@ aside.sidebar.collapsed ~ main.main-content {
   </div>
 </div>
 
-  <!-- ADD NOTE MODAL -->
-<div class="modal-overlay" id="addNoteModal" style="z-index: 9999;">
-  <div class="modal-box" style="max-width: 350px; text-align: center;">
-    <h2 style="font-family: var(--font-display); font-size: 18px; color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Share a thought...</h2>
-    <input type="text" id="noteInput" placeholder="What's on your mind?" maxlength="60" style="width: 100%; padding: 10px; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; margin-bottom: 20px;">
-    <div class="modal-actions" style="justify-content: center; gap: 10px;">
-      <button class="btn2" id="cancelNoteBtn">Cancel</button>
-      <button class="btn2 primary" id="saveNoteBtn">Share</button>
+ <!-- VIEW NOTE MODAL (AUTHENTIC IG STYLE) -->
+<div class="modal-overlay" id="viewNoteModal" style="z-index: 10000;" onclick="document.getElementById('viewNoteModal').classList.remove('open')">
+  <div class="modal-box" style="max-width: 320px; background: #1a1a1a; border-radius: 16px; padding: 30px 20px; text-align: center; position: relative;" onclick="event.stopPropagation()">
+    
+    <!-- Floating Note Bubble & Avatar -->
+    <div style="position: relative; display: inline-block; margin-bottom: 20px;">
+      <div id="viewNoteContent" style="background: #363636; color: #fff; padding: 12px 16px; border-radius: 20px; font-size: 15px; margin-bottom: -15px; position: relative; z-index: 2; display: inline-block; max-width: 250px; word-wrap: break-word; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
+      <div style="width: 90px; height: 90px; border-radius: 50%; padding: 3px; background: #1a1a1a; margin: 0 auto; position: relative; z-index: 1;">
+        <img id="viewNoteAvatar" src="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+      </div>
     </div>
+
+    <!-- Name and Time -->
+    <h3 id="viewNoteName" style="margin: 0 0 5px 0; color: #fff; font-size: 16px; font-weight: 600;"></h3>
+    <p id="viewNoteTime" style="margin: 0 0 25px 0; font-size: 12px; color: #a8a8a8;"></p>
+
+    <!-- Instagram Quick Reply Input -->
+    <div style="display: flex; align-items: center; background: #000; border: 1px solid #363636; border-radius: 24px; padding: 10px 15px;">
+      <input type="text" id="replyNoteInput" placeholder="Send message" style="flex: 1; background: transparent; border: none; color: #fff; font-size: 14px; outline: none;">
+      <span style="color: #fff; font-size: 18px; margin-left: 10px;">🙂</span>
+    </div>
+    
+    <!-- Hidden User ID -->
+    <input type="hidden" id="viewNoteUserId">
   </div>
 </div>
 
@@ -3320,8 +3335,11 @@ if (ticketBtn) {
       html += otherNotes.map(n => {
           const avatar = n.employees?.avatar_url || 'https://via.placeholder.com/60';
           const firstName = n.employees ? n.employees.name.split(' ')[0] : 'User';
+          const fullName = n.employees ? n.employees.name : 'Unknown User';
+          const timeStr = new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          
           return `
-          <div class="ig-note-card">
+          <div class="ig-note-card other-note-card" data-uid="${n.employee_id}" data-name="${escapeHtml(fullName)}" data-avatar="${avatar}" data-content="${escapeHtml(n.content)}" data-time="${timeStr}">
               <div class="ig-note-bubble">${escapeHtml(n.content)}</div>
               <div class="ig-note-avatar-wrapper"><img src="${avatar}" class="ig-note-avatar"></div>
               <div class="ig-note-name">${escapeHtml(firstName)}</div>
@@ -3331,12 +3349,30 @@ if (ticketBtn) {
 
       tray.innerHTML = html;
 
-      // Wire up the click to open the modal
-      document.getElementById('myNoteCard').addEventListener('click', () => {
-          document.getElementById('addNoteModal').classList.add('open');
-          document.getElementById('noteInput').focus();
+      // Wire up the click to open MY modal
+      const myCard = document.getElementById('myNoteCard');
+      if (myCard) {
+          myCard.addEventListener('click', () => {
+              document.getElementById('addNoteModal').classList.add('open');
+              document.getElementById('noteInput').focus();
+          });
+      }
+
+      // Wire up clicks on OTHER people's notes to view them
+      document.querySelectorAll('.other-note-card').forEach(card => {
+          card.addEventListener('click', () => {
+              document.getElementById('viewNoteUserId').value = card.dataset.uid;
+              document.getElementById('viewNoteAvatar').src = card.dataset.avatar;
+              document.getElementById('viewNoteName').textContent = card.dataset.name;
+              document.getElementById('viewNoteTime').textContent = card.dataset.time;
+              document.getElementById('viewNoteContent').textContent = card.dataset.content;
+              document.getElementById('viewNoteModal').classList.add('open');
+              
+              // Clear previous reply text and focus
+              document.getElementById('replyNoteInput').value = '';
+              setTimeout(() => document.getElementById('replyNoteInput').focus(), 100);
+          });
       });
-  };
 
   // Wire up Modal buttons
   const cancelNoteBtn = document.getElementById('cancelNoteBtn');
@@ -3370,6 +3406,35 @@ if (ticketBtn) {
               loadNotesTray(); // Instantly refresh the tray
           } else {
               alert("Failed to post note.");
+          }
+      });
+  }
+
+    // Wire up the Quick Reply "Enter" key in the Note View
+  const replyNoteInput = document.getElementById('replyNoteInput');
+  if (replyNoteInput) {
+      replyNoteInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+              const msg = this.value.trim();
+              if (!msg) return;
+
+              const uid = document.getElementById('viewNoteUserId').value;
+              const uname = document.getElementById('viewNoteName').textContent;
+              const originalNote = document.getElementById('viewNoteContent').textContent;
+              
+              // 1. Close the modal
+              document.getElementById('viewNoteModal').classList.remove('open');
+              this.value = '';
+              
+              // 2. Open their Direct Message channel
+              window.startDirectMessage(uid, uname);
+              
+              // 3. Auto-send the reply context after a tiny delay to ensure the channel switched
+              setTimeout(() => {
+                  const chatInp = document.getElementById('chatInput');
+                  chatInp.value = `Replying to your note ("${originalNote}"): ${msg}`;
+                  window.sendChatMessage();
+              }, 400); 
           }
       });
   }
