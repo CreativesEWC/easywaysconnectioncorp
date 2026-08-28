@@ -621,50 +621,54 @@ aside.sidebar.collapsed ~ main.main-content {
     <span>Notifications</span>
   </button>
 
- <!-- FINANCE & COMMISSIONS -->
-  <button data-tab="finance" id="navFinanceBtn">
-     <span class="icon" id="financeLockIcon">🔒</span> <span id="financeNavText">Finance (Locked)</span>
-  </button>
+<!-- FINANCE ACCORDION -->
+      <div class="nav-accordion">
+        <button type="button" class="nav-group-btn" onclick="toggleSubNav('financeSubMenu', this)">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+            <span id="financeNavText">Finance & Payroll</span>
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        
+        <div id="financeSubMenu" class="sub-nav-group">
+          <button type="button" onclick="openFinanceTab('finance-master', this)" class="active">Master Total Sheet</button>
+          <button type="button" onclick="openFinanceTab('finance-live', this)">Live Commission</button>
+          <button type="button" onclick="openFinanceTab('finance-video', this)">Video Commission</button>
+          <button type="button" onclick="openFinanceTab('finance-cutoff', this)">Cutoff Manager</button>
+        </div>
+      </div>
 
-  <!-- SUBMISSION FORMS FOLDER -->
+      <!-- SUBMISSION FORMS FOLDER -->
       <button type="button" class="nav-group-btn" onclick="toggleSubNav('submissionsNav', this)">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <!-- Folder/Inbox Icon -->
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           <span>Submissions</span>
         </div>
-        <!-- The Dropdown Arrow -->
         <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-
-      <!-- TEAM SCHEDULES -->
-  <button data-tab="schedule" id="scheduleNavBtn">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M3 10h18"></path></svg>
-    <span>Team Schedules</span>
-  </button>
       
       <!-- THE HIDDEN CONTAINER -->
       <div id="submissionsNav" class="sub-nav-group">
-        
-        <!-- TICKETS -->
         <button data-tab="tickets">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span>Tickets</span>
         </button>
-
-        <!-- LIVE COMMISSION -->
         <button data-tab="live-commission">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           <span>Live Commission</span>
         </button>
-
-        <!-- VIDEO COMMISSION -->
         <button data-tab="video-commission">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
           <span>Video Commission</span>
         </button>
-        
       </div>
+
+      <!-- TEAM SCHEDULES -->
+      <button data-tab="schedule" id="scheduleNavBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M3 10h18"></path></svg>
+        <span>Team Schedules</span>
+      </button>
 
  <!-- WEBDEV TOOLS FOLDER -->
       <button id="webdevToolsToggle" type="button" class="nav-group-btn" onclick="toggleSubNav('webdevToolsNav', this)">
@@ -1033,99 +1037,143 @@ aside.sidebar.collapsed ~ main.main-content {
       </table>
     </section>
   </div>
-        <!-- ==== 4. FINANCE & COMMISSIONS TAB ==== -->
-<div id="tab-finance" class="tab-panel" style="display:none;">
+       <div id="tab-finance" class="tab-panel" style="display:none;">
   <div style="margin-bottom: 24px;">
-    <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Master Finance Engine</h1>
+    <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Finance Department</h1>
   </div>
 
-  <!-- SUPER ADMIN VIEW (Hidden from Creatives unless unlocked) -->
-  <div id="superAdminFinanceView" style="display: none;">
-    
-    <!-- Delegation Control Panel (Only Eden/Catherine see this) -->
-    <section class="panel" id="delegationPanel" style="border-color: var(--mint-500);">
-      <h2>Super Admin Controls</h2>
-      <div class="form-row">
-        <label class="wd-check" style="color: var(--mint-500);">
-          <input type="checkbox" id="toggleCreativesFinance"> Unlock Finance for Creatives
-        </label>
-      </div>
-    </section>
-
-    <!-- Master Totals Sheet -->
+  <!-- 1. MASTER TOTAL SHEET -->
+  <div id="finance-master" class="finance-tab-content">
     <section class="panel">
-      <h2>Master Totals Sheet</h2>
-      <table id="masterTotalsTable">
-        <thead>
-          <tr>
-            <th>Employee</th>
-            <th>Base / Perfect Att.</th>
-            <th>Video Comms</th>
-            <th>Live Comms</th>
-            <th>Overtime</th>
-            <th>Upload Proof</th>
-          </tr>
-        </thead>
-        <tbody id="masterTotalsBody"></tbody>
-      </table>
-    </section>
-
-    <!-- Delta Commission Input Engine -->
-    <section class="panel">
-      <h2>Live Seller Commission Engine (Delta Calc)</h2>
-      <div class="form-row">
-        <input type="date" id="deltaDate">
-        <select id="deltaSeller"><option value="">Select Seller...</option></select>
-        <input type="time" id="deltaShiftEnd">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0; color: var(--paper);">Master Total Sheet</h2>
+        <select id="masterSheetFilter" style="background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 6px 12px; font-size: 12px;">
+          <option value="all">All Employees</option>
+          <option value="office">Office (MA, RTS, CSR, Housekeeper)</option>
+          <option value="live">Live Sellers</option>
+        </select>
       </div>
-      <div class="form-row">
-        <input type="number" id="deltaBuyer" placeholder="Total Buyers">
-        <input type="number" id="deltaCommi" placeholder="Comm. Value">
-        <input type="number" id="deltaSold" placeholder="Total Sold">
-        <input type="number" id="deltaGmv" placeholder="Total GMV">
+      <div style="overflow-x: auto;">
+        <table style="width:100%; border-collapse:collapse; min-width: 800px;">
+          <thead>
+            <tr>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Employee Name</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Position</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total Days</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total Lates (Mins)</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total OT (Hrs)</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Commissions</th>
+            </tr>
+          </thead>
+          <tbody id="masterTotalsBody">
+            <tr class="empty-row"><td colspan="6">Loading master sheet...</td></tr>
+          </tbody>
+        </table>
       </div>
-      <button class="btn primary" id="calcDeltaBtn">Calculate & Post Shift Yield</button>
     </section>
   </div>
 
-  <!-- PAYROLL CUT-OFF SETTINGS PANEL -->
-<section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
-  <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Active Payroll Cut-off Dates</h2>
-  <p style="font-size: 12px; color: #7488b6; margin-bottom: 15px;">
-    Adjusting these dates will instantly update the Lates and Overtime calculations on every employee's dashboard.
-  </p>
-  
-  <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-    <div style="flex: 1; min-width: 150px;">
-      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Period Start</label>
-      <input type="date" id="adminPeriodStart" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-    </div>
-    
-    <div style="flex: 1; min-width: 150px;">
-      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Period End</label>
-      <input type="date" id="adminPeriodEnd" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-    </div>
-    
-    <div>
-      <button id="savePayrollDatesBtn" class="btn2 primary" style="padding: 10px 20px; font-size: 13px;">Save Dates</button>
-    </div>
+  <!-- 2. LIVE COMMISSION -->
+  <div id="finance-live" class="finance-tab-content" style="display:none;">
+    <section class="panel" style="border-color: var(--mint-500);">
+      <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Live Commission Totals</h2>
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <button class="btn2 primary" style="font-size: 12px; padding: 6px 12px;">Group by Shift Buddy</button>
+        <button class="btn2" style="font-size: 12px; padding: 6px 12px;">Group by Brand Team</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table style="width:100%; border-collapse:collapse; min-width: 600px;">
+          <thead>
+            <tr>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Team / Buddies</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total Buyers</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total Sold</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total GMV</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Base Commission</th>
+            </tr>
+          </thead>
+          <tbody id="liveCommiTable">
+            <tr class="empty-row"><td colspan="5">Loading live commissions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
-</section>
 
-  <!-- CREATIVES VIDEO AUDIT VIEW -->
-  <div id="videoAuditView" style="display: none;">
+  <!-- 3. VIDEO COMMISSION -->
+  <div id="finance-video" class="finance-tab-content" style="display:none;">
+    <section class="panel" style="border-color: var(--amber-500);">
+      <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Video Commission Tracker</h2>
+      <div style="overflow-x: auto;">
+        <table style="width:100%; border-collapse:collapse; text-align: center; min-width: 1000px;">
+          <thead>
+            <tr>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); text-align: left;">Live Seller</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V1</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V2</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V3</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V4</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V5</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V6</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V7</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V8</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V9</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V10</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V11</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V12</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V13</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V14</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); width: 40px;">V15</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--coral-500);">Failed</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-500);">Total Approved</th>
+            </tr>
+          </thead>
+          <tbody id="videoCommiTable">
+            <tr class="empty-row"><td colspan="18">Loading video tracker...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- 4. CUTOFF MANAGER -->
+  <div id="finance-cutoff" class="finance-tab-content" style="display:none;">
+    <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500); background: rgba(232, 161, 58, 0.05);">
+      <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Active Payroll Cut-off Dates</h2>
+      <p style="font-size: 12px; color: #7488b6; margin-bottom: 15px;">Adjusting these dates will instantly update calculations on every dashboard.</p>
+      
+      <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 150px;">
+          <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Period Start</label>
+          <input type="date" id="adminPeriodStart" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+          <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Period End</label>
+          <input type="date" id="adminPeriodEnd" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+        </div>
+        <div>
+          <button id="savePayrollDatesBtn" class="btn2 primary" style="padding: 10px 20px; font-size: 13px;">Save Active Cutoff</button>
+        </div>
+      </div>
+    </section>
+
     <section class="panel">
-      <h2>Video Matrix Audit (15 Videos max)</h2>
-      <div class="form-row">
-        <select id="auditEmployee"><option value="">Select Employee...</option></select>
+      <div style="display: grid; grid-template-columns: 1fr 250px; gap: 20px;">
+        <div style="background: var(--navy-800); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--line);">
+          <div style="font-family: var(--font-display); font-size: 48px; color: var(--paper); margin-bottom: 5px;" id="bigCalendarDates">13 - 27</div>
+          <div style="font-family: var(--font-mono); font-size: 14px; color: var(--amber-400); text-transform: uppercase; letter-spacing: 2px;" id="bigCalendarMonth">August 2026</div>
+          <div style="margin-top: 20px; font-size: 12px; color: #7488b6;">Current locked period for all calculations.</div>
+        </div>
+        
+        <div style="border-left: 1px solid var(--line); padding-left: 20px; max-height: 200px; overflow-y: auto;">
+          <h3 style="font-size: 12px; color: #7488b6; text-transform: uppercase; margin-top: 0;">Employees Tracked</h3>
+          <div id="cutoffEmployeeList" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 13px;">Eden Rose De Leon</div>
+            <div style="font-size: 13px;">Catherine Cay</div>
+            <div style="font-size: 13px;">Dev</div>
+          </div>
+        </div>
       </div>
-      <div class="form-row" id="videoCheckboxGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
-        <!-- JS will generate 15 checkboxes here -->
-      </div>
-      <div style="margin-top: 15px; font-weight: bold; color: var(--mint-500);">
-        Calculated Bonus: ₱<span id="videoTotalCalc">0</span>
-      </div>
-      <button class="btn primary" style="margin-top: 10px;" id="saveVideoAuditBtn">Save Audit to Payroll</button>
     </section>
   </div>
 </div>
@@ -1616,6 +1664,24 @@ aside.sidebar.collapsed ~ main.main-content {
 <script src="supabase-config.js"></script>
 
 <script>
+
+  window.openFinanceTab = function(tabId, clickedBtn) {
+      // Un-highlight all sub-nav buttons
+      document.querySelectorAll('#financeSubMenu button').forEach(btn => btn.classList.remove('active'));
+      
+      // Highlight the clicked button
+      clickedBtn.classList.add('active');
+      
+      // Hide all finance panels
+      document.querySelectorAll('.finance-tab-content').forEach(panel => panel.style.display = 'none');
+      
+      // Show target panel
+      document.getElementById(tabId).style.display = 'block';
+      
+      // Switch sidebar active state to Finance tab
+      document.querySelectorAll('.sidebar-nav > button').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-finance').style.display = 'block';
+  };
 
   // ---- SUB-NAVIGATION TOGGLE ----
 function toggleSubNav(containerId, btnElement) {
