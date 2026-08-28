@@ -3978,9 +3978,27 @@ if (ticketBtn) {
         grouped[pos].push(user);
     });
 
+      // Define your strict visual order here
+      const customOrder = ['Multimedia Artist', 'RTS Admin', 'CSR', 'Live Seller'];
+
+      // Sort the grouped categories based on your custom order
+      const sortedPositions = Object.keys(grouped).sort((a, b) => {
+          let indexA = customOrder.indexOf(a);
+          let indexB = customOrder.indexOf(b);
+          // If a new random role appears, push it to the very bottom
+          if (indexA === -1) indexA = 999;
+          if (indexB === -1) indexB = 999;
+          return indexA - indexB;
+      });
+
       let html = '';
-      for (const [position, users] of Object.entries(grouped)) {
+      
+      // Generate the HTML using the sorted list
+      sortedPositions.forEach(position => {
+          const users = grouped[position];
+          
           html += `<div class="rs-section"><div class="rs-section-header"><span>${escapeHtml(position)} — Online</span><span>${users.length}</span></div>`;
+          
           users.forEach(u => {
               const avatar = u.employees.avatar_url || 'https://via.placeholder.com/40';
               const fullName = u.employees.name;
@@ -4000,7 +4018,8 @@ if (ticketBtn) {
                   </div>`;
           });
           html += `</div>`;
-      }
+      });
+      
       container.innerHTML = html;
   };
 
