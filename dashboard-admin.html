@@ -1088,7 +1088,29 @@ aside.sidebar.collapsed ~ main.main-content {
     </section>
   </div>
 
+  <!-- PAYROLL CUT-OFF SETTINGS PANEL -->
+<section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
+  <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Active Payroll Cut-off Dates</h2>
+  <p style="font-size: 12px; color: #7488b6; margin-bottom: 15px;">
+    Adjusting these dates will instantly update the Lates and Overtime calculations on every employee's dashboard.
+  </p>
   
+  <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 150px;">
+      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Period Start</label>
+      <input type="date" id="adminPeriodStart" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+    </div>
+    
+    <div style="flex: 1; min-width: 150px;">
+      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Period End</label>
+      <input type="date" id="adminPeriodEnd" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+    </div>
+    
+    <div>
+      <button id="savePayrollDatesBtn" class="btn2 primary" style="padding: 10px 20px; font-size: 13px;">Save Dates</button>
+    </div>
+  </div>
+</section>
 
   <!-- CREATIVES VIDEO AUDIT VIEW -->
   <div id="videoAuditView" style="display: none;">
@@ -4721,6 +4743,58 @@ if (calcDeltaBtn) {
           }
       });
   }
+
+  // ==========================================================
+  // ADMIN PAYROLL CUT-OFF MANAGER
+  // ==========================================================
+  async function loadPayrollSettings() {
+      const { data: settings, error } = await supabaseClient
+          .from('payroll_settings')
+          .select('period_start, period_end')
+          .limit(1)
+          .maybeSingle();
+          
+      if (settings) {
+          document.getElementById('adminPeriodStart').value = settings.period_start || '';
+          document.getElementById('adminPeriodEnd').value = settings.period_end || '';
+      }
+  }
+
+  const savePayrollDatesBtn = document.getElementById('savePayrollDatesBtn');
+  if (savePayrollDatesBtn) {
+      savePayrollDatesBtn.addEventListener('click', async () => {
+          const start = document.getElementById('adminPeriodStart').value;
+          const end = document.getElementById('adminPeriodEnd').value;
+          
+          if (!start || !end) {
+              alert("Please select both a start and end date.");
+              return;
+          }
+
+          savePayrollDatesBtn.disabled = true;
+          savePayrollDatesBtn.textContent = 'Saving...';
+
+          // Update Row ID 1 in the payroll_settings table
+          const { error } = await supabaseClient
+              .from('payroll_settings')
+              .update({ period_start: start, period_end: end })
+              .eq('id', 1);
+
+          savePayrollDatesBtn.disabled = false;
+          savePayrollDatesBtn.textContent = 'Save Dates';
+
+          if (error) {
+              alert('Failed to save dates: ' + error.message);
+          } else {
+              alert('Payroll cut-off dates updated successfully! Employee dashboards will now reflect this period.');
+          }
+      });
+  }
+
+  // Run on load
+  setTimeout(() => {
+      loadPayrollSettings();
+  }, 1500);
   
 })(); /* <--- REPLACED THE } WITH THIS */
 </script>
