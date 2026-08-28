@@ -1267,7 +1267,7 @@ aside.sidebar.collapsed ~ main.main-content {
         <strong id="igChatName">Employee Name</strong>
       </div>
       <div class="ig-chat-actions">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 To build that exact Instagram-style floating chat widget for your next update, we need a floating container that hovers over the dashboard, toggles between the "Inbox" and "Active Chat" views, and connects directly to the `startDirectMessage` function we already added to your Right Sidebar roster.
+        <svg onclick="closeChatWidget()" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 
 <!-- IG FLOATING CHAT WIDGET (HIDDEN BY DEFAULT) -->
 <div id="igChatWidget" class="ig-chat-widget hidden">
