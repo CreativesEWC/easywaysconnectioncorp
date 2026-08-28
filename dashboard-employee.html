@@ -8,12 +8,24 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
 <style>
-  :root{
-    --navy-950:#0a0f1e; --navy-900:#0f1830; --navy-800:#16213f; --navy-700:#22315a;
-    --amber-500:#e8a13a; --amber-400:#f2b854; --paper:#f3efe6;
-    --mint-500:#4fb286; --mint-700:#2f7a58; --coral-500:#d9614f; --line:#2a3a63;
-    --font-display:'Rockwell',Georgia,serif; --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-    --font-mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  :root {
+    /* IG Dark Mode Foundation */
+    --navy-950: #000000; /* Main app background - Pure Black */
+    --navy-900: #000000; /* Panels, Sidebar, Header - Pure Black */
+    --navy-800: #121212; /* Secondary elements, inputs, hover states */
+    --navy-700: #262626; /* Tertiary elements, stronger hover */
+    --line: #262626;     /* IG signature subtle grey border */
+    --paper: #f5f5f5;    /* Crisp white text */
+    
+    /* EWC Brand Accents (Kept intact!) */
+    --amber-500: #e8a13a; --amber-400: #f2b854; 
+    --mint-500: #4fb286; --mint-700: #2f7a58; 
+    --coral-500: #d9614f; --coral-700: #a63e2f;
+    
+    /* Typography */
+    --font-display: 'Rockwell', Georgia, serif; 
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   }
 
   /* ---- LIGHT MODE THEME OVERRIDES ---- */
