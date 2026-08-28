@@ -1470,6 +1470,19 @@ aside.sidebar.collapsed ~ main.main-content {
   </div>
 </div>
 
+    <!-- ADD NOTE MODAL -->
+<div class="modal-overlay" id="addNoteModal" style="z-index: 10000;">
+  <div class="modal-box" style="max-width: 320px; background: #1a1a1a; border-radius: 16px; padding: 25px 20px; text-align: center;">
+    <h2 style="margin: 0 0 15px 0; color: #fff; font-size: 18px; font-weight: 600;">Share a thought...</h2>
+    <input type="text" id="noteInput" placeholder="Note..." maxlength="60" style="width: 100%; padding: 12px; background: #000; border: 1px solid #363636; color: #fff; border-radius: 12px; margin-bottom: 20px; font-size: 14px; outline: none; text-align: center;">
+    <div class="modal-actions" style="justify-content: center; gap: 10px; margin-top: 0;">
+      <button class="btn2" id="cancelNoteBtn" style="border: none; background: transparent; color: #a8a8a8; font-weight: 600;">Cancel</button>
+      <button class="btn2 primary" id="saveNoteBtn" style="border-radius: 20px; padding: 8px 20px;">Share</button>
+    </div>
+  </div>
+</div>
+      
+
   <!-- VIEW NOTE MODAL (AUTHENTIC IG STYLE) -->
 <div class="modal-overlay" id="viewNoteModal" style="z-index: 10000;" onclick="document.getElementById('viewNoteModal').classList.remove('open')">
   <div class="modal-box" style="max-width: 320px; background: #1a1a1a; border-radius: 16px; padding: 30px 20px; text-align: center; position: relative;" onclick="event.stopPropagation()">
