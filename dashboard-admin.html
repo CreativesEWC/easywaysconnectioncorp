@@ -4151,6 +4151,22 @@ if (calcDeltaBtn) {
       });
   }
 
+  // Wire up the Back button for mobile users
+  const igBackBtn = document.getElementById('igBackBtn');
+  if (igBackBtn) {
+      igBackBtn.addEventListener('click', () => {
+          const chatWrapper = document.getElementById('igChatWrapper');
+          if (chatWrapper) chatWrapper.classList.remove('mobile-chat-open');
+      });
+  }
+
+  // Boot the channels, DMs, and Notes when the page loads
+  setTimeout(() => {
+      if (typeof loadChatChannels === 'function') loadChatChannels();
+      if (typeof loadDirectMessageSidebar === 'function') loadDirectMessageSidebar();
+      if (typeof loadNotesTray === 'function') loadNotesTray();
+  }, 1500);
+
   // Auto-load both inboxes shortly after the dashboard boots up
   setTimeout(() => {
       loadAdminLiveCommissions();
@@ -4626,14 +4642,7 @@ if (calcDeltaBtn) {
           }
       });
   }
-
-  // Boot up the channels and the DM sidebar when the page loads
-  setTimeout(() => {
-      if (typeof loadChatChannels === 'function') loadChatChannels();
-      if (typeof loadDirectMessageSidebar === 'function') loadDirectMessageSidebar();
-  }, 1500);
-  
-})();
+  }
 </script>
 </body>
 </html>
