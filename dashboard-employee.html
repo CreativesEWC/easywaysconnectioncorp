@@ -2847,27 +2847,73 @@ if (digitalIdBtn) {
 
   const list = rows || [];
 
- // ---- Stats ----
+ // ---- Stats (Dynamic Payroll Cut-off via Supabase) ----
   const now = new Date();
-  const thisMonthPrefix = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  const thisMonthRows = list.filter(r => r.log_date.startsWith(thisMonthPrefix));
-  const completed = thisMonthRows.filter(r => r.time_in && r.time_out).length;
-  const pending = thisMonthRows.filter(r => r.time_in && !r.time_out).length;
+  let startStr, endStr, label;
 
-  // NEW: Calculate accumulated late and OT minutes
+  // 1. Try to fetch the active cut-off dates from Supabase
+  const { data: payrollSet, error: prErr } = await supabaseClient
+      .from('payroll_settings')
+      .select('period_start, period_end')
+      .limit(1)
+      .maybeSingle();
+
+  if (!prErr && payrollSet && payrollSet.period_start && payrollSet.period_end) {
+      // Use Admin-defined dates
+      startStr = payrollSet.period_start;
+      endStr = payrollSet.period_end;
+      
+      // Format label to look clean (e.g., "Days (Aug 13 - Aug 25)")
+      const sd = new Date(startStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const ed = new Date(endStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      label = `Days (${sd} - ${ed})`;
+  } else {
+      // 2. Fallback: 13-27 & 28-12 Default Math (If database fails or is empty)
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const date = now.getDate();
+      let periodStart, periodEnd;
+
+      if (date >= 13 && date <= 27) {
+          periodStart = new Date(year, month, 13);
+          periodEnd = new Date(year, month, 27);
+      } else if (date >= 28) {
+          periodStart = new Date(year, month, 28);
+          periodEnd = new Date(year, month + 1, 12);
+      } else {
+          periodStart = new Date(year, month - 1, 28);
+          periodEnd = new Date(year, month, 12);
+      }
+
+      startStr = periodStart.getFullYear() + '-' + String(periodStart.getMonth() + 1).padStart(2, '0') + '-' + String(periodStart.getDate()).padStart(2, '0');
+      endStr = periodEnd.getFullYear() + '-' + String(periodEnd.getMonth() + 1).padStart(2, '0') + '-' + String(periodEnd.getDate()).padStart(2, '0');
+      
+      const sd = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const ed = periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      label = `Days (${sd} - ${ed})`;
+  }
+
+  // Update the UI label to show exactly what date range they are looking at
+  document.querySelector('#statThisMonth').nextElementSibling.textContent = label;
+
+  // Filter attendance logs to only include the current cut-off period
+  const cutoffRows = list.filter(r => r.log_date >= startStr && r.log_date <= endStr);
+  const completed = cutoffRows.filter(r => r.time_in && r.time_out).length;
+  const pending = cutoffRows.filter(r => r.time_in && !r.time_out).length;
+
   let totalLateMins = 0;
   let totalOtMins = 0;
-  thisMonthRows.forEach(r => {
-    // Assuming you add 'late_penalty_minutes' and 'earned_ot_minutes' to your DB table
+  cutoffRows.forEach(r => {
     totalLateMins += (r.late_penalty_minutes || 0);
     totalOtMins += (r.earned_ot_minutes || 0);
   });
 
-  document.getElementById('statThisMonth').textContent = thisMonthRows.length;
+  // Inject totals into the HTML
+  document.getElementById('statThisMonth').textContent = cutoffRows.length;
   document.getElementById('statOnTime').textContent = completed;
   document.getElementById('statPending').textContent = pending;
-  
-  // NEW: Inject into the dashboard
+
+  // Display Total Lates (Mins) and Overtime (converted to Hrs)
   const lateEl = document.getElementById('statTotalLate');
   const otEl = document.getElementById('statTotalOt');
   if (lateEl) lateEl.textContent = totalLateMins;
