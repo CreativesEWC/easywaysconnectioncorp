@@ -2871,7 +2871,7 @@ if (digitalIdBtn) {
   const lateEl = document.getElementById('statTotalLate');
   const otEl = document.getElementById('statTotalOt');
   if (lateEl) lateEl.textContent = totalLateMins;
-  if (otEl) otEl.textContent = totalOtMins;
+  if (otEl) otEl.textContent = totalOtMins / 60;
 
   // ---- Table ----
   function fmtTime(iso){
