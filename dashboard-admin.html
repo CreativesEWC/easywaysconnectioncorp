@@ -3818,7 +3818,14 @@ if (calcDeltaBtn) {
           const posText = row.children[1]?.textContent.toLowerCase() || '';
           
           // Define what counts as Office vs Live
-          const isOffice = posText.includes('csr') || posText.includes('artist') || posText.includes('rts') || posText.includes('housekeeper');
+          // Define what counts as Office vs Live
+          const isOffice = posText.includes('csr') || 
+                           posText.includes('customer service') || 
+                           posText.includes('artist') || 
+                           posText.includes('rts') || 
+                           posText.includes('administrative') || 
+                           posText.includes('housekeeper');
+          
           const isLive = posText.includes('live seller');
           
           if (val === 'all') row.style.display = '';
