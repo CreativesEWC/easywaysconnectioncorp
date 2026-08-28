@@ -3145,6 +3145,9 @@ if (ticketBtn) {
 
       if (error) {
           alert("Failed to send message: " + error.message);
+      } else {
+          // Instantly fetch the feed so the sender sees their message without waiting
+          loadChatMessages(activeChatId);
       }
   };
 
