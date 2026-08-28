@@ -3189,6 +3189,9 @@ if (ticketBtn) {
       feed.scrollTop = feed.scrollHeight;
   };
 
+  // ==========================================================
+  // 5. SEND MESSAGE & REAL-TIME LISTENER
+  // ==========================================================
   window.sendChatMessage = async function() {
       if (!activeChatId) return;
       const input = document.getElementById('chatInput');
@@ -3196,7 +3199,7 @@ if (ticketBtn) {
       if (!content) return;
 
       input.value = '';
-      input.focus(); // Keep cursor in the box so they can keep typing
+      input.focus();
 
       const { error } = await supabaseClient
           .from('chat_messages')
@@ -3207,48 +3210,36 @@ if (ticketBtn) {
           });
 
       if (error) {
-          alert("Failed to send message: " + error.message);
+          console.error("Failed to send:", error);
       } else {
-          // Instantly fetch the feed so the sender sees their message without waiting
+          // Instantly refresh the feed for the sender
           loadChatMessages(activeChatId);
       }
   };
 
-  // 4. Bind the Send Button and Enter Key
-  const chatSendBtn = document.getElementById('chatSendBtn');
-  if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
-
-  const chatInput = document.getElementById('chatInput');
-  if (chatInput) {
-      chatInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') sendChatMessage();
+  // Wire up the new Instagram Input and Send Button
+  const sendBtn = document.getElementById('chatSendBtn');
+  const chatInp = document.getElementById('chatInput');
+  
+  if(sendBtn) sendBtn.addEventListener('click', window.sendChatMessage);
+  if(chatInp) {
+      chatInp.addEventListener('keypress', function (e) {
+          if (e.key === 'Enter') window.sendChatMessage();
       });
   }
 
-  // 5. SUPABASE REAL-TIME LISTENER
-  const liveChatChannel = supabaseClient.channel('live-chat');
-  
-  liveChatChannel
-      .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-          (payload) => {
-              // If a new message hits the active chat you are looking at, instantly refresh the feed
-              if (payload.new.channel_id === activeChatId) {
-                  loadChatMessages(activeChatId);
-              }
+  // Re-awaken the Supabase Real-Time Listener
+  supabaseClient.channel('ig-live-chat')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+          if (payload.new.channel_id === activeChatId) {
+              loadChatMessages(activeChatId);
           }
-      )
-      .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'chat_members' },
-          (payload) => {
-              // If YOU are invited to a brand new private DM room, instantly refresh your sidebar
-              if (payload.new.employee_id === emp.id) {
-                  loadDirectMessageSidebar();
-              }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_members' }, (payload) => {
+          if (payload.new.employee_id === emp.id && typeof loadDirectMessageSidebar === 'function') {
+              loadDirectMessageSidebar();
           }
-      )
+      })
       .subscribe();
   
   // Boot the channels up when the page loads
