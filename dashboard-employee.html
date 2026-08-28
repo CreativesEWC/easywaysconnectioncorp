@@ -57,6 +57,39 @@
     --amber-500: #b45309; 
   }
 
+  /* ---- RIGHT SIDEBAR (ONLINE ROSTER) ---- */
+  aside.right-sidebar { width: 320px; background: var(--navy-950); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; right: 0; z-index: 90; padding: 35px 20px; overflow-y: auto; border-left: 1px solid var(--line); transition: transform 0.3s ease; -ms-overflow-style: none; scrollbar-width: none; }
+  aside.right-sidebar::-webkit-scrollbar { display: none; }
+  
+  /* The Hidden State */
+  aside.right-sidebar.hidden { transform: translateX(100%); }
+
+  main.main-content { margin-right: 320px; transition: margin-right 0.3s ease, margin-left 0.3s ease; }
+  main.main-content.expanded-right { margin-right: 0 !important; }
+  
+  /* Internal Styles */
+  .rs-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
+  .rs-profile img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+  .rs-profile-info { flex: 1; min-width: 0; }
+  .rs-profile-info .uname { font-size: 14px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-profile-info .fname { font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;}
+  .rs-action { color: #3797F0; font-size: 12px; font-weight: 600; cursor: pointer; background: none; border: none; padding: 0; }
+  .rs-action:hover { color: var(--paper); }
+  .rs-section { margin-bottom: 20px; }
+  .rs-section-header { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .rs-user { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+  .rs-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  .rs-user-info { flex: 1; min-width: 0; }
+  .rs-user-info .uname { font-size: 14px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-user-info .role { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;}
+  .rs-footer { margin-top: auto; padding-top: 20px; font-size: 12px; color: #737373; line-height: 1.6; }
+  .rs-footer a { color: #737373; text-decoration: none; margin-right: 3px; }
+
+  @media (max-width: 1300px) {
+    aside.right-sidebar { display: none !important; }
+    main.main-content { margin-right: 0 !important; }
+  }
+
   /* ==========================================================
      INSTAGRAM CHAT UI & MOBILE RESPONSIVENESS
      ========================================================== */
@@ -756,6 +789,16 @@ aside.sidebar.collapsed ~ main.main-content {
     </div>
   </header>
 
+  <!-- Toggle Member List Button -->
+      <button id="toggleRightSidebarBtn" class="ig-icon-btn" style="margin-left: 20px;" title="Hide/Show Member List">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      </button>
+
   <div id="loadingMsg" class="loading">Loading your dashboard…</div>
 
   <div id="content" style="display:none;">
@@ -1140,9 +1183,8 @@ aside.sidebar.collapsed ~ main.main-content {
 
 </main>
 
-  <!-- IG STYLE RIGHT SIDEBAR (ONLINE TEAM) -->
+  <!-- IG/DISCORD STYLE RIGHT SIDEBAR (ONLINE TEAM) -->
 <aside class="right-sidebar" id="rightSidebar">
-  <!-- Top Profile Block -->
   <div class="rs-profile">
     <img src="easyway_icon.svg" id="rsMyAvatar" alt="Profile">
     <div class="rs-profile-info">
@@ -1151,15 +1193,11 @@ aside.sidebar.collapsed ~ main.main-content {
     </div>
     <button class="rs-action" onclick="window.location.href='login.html'">Switch</button>
   </div>
-
-  <!-- Online Users Container -->
   <div id="rsOnlineContainer">
     <div class="loading-note">Loading online team...</div>
   </div>
-
-  <!-- IG Style Footer -->
   <div class="rs-footer">
-    <a href="#">About</a> · <a href="#">Help</a> · <a href="#">Press</a> · <a href="#">API</a> · <a href="#">Jobs</a> · <a href="#">Privacy</a> · <a href="#">Terms</a><br>
+    <a href="#">About</a> · <a href="#">Help</a> · <a href="#">Press</a> · <a href="#">API</a><br>
     <div style="margin-top: 15px; font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;">© 2026 EWC Corporation</div>
   </div>
 </aside>
@@ -3857,18 +3895,28 @@ if (ticketBtn) {
   // ==========================================================
   // IG RIGHT SIDEBAR (ONLINE DISCORD-STYLE ROSTER)
   // ==========================================================
+  const toggleBtn = document.getElementById('toggleRightSidebarBtn');
+  const rightSb = document.getElementById('rightSidebar');
+  const mainCont = document.querySelector('main.main-content');
+
+  // Wire up the Discord-style Toggle Button
+  if (toggleBtn && rightSb && mainCont) {
+      toggleBtn.addEventListener('click', () => {
+          rightSb.classList.toggle('hidden');
+          mainCont.classList.toggle('expanded-right');
+      });
+  }
+
   window.loadOnlineRoster = async function() {
       const container = document.getElementById('rsOnlineContainer');
       if (!container) return;
 
-      // 1. Populate current user's profile at the top
       if (emp) {
           document.getElementById('rsMyAvatar').src = emp.avatar_url || 'https://via.placeholder.com/44';
           document.getElementById('rsMyUname').textContent = emp.badge_id || 'employee';
           document.getElementById('rsMyFname').textContent = emp.name || 'EWC User';
       }
 
-      // 2. Fetch today's ACTIVE attendance logs (Time In exists, but Time Out is null)
       const todayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
       
       const { data: logs, error } = await supabaseClient
@@ -3882,7 +3930,6 @@ if (ticketBtn) {
           return;
       }
 
-      // Filter out ourselves so we don't appear in the "Suggested" list
       const onlineUsers = (logs || []).filter(l => l.employees && l.employee_id !== emp.id);
 
       if (onlineUsers.length === 0) {
@@ -3890,7 +3937,6 @@ if (ticketBtn) {
           return;
       }
 
-      // 3. Group the online users by their Position/Role (Discord Style)
       const grouped = {};
       onlineUsers.forEach(user => {
           const pos = user.employees.positions ? user.employees.positions.name : 'Staff';
@@ -3898,22 +3944,12 @@ if (ticketBtn) {
           grouped[pos].push(user);
       });
 
-      // 4. Generate the IG-Style HTML List
       let html = '';
       for (const [position, users] of Object.entries(grouped)) {
-          html += `
-              <div class="rs-section">
-                  <div class="rs-section-header">
-                      <span>${escapeHtml(position)} — Online</span>
-                      <span>${users.length}</span>
-                  </div>
-          `;
-          
+          html += `<div class="rs-section"><div class="rs-section-header"><span>${escapeHtml(position)} — Online</span><span>${users.length}</span></div>`;
           users.forEach(u => {
               const avatar = u.employees.avatar_url || 'https://via.placeholder.com/40';
               const fullName = u.employees.name;
-              
-              // We'll use their first name for the DM function if they click "Message"
               const shortName = fullName.split(' ')[0]; 
               
               html += `
@@ -3927,21 +3963,16 @@ if (ticketBtn) {
                           </div>
                       </div>
                       <button class="rs-action" onclick="startDirectMessage('${u.employee_id}', '${escapeHtml(shortName)}')">Message</button>
-                  </div>
-              `;
+                  </div>`;
           });
           html += `</div>`;
       }
-
       container.innerHTML = html;
   };
 
-  // Boot up the Right Sidebar 2 seconds after the page loads
-  setTimeout(() => {
-      if (typeof loadOnlineRoster === 'function') loadOnlineRoster();
-  }, 2000);
-  
-})(); /* <--- REPLACED THE } WITH THIS */
+  setTimeout(() => { if (typeof loadOnlineRoster === 'function') loadOnlineRoster(); }, 2000);
+
+})(); // <--- THIS IS THE FINAL WRAPPER CLOSING YOUR ENTIRE SCRIPT
 </script>
 
 <!-- Dynamic Ticket Submission Modal -->
