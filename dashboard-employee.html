@@ -1773,6 +1773,12 @@ aside.sidebar.collapsed ~ main.main-content {
       window.location.href = 'dashboard-admin.html';
     });
   }
+
+  // ---- CONDITIONAL SUBMISSION FORMS VISIBILITY ----
+    if (emp && typeof restrictSubmissionTabs === 'function') {
+        const positionName = emp.positions ? emp.positions.name : (emp.position || '');
+        restrictSubmissionTabs(positionName);
+    }
   
     // ---- CONDITIONAL SCHEDULE REQUEST VISIBILITY ----
     const scheduleNavBtn = document.getElementById('scheduleNavBtn');
