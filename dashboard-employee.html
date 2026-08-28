@@ -3246,20 +3246,53 @@ if (ticketBtn) {
           const avatar = (m.employees && m.employees.avatar_url) ? m.employees.avatar_url : 'https://via.placeholder.com/40';
           const timeStr = new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
           
+          let messageContent = escapeHtml(m.content);
+          let quotedNoteHtml = '';
+          
+          // Detect if the message is a Note Reply
+          const noteReplyMatch = m.content.match(/^Replying to your note \("(.*?)"\):\s*([\s\S]*)$/);
+
+          if (noteReplyMatch) {
+              const originalNote = escapeHtml(noteReplyMatch[1]);
+              messageContent = escapeHtml(noteReplyMatch[2]);
+
+              if (isMe) {
+                  // I am replying to THEIR note
+                  const otherAvatar = document.getElementById('activeChatAvatar').src;
+                  quotedNoteHtml = `
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; margin-bottom: -5px; padding-right: 15px; position: relative; width: 100%;">
+                      <div style="position: absolute; right: 0; top: 15px; bottom: 25px; width: 2px; background: #363636; border-radius: 2px;"></div>
+                      <div style="background: #262626; color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 14px; margin-bottom: -12px; z-index: 2;">${originalNote}</div>
+                      <img src="${otherAvatar}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; z-index: 1; border: 3px solid #000; margin-right: 5px;">
+                  </div>`;
+              } else {
+                  // THEY are replying to MY note
+                  const myAvatar = emp.avatar_url || 'easyway_icon.svg';
+                  quotedNoteHtml = `
+                  <div style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: -5px; padding-left: 15px; position: relative; width: 100%;">
+                      <div style="position: absolute; left: 0; top: 15px; bottom: 25px; width: 2px; background: #363636; border-radius: 2px;"></div>
+                      <div style="background: #262626; color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 14px; margin-bottom: -12px; z-index: 2;">${originalNote}</div>
+                      <img src="${myAvatar}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; z-index: 1; border: 3px solid #000; margin-left: 5px;">
+                  </div>`;
+              }
+          }
+
           if (isMe) {
               return `
               <div class="ig-msg-wrapper me">
-                  <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                    <div class="ig-msg-bubble">${escapeHtml(m.content)}</div>
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; width: 100%;">
+                    ${quotedNoteHtml}
+                    <div class="ig-msg-bubble" style="z-index: 3;">${messageContent}</div>
                     <div class="ig-msg-time">${timeStr}</div>
                   </div>
               </div>`;
           } else {
               return `
-              <div class="ig-msg-wrapper them">
-                  <img src="${avatar}" class="ig-msg-avatar" title="${escapeHtml(senderName)}">
-                  <div style="display: flex; flex-direction: column; align-items: flex-start;">
-                    <div class="ig-msg-bubble">${escapeHtml(m.content)}</div>
+              <div class="ig-msg-wrapper them" style="${noteReplyMatch ? 'align-items: flex-end;' : ''}">
+                  <img src="${avatar}" class="ig-msg-avatar" title="${escapeHtml(senderName)}" style="${noteReplyMatch ? 'margin-bottom: 20px;' : ''}">
+                  <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%;">
+                    ${quotedNoteHtml}
+                    <div class="ig-msg-bubble" style="z-index: 3;">${messageContent}</div>
                     <div class="ig-msg-time" style="text-align: left;">${escapeHtml(senderName)} &bull; ${timeStr}</div>
                   </div>
               </div>`;
