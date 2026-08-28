@@ -3422,12 +3422,13 @@ if (ticketBtn) {
               document.getElementById('viewNoteModal').classList.add('open');
               
               // Clear previous reply text and focus
-              document.getElementById('replyNoteInput').value = '';
-              setTimeout(() => document.getElementById('replyNoteInput').focus(), 100);
-          });
-      });
+            document.getElementById('replyNoteInput').value = '';
+            setTimeout(() => document.getElementById('replyNoteInput').focus(), 100);
+        });
+    });
+}; // <--- ADD THIS BRACKET! THIS SAVES THE SCRIPT!
 
-  // Wire up Modal buttons
+// Wire up Modal buttons
   const cancelNoteBtn = document.getElementById('cancelNoteBtn');
   const saveNoteBtn = document.getElementById('saveNoteBtn');
 
@@ -3648,14 +3649,15 @@ if (ticketBtn) {
       });
   }
 
-  // Wire up the Back button for mobile users
+ // Wire up the Back button for mobile users
   const igBackBtn = document.getElementById('igBackBtn');
   if (igBackBtn) {
       igBackBtn.addEventListener('click', () => {
           document.getElementById('igChatWrapper').classList.remove('mobile-chat-open');
       });
   }
-})();
+  
+})(); /* <--- REPLACED THE } WITH THIS */
 </script>
 
 <!-- Dynamic Ticket Submission Modal -->
