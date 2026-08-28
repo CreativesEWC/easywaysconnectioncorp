@@ -1460,6 +1460,18 @@ aside.sidebar.collapsed ~ main.main-content {
     </div>
   </div>
 </div>
+
+  <!-- ADD NOTE MODAL -->
+<div class="modal-overlay" id="addNoteModal" style="z-index: 9999;">
+  <div class="modal-box" style="max-width: 350px; text-align: center;">
+    <h2 style="font-family: var(--font-display); font-size: 18px; color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Share a thought...</h2>
+    <input type="text" id="noteInput" placeholder="What's on your mind?" maxlength="60" style="width: 100%; padding: 10px; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; margin-bottom: 20px;">
+    <div class="modal-actions" style="justify-content: center; gap: 10px;">
+      <button class="btn2" id="cancelNoteBtn">Cancel</button>
+      <button class="btn2 primary" id="saveNoteBtn">Share</button>
+    </div>
+  </div>
+</div>
   
   <!-- ATTENDANCE CORRECTION MODAL -->
 <div class="modal-overlay" id="attendanceModal">
@@ -4239,9 +4251,119 @@ if (calcDeltaBtn) {
           console.log("Supabase Realtime Status:", status);
       });
 
-  // Boot the channels up when the page loads
+  // ==========================================================
+  // 6. INSTAGRAM NOTES ENGINE
+  // ==========================================================
+  window.loadNotesTray = async function() {
+      const tray = document.getElementById('igNotesTray');
+      if (!tray) return;
+
+      // Only fetch notes from the last 24 hours
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: notes, error } = await supabaseClient
+          .from('employee_notes')
+          .select('content, created_at, employee_id, employees(name, avatar_url)')
+          .gte('created_at', twentyFourHoursAgo)
+          .order('created_at', { ascending: false });
+
+      if (error) return console.error("Error loading notes:", error);
+
+      // Deduplicate: Only show the LATEST note per person
+      const uniqueNotes = [];
+      const seenUsers = new Set();
+      if (notes) {
+          for (const n of notes) {
+              if (!seenUsers.has(n.employee_id)) {
+                  seenUsers.add(n.employee_id);
+                  uniqueNotes.push(n);
+              }
+          }
+      }
+
+      // Find MY active note
+      const myNote = uniqueNotes.find(n => n.employee_id === emp.id);
+      const myAvatar = emp.avatar_url || 'easyway_icon.svg';
+      const myNoteText = myNote ? myNote.content : 'Note...';
+      const myNoteClass = myNote ? '' : 'add-note';
+
+      // Separate everyone else's notes
+      const otherNotes = uniqueNotes.filter(n => n.employee_id !== emp.id);
+
+      // Draw MY note card first
+      let html = `
+          <div class="ig-note-card" id="myNoteCard">
+              <div class="ig-note-bubble ${myNoteClass}">${escapeHtml(myNoteText)}</div>
+              <div class="ig-note-avatar-wrapper">
+                  <img src="${myAvatar}" class="ig-note-avatar">
+              </div>
+              <div class="ig-note-name">Your note</div>
+          </div>
+      `;
+
+      // Draw everyone else's note cards
+      html += otherNotes.map(n => {
+          const avatar = n.employees?.avatar_url || 'https://via.placeholder.com/60';
+          const firstName = n.employees ? n.employees.name.split(' ')[0] : 'User';
+          return `
+          <div class="ig-note-card">
+              <div class="ig-note-bubble">${escapeHtml(n.content)}</div>
+              <div class="ig-note-avatar-wrapper"><img src="${avatar}" class="ig-note-avatar"></div>
+              <div class="ig-note-name">${escapeHtml(firstName)}</div>
+          </div>
+          `;
+      }).join('');
+
+      tray.innerHTML = html;
+
+      // Wire up the click to open the modal
+      document.getElementById('myNoteCard').addEventListener('click', () => {
+          document.getElementById('addNoteModal').classList.add('open');
+          document.getElementById('noteInput').focus();
+      });
+  };
+
+  // Wire up Modal buttons
+  const cancelNoteBtn = document.getElementById('cancelNoteBtn');
+  const saveNoteBtn = document.getElementById('saveNoteBtn');
+
+  if (cancelNoteBtn) {
+      cancelNoteBtn.addEventListener('click', () => {
+          document.getElementById('addNoteModal').classList.remove('open');
+          document.getElementById('noteInput').value = '';
+      });
+  }
+
+  if (saveNoteBtn) {
+      saveNoteBtn.addEventListener('click', async () => {
+          const content = document.getElementById('noteInput').value.trim();
+          if (!content) return;
+
+          saveNoteBtn.disabled = true;
+          saveNoteBtn.textContent = 'Sharing...';
+
+          const { error } = await supabaseClient
+              .from('employee_notes')
+              .insert({ employee_id: emp.id, content: content });
+
+          saveNoteBtn.disabled = false;
+          saveNoteBtn.textContent = 'Share';
+
+          if (!error) {
+              document.getElementById('addNoteModal').classList.remove('open');
+              document.getElementById('noteInput').value = '';
+              loadNotesTray(); // Instantly refresh the tray
+          } else {
+              alert("Failed to post note.");
+          }
+      });
+  }
+
+  // Boot the channels, DMs, and Notes when the page loads
   setTimeout(() => {
       if (typeof loadChatChannels === 'function') loadChatChannels();
+      if (typeof loadDirectMessageSidebar === 'function') loadDirectMessageSidebar();
+      if (typeof loadNotesTray === 'function') loadNotesTray();
   }, 1500);
 
   // ==========================================================
