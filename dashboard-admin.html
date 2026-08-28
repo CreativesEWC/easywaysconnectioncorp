@@ -4155,8 +4155,7 @@ if (calcDeltaBtn) {
   const igBackBtn = document.getElementById('igBackBtn');
   if (igBackBtn) {
       igBackBtn.addEventListener('click', () => {
-          const chatWrapper = document.getElementById('igChatWrapper');
-          if (chatWrapper) chatWrapper.classList.remove('mobile-chat-open');
+          document.getElementById('igChatWrapper').classList.remove('mobile-chat-open');
       });
   }
 
