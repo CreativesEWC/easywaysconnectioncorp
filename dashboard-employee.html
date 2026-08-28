@@ -1632,7 +1632,7 @@ aside.sidebar.collapsed ~ main.main-content {
       });
   }
 
-  // Wire up the Back button for mobile users
+ // Wire up the Back button for mobile users
   const igBackBtn = document.getElementById('igBackBtn');
   if (igBackBtn) {
       igBackBtn.addEventListener('click', () => {
@@ -3646,14 +3646,6 @@ if (ticketBtn) {
               
               loadChatMessages(activeChatId);
           });
-      });
-  }
-
- // Wire up the Back button for mobile users
-  const igBackBtn = document.getElementById('igBackBtn');
-  if (igBackBtn) {
-      igBackBtn.addEventListener('click', () => {
-          document.getElementById('igChatWrapper').classList.remove('mobile-chat-open');
       });
   }
   
