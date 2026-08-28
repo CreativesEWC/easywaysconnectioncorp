@@ -3190,7 +3190,7 @@ if (ticketBtn) {
   };
 
   // ==========================================================
-  // 5. SEND MESSAGE & REAL-TIME LISTENER
+  // 5. SEND MESSAGE & REAL-TIME LISTENER (DIAGNOSTIC MODE)
   // ==========================================================
   window.sendChatMessage = async function() {
       if (!activeChatId) return;
@@ -3200,6 +3200,8 @@ if (ticketBtn) {
 
       input.value = '';
       input.focus();
+
+      console.log("Attempting to send message to channel:", activeChatId);
 
       const { error } = await supabaseClient
           .from('chat_messages')
@@ -3212,7 +3214,7 @@ if (ticketBtn) {
       if (error) {
           console.error("Failed to send:", error);
       } else {
-          // Instantly refresh the feed for the sender
+          console.log("Message saved to database! Forcing local screen refresh...");
           loadChatMessages(activeChatId);
       }
   };
@@ -3221,26 +3223,36 @@ if (ticketBtn) {
   const sendBtn = document.getElementById('chatSendBtn');
   const chatInp = document.getElementById('chatInput');
   
-  if(sendBtn) sendBtn.addEventListener('click', window.sendChatMessage);
-  if(chatInp) {
-      chatInp.addEventListener('keypress', function (e) {
+  if (sendBtn) {
+      sendBtn.replaceWith(sendBtn.cloneNode(true)); // Clears any ghost listeners
+      document.getElementById('chatSendBtn').addEventListener('click', window.sendChatMessage);
+  }
+  
+  if (chatInp) {
+      chatInp.replaceWith(chatInp.cloneNode(true)); // Clears any ghost listeners
+      document.getElementById('chatInput').addEventListener('keypress', function (e) {
           if (e.key === 'Enter') window.sendChatMessage();
       });
   }
 
-  // Re-awaken the Supabase Real-Time Listener
-  supabaseClient.channel('ig-live-chat')
+  // Wipe any old stuck connections and restart the listener
+  if (window.igLiveChat) supabaseClient.removeChannel(window.igLiveChat);
+  
+  window.igLiveChat = supabaseClient.channel('ig-live-chat');
+  window.igLiveChat
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-          if (payload.new.channel_id === activeChatId) {
+          console.log("REALTIME PING RECEIVED! Payload:", payload);
+          // Using == instead of === just in case of formatting mismatch
+          if (payload.new.channel_id == activeChatId) {
+              console.log("Ping matches active room! Refreshing UI...");
               loadChatMessages(activeChatId);
+          } else {
+              console.log("Ping is for a different room. Ignoring.");
           }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_members' }, (payload) => {
-          if (payload.new.employee_id === emp.id && typeof loadDirectMessageSidebar === 'function') {
-              loadDirectMessageSidebar();
-          }
-      })
-      .subscribe();
+      .subscribe((status) => {
+          console.log("Supabase Realtime Status:", status);
+      });
   
   // Boot the channels up when the page loads
   setTimeout(() => {
