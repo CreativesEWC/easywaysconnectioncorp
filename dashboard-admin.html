@@ -2955,11 +2955,15 @@ async function reviewTicket(ticketId, status, approverName) {
     document.getElementById('schTable').style.display = 'none';
 
     const filterEmployee = document.getElementById('schFilterEmployee').value;
+    
+    // Fetch upcoming schedules, sorted by date and then by shift start time
     let query = supabaseClient
       .from('live_seller_schedule')
       .select('*, employees!employee_id(name, badge_id), brands(name), platforms(name)')
       .gte('schedule_date', todayStr())
-      .order('schedule_date', { ascending: true });
+      .order('schedule_date', { ascending: true })
+      .order('shift_start', { ascending: true }); 
+      
     if(filterEmployee) query = query.eq('employee_id', filterEmployee);
 
     const { data, error } = await query;
@@ -2973,31 +2977,80 @@ async function reviewTicket(ticketId, status, approverName) {
 
     const rows = data || [];
     document.getElementById('schTable').style.display = 'table';
-    document.getElementById('schCount').textContent = rows.length + (rows.length === 1 ? ' day' : ' days');
+    document.getElementById('schCount').textContent = rows.length + (rows.length === 1 ? ' shift' : ' shifts');
     const tbody = document.getElementById('schTableBody');
+    
     if(rows.length === 0){
       tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No upcoming schedule entries</td></tr>';
       return;
     }
-    tbody.innerHTML = rows.map(r => {
-      const dateLabel = new Date(r.schedule_date + 'T00:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
-      const statusPill = r.status === 'day_off'
-        ? '<span class="pill rejected">Day Off</span>'
-        : '<span class="pill approved">Scheduled</span>';
-      const brandPlatform = r.status === 'day_off' ? '—' :
-        [r.brands ? r.brands.name : null, r.platforms ? r.platforms.name : null].filter(Boolean).map(escapeHtml).join(' · ') || '—';
-      const shift = (r.shift_start && r.shift_end) ? `${r.shift_start}–${r.shift_end}` : '—';
-      return `
-        <tr>
-          <td class="mono">${dateLabel}</td>
-          <td>${r.employees ? escapeHtml(r.employees.name) : '(removed)'}</td>
-          <td>${statusPill}</td>
-          <td>${brandPlatform}</td>
-          <td class="mono">${shift}</td>
-          <td><button class="btn danger" data-delsch="${r.id}">Delete</button></td>
+
+    // --- NEW: GROUP BY BRAND / PLATFORM ---
+    const grouped = {};
+    rows.forEach(r => {
+      const brandPlatform = r.status === 'day_off' ? 'Day Off / Unassigned' :
+        [r.brands ? r.brands.name : null, r.platforms ? r.platforms.name : null].filter(Boolean).map(escapeHtml).join(' · ') || 'Unassigned';
+      
+      if(!grouped[brandPlatform]) grouped[brandPlatform] = [];
+      grouped[brandPlatform].push(r);
+    });
+
+    let html = '';
+    
+    // Array of nice IG-style accent colors to cycle through for the brand headers
+    const accentColors = ['var(--amber-500)', 'var(--mint-500)', '#d9614f', '#3797F0', '#a63e2f', '#4fb286'];
+    let colorIndex = 0;
+
+    // Loop through the groups and build the table
+    for (const [groupName, groupRows] of Object.entries(grouped)) {
+      const headerColor = groupName === 'Day Off / Unassigned' ? '#5c6d99' : accentColors[colorIndex % accentColors.length];
+      colorIndex++;
+
+      // 1. Create the Bold Group Header Row
+      html += `
+        <tr style="background: var(--navy-900);">
+          <td colspan="6" style="padding: 16px 12px; font-family: var(--font-display); font-size: 16px; color: ${headerColor}; text-transform: uppercase; font-weight: bold; border-top: 2px solid ${headerColor}; border-bottom: 1px solid var(--line); letter-spacing: 1px;">
+            ${groupName}
+          </td>
         </tr>
       `;
-    }).join('');
+
+      // 2. Create the Employee Rows underneath the Header
+      groupRows.forEach(r => {
+        const dateLabel = new Date(r.schedule_date + 'T00:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+        const statusPill = r.status === 'day_off'
+          ? '<span class="pill rejected" style="padding: 2px 8px; font-size: 9px;">Day Off</span>'
+          : '<span class="pill approved" style="padding: 2px 8px; font-size: 9px;">Scheduled</span>';
+        
+        // Format Shift 24hr time to 12hr time (e.g. 08:00 to 8:00 AM)
+        let shift = '—';
+        if (r.shift_start && r.shift_end) {
+            const formatTime = (t) => {
+                const [h, m] = t.split(':');
+                const date = new Date(); date.setHours(h, m);
+                return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+            };
+            shift = `${formatTime(r.shift_start)} - ${formatTime(r.shift_end)}`;
+        }
+
+        html += `
+          <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--navy-800)'" onmouseout="this.style.background='transparent'">
+            <td class="mono" style="color: #9fb0d6; font-size: 11px; width: 100px;">${dateLabel}</td>
+            <td style="font-weight: 600; color: var(--paper);">${r.employees ? escapeHtml(r.employees.name) : '(removed)'}</td>
+            <td>${statusPill}</td>
+            <td style="color: #5c6d99; font-size: 11px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${groupName}</td>
+            <td class="mono" style="color: var(--amber-400); font-weight: bold; font-size: 11px;">${shift}</td>
+            <td class="row-actions" style="text-align: right;">
+                <button class="btn danger" data-delsch="${r.id}" style="padding: 4px 8px; font-size: 10px; background: transparent;">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    tbody.innerHTML = html;
+    
+    // Re-attach delete listeners
     tbody.querySelectorAll('[data-delsch]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         if(!confirm('Delete this schedule entry?')) return;
