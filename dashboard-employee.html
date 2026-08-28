@@ -58,16 +58,20 @@
   }
 
   /* ---- RIGHT SIDEBAR (ONLINE ROSTER) ---- */
-  aside.right-sidebar { width: 320px; background: var(--navy-950); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; right: 0; z-index: 90; padding: 35px 20px; overflow-y: auto; border-left: 1px solid var(--line); transition: transform 0.3s ease; -ms-overflow-style: none; scrollbar-width: none; }
+  aside.right-sidebar { width: 320px; background: var(--navy-950); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; right: 0; z-index: 90; padding: 35px 20px; overflow-x: hidden; overflow-y: auto; border-left: 1px solid var(--line); transition: width 0.25s cubic-bezier(0.2, 0, 0, 1), padding 0.25s cubic-bezier(0.2, 0, 0, 1), border-color 0.25s ease; -ms-overflow-style: none; scrollbar-width: none; }
   aside.right-sidebar::-webkit-scrollbar { display: none; }
   
-  /* The Hidden State */
-  aside.right-sidebar.hidden { transform: translateX(100%); }
+  /* The True Discord Hidden State (Shrinks instead of sliding off-screen) */
+  aside.right-sidebar.hidden { width: 0; padding-left: 0; padding-right: 0; border-left-color: transparent; }
 
-  main.main-content { margin-right: 320px; transition: margin-right 0.3s ease, margin-left 0.3s ease; }
+  /* Lock the inner elements so text cleanly crops instead of aggressively word-wrapping */
+  .rs-profile, .rs-section, .rs-footer { width: 280px; }
+
+  /* Smoothly stretch the dashboard to fill the empty space */
+  main.main-content { margin-right: 320px; transition: margin-right 0.25s cubic-bezier(0.2, 0, 0, 1), margin-left 0.3s ease; }
   main.main-content.expanded-right { margin-right: 0 !important; }
   
-  /* Internal Styles */
+  /* Internal Styles (Keep these exactly as they are) */
   .rs-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
   .rs-profile img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
   .rs-profile-info { flex: 1; min-width: 0; }
