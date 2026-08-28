@@ -558,7 +558,7 @@ aside.sidebar.collapsed ~ main.main-content {
     <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--line);">
       
       <div class="sidebar-user-block" style="padding: 0; border: none; margin: 0;">
-        <img src="https://via.placeholder.com/40" id="sidebarAvatarImg" alt="Profile">
+        <img src="easyway_icon.svg" id="sidebarAvatarImg" alt="Profile">
         <div class="sidebar-user-info">
           <span class="sidebar-welcome">Welcome,</span>
           <span class="sidebar-name" id="sidebarNameTxt">Admin</span>
@@ -863,14 +863,14 @@ aside.sidebar.collapsed ~ main.main-content {
             <div class="ig-note-card">
               <div class="ig-note-bubble add-note">Note...</div>
               <div class="ig-note-avatar-wrapper">
-                <img src="https://via.placeholder.com/60" id="myNoteAvatar" class="ig-note-avatar">
+                <img src="easyway_icon.svg/60" id="myNoteAvatar" class="ig-note-avatar">
               </div>
               <div class="ig-note-name">Your note</div>
             </div>
             <!-- Example Notes (JS will inject real ones later) -->
             <div class="ig-note-card">
               <div class="ig-note-bubble">Meeting at 3PM</div>
-              <div class="ig-note-avatar-wrapper"><img src="https://via.placeholder.com/60" class="ig-note-avatar"></div>
+              <div class="ig-note-avatar-wrapper"><img src="easyway_icon.svg/60" class="ig-note-avatar"></div>
               <div class="ig-note-name">Eden Rose</div>
             </div>
           </div>
@@ -1476,7 +1476,7 @@ aside.sidebar.collapsed ~ main.main-content {
       <div class="acct-header-flex">
         <div class="acct-profile">
           <div class="acct-avatar-wrap">
-            <img src="https://via.placeholder.com/80" id="acctAvatar" alt="Avatar">
+            <img src="easyway_icon.svg/80" id="acctAvatar" alt="Avatar">
             <label class="edit-avatar-btn" title="Update Profile Picture">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               <input type="file" id="acctAvatarUpload" accept="image/*" style="display:none;">
@@ -3320,7 +3320,7 @@ async function reviewTicket(ticketId, status, approverName) {
 
   // Populate Sidebar & Account Tab with current Admin data
   function populateAccountDetails() {
-    const avatar = emp.avatar_url || 'https://via.placeholder.com/80';
+    const avatar = emp.avatar_url || 'easyway_icon.svg/80';
     document.getElementById('sidebarAvatarImg').src = avatar;
     document.getElementById('sidebarNameTxt').textContent = emp.name.split(' ')[0];
     
@@ -3388,7 +3388,7 @@ async function reviewTicket(ticketId, status, approverName) {
     
     grid.innerHTML = filtered.map(e => `
       <div class="emp-card">
-        <img src="${e.avatar_url || 'https://via.placeholder.com/50'}" alt="Avatar">
+        <img src="${e.avatar_url || 'easyway_icon.svg/50'}" alt="Avatar">
         <div class="info">
           <h4 class="name">${escapeHtml(e.name)}</h4>
           <div class="id-num">ID NUMBER: ${escapeHtml(e.badge_id)}</div>
@@ -3875,7 +3875,7 @@ if (calcDeltaBtn) {
           
           <!-- Employee Info with Badge ID -->
           <div style="display: flex; align-items: center; gap: 12px; min-width: 200px;">
-            <img src="${csr.avatar_url || 'https://placehold.co/40x40'}" alt="${csr.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/40x40';">
+            <img src="${csr.avatar_url || 'easyway_icon.svg/40x40'}" alt="${csr.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.onerror=null; this.src='easyway_icon.svg/40x40';">
             <div>
               <strong style="color: var(--paper); text-transform: uppercase;">${escapeHtml(csr.name)}</strong><br>
               <span style="color: #7488b6; font-size: 11px;">ID NUMBER: ${escapeHtml(csr.badge_id || 'N/A')}</span><br>
@@ -4373,7 +4373,7 @@ if (calcDeltaBtn) {
       feed.innerHTML = messages.map(m => {
           const isMe = m.sender_id === emp.id;
           const senderName = m.employees ? m.employees.name.split(' ')[0] : 'Unknown';
-          const avatar = (m.employees && m.employees.avatar_url) ? m.employees.avatar_url : 'https://via.placeholder.com/40';
+          const avatar = (m.employees && m.employees.avatar_url) ? m.employees.avatar_url : 'easyway_icon.svg';
           const timeStr = new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
           
           let messageContent = escapeHtml(m.content);
@@ -4549,7 +4549,7 @@ if (calcDeltaBtn) {
 
       // Draw everyone else's note cards
       html += otherNotes.map(n => {
-          const avatar = n.employees?.avatar_url || 'https://via.placeholder.com/60';
+          const avatar = n.employees?.avatar_url || 'easyway_icon.svg/60';
           const firstName = n.employees ? n.employees.name.split(' ')[0] : 'User';
           const fullName = n.employees ? n.employees.name : 'Unknown User';
           const timeStr = new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -4653,7 +4653,7 @@ if (calcDeltaBtn) {
                   const pos = u.positions ? u.positions.name : 'Staff';
                   return `
                   <div class="dm-user-row" data-uid="${u.id}" data-uname="${escapeHtml(u.name)}" style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--navy-800); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--navy-700)'" onmouseout="this.style.background='var(--navy-800)'">
-                      <img src="${u.avatar_url || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #fff;">
+                      <img src="${u.avatar_url || 'easyway_icon.svg'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #fff;">
                       <div>
                           <div style="font-size: 13px; color: var(--paper); font-weight: 600;">${escapeHtml(u.name)}</div>
                           <div style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(pos)}</div>
@@ -4743,7 +4743,7 @@ if (calcDeltaBtn) {
       if (otherMembers) {
           dmList.innerHTML = otherMembers.map(m => {
               const otherName = m.employees ? m.employees.name : 'Unknown User';
-              const avatar = m.employees && m.employees.avatar_url ? m.employees.avatar_url : 'https://via.placeholder.com/60';
+              const avatar = m.employees && m.employees.avatar_url ? m.employees.avatar_url : 'easyway_icon.svg/60';
               return `
               <div class="ig-chat-row chat-sidebar-item" data-id="${m.channel_id}" data-name="${escapeHtml(otherName)}" data-avatar="${avatar}" data-type="dm">
                   <img src="${avatar}" class="ig-chat-row-avatar">
