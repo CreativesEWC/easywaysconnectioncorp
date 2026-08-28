@@ -532,6 +532,37 @@ aside.sidebar.collapsed ~ main.main-content {
   margin-left: 72px;
 }
 
+/* ---- RIGHT SIDEBAR (ONLINE ROSTER) ---- */
+  aside.right-sidebar { width: 320px; background: var(--navy-950); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; right: 0; z-index: 90; padding: 35px 20px; overflow-y: auto; }
+  main.main-content { margin-right: 320px; transition: margin-right 0.3s ease; }
+  
+  .rs-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
+  .rs-profile img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+  .rs-profile-info { flex: 1; min-width: 0; }
+  .rs-profile-info .uname { font-size: 14px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-profile-info .fname { font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;}
+  .rs-action { color: #3797F0; font-size: 12px; font-weight: 600; cursor: pointer; background: none; border: none; padding: 0; }
+  .rs-action:hover { color: var(--paper); }
+  
+  .rs-section { margin-bottom: 20px; }
+  .rs-section-header { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  
+  .rs-user { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+  .rs-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  .rs-user-info { flex: 1; min-width: 0; }
+  .rs-user-info .uname { font-size: 14px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-user-info .role { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;}
+  
+  .rs-footer { margin-top: auto; padding-top: 20px; font-size: 12px; color: #737373; line-height: 1.6; }
+  .rs-footer a { color: #737373; text-decoration: none; margin-right: 3px; }
+  .rs-footer a:hover { text-decoration: underline; }
+
+  /* Hide the right sidebar on smaller laptop/tablet screens */
+  @media (max-width: 1300px) {
+    aside.right-sidebar { display: none; }
+    main.main-content { margin-right: 0; }
+  } 
+
 /* ---- PROFILE CARD & DIGITAL ID ICON BUTTON ---- */
 .profile-card {
   position: relative; /* Establishes positioning container */
@@ -1103,6 +1134,30 @@ aside.sidebar.collapsed ~ main.main-content {
   </div>
 
 </main>
+
+  <!-- IG STYLE RIGHT SIDEBAR (ONLINE TEAM) -->
+<aside class="right-sidebar" id="rightSidebar">
+  <!-- Top Profile Block -->
+  <div class="rs-profile">
+    <img src="easyway_icon.svg" id="rsMyAvatar" alt="Profile">
+    <div class="rs-profile-info">
+      <div class="uname" id="rsMyUname">username</div>
+      <div class="fname" id="rsMyFname">Full Name</div>
+    </div>
+    <button class="rs-action" onclick="window.location.href='login.html'">Switch</button>
+  </div>
+
+  <!-- Online Users Container -->
+  <div id="rsOnlineContainer">
+    <div class="loading-note">Loading online team...</div>
+  </div>
+
+  <!-- IG Style Footer -->
+  <div class="rs-footer">
+    <a href="#">About</a> · <a href="#">Help</a> · <a href="#">Press</a> · <a href="#">API</a> · <a href="#">Jobs</a> · <a href="#">Privacy</a> · <a href="#">Terms</a><br>
+    <div style="margin-top: 15px; font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;">© 2026 EWC Corporation</div>
+  </div>
+</aside>
  
 <div class="modal-overlay" id="scheduleModal">
   <div class="modal-box">
@@ -3793,6 +3848,93 @@ if (ticketBtn) {
           });
       });
   }
+
+  // ==========================================================
+  // IG RIGHT SIDEBAR (ONLINE DISCORD-STYLE ROSTER)
+  // ==========================================================
+  window.loadOnlineRoster = async function() {
+      const container = document.getElementById('rsOnlineContainer');
+      if (!container) return;
+
+      // 1. Populate current user's profile at the top
+      if (emp) {
+          document.getElementById('rsMyAvatar').src = emp.avatar_url || 'https://via.placeholder.com/44';
+          document.getElementById('rsMyUname').textContent = emp.badge_id || 'employee';
+          document.getElementById('rsMyFname').textContent = emp.name || 'EWC User';
+      }
+
+      // 2. Fetch today's ACTIVE attendance logs (Time In exists, but Time Out is null)
+      const todayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
+      
+      const { data: logs, error } = await supabaseClient
+          .from('attendance_logs')
+          .select('employee_id, time_in, employees(name, avatar_url, badge_id, positions(name))')
+          .eq('log_date', todayStr)
+          .is('time_out', null);
+
+      if (error) {
+          container.innerHTML = '<div class="error-note">Could not load online list.</div>';
+          return;
+      }
+
+      // Filter out ourselves so we don't appear in the "Suggested" list
+      const onlineUsers = (logs || []).filter(l => l.employees && l.employee_id !== emp.id);
+
+      if (onlineUsers.length === 0) {
+          container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px; margin-top: 10px;">No other team members online.</div>';
+          return;
+      }
+
+      // 3. Group the online users by their Position/Role (Discord Style)
+      const grouped = {};
+      onlineUsers.forEach(user => {
+          const pos = user.employees.positions ? user.employees.positions.name : 'Staff';
+          if (!grouped[pos]) grouped[pos] = [];
+          grouped[pos].push(user);
+      });
+
+      // 4. Generate the IG-Style HTML List
+      let html = '';
+      for (const [position, users] of Object.entries(grouped)) {
+          html += `
+              <div class="rs-section">
+                  <div class="rs-section-header">
+                      <span>${escapeHtml(position)} — Online</span>
+                      <span>${users.length}</span>
+                  </div>
+          `;
+          
+          users.forEach(u => {
+              const avatar = u.employees.avatar_url || 'https://via.placeholder.com/40';
+              const fullName = u.employees.name;
+              
+              // We'll use their first name for the DM function if they click "Message"
+              const shortName = fullName.split(' ')[0]; 
+              
+              html += `
+                  <div class="rs-user">
+                      <img src="${avatar}" alt="Avatar">
+                      <div class="rs-user-info">
+                          <div class="uname">${escapeHtml(fullName)}</div>
+                          <div class="role" style="display:flex; align-items:center; gap:6px;">
+                              <div style="width:6px; height:6px; border-radius:50%; background:var(--mint-500);"></div>
+                              Timed in at ${new Date(u.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </div>
+                      </div>
+                      <button class="rs-action" onclick="startDirectMessage('${u.employee_id}', '${escapeHtml(shortName)}')">Message</button>
+                  </div>
+              `;
+          });
+          html += `</div>`;
+      }
+
+      container.innerHTML = html;
+  };
+
+  // Boot up the Right Sidebar 2 seconds after the page loads
+  setTimeout(() => {
+      if (typeof loadOnlineRoster === 'function') loadOnlineRoster();
+  }, 2000);
   
 })(); /* <--- REPLACED THE } WITH THIS */
 </script>
