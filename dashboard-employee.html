@@ -4359,6 +4359,28 @@ if (ticketBtn) {
   if (lhSoldInput) lhSoldInput.addEventListener('input', updateSummaryTally);
   if (lhGmvInput) lhGmvInput.addEventListener('input', updateSummaryTally);
 
+  // ==========================================================
+  // SYNC LOGGED-IN EMPLOYEE NAME TO TABLE (SMART WATCHER)
+  // ==========================================================
+  const nameWatcher = setInterval(() => {
+      // Look for the loaded name in your right sidebar profile
+      const myProfileName = document.getElementById('rsMyFname');
+      const summaryName = document.getElementById('summaryName');
+
+      if (myProfileName && summaryName) {
+          const fetchedName = myProfileName.textContent.trim();
+          
+          // If the name has successfully loaded from Supabase (no longer the default)
+          if (fetchedName !== "" && fetchedName !== "Full Name") {
+              // Inject it into the yellow summary table
+              summaryName.textContent = fetchedName;
+              
+              // Turn off the watcher now that our job is done!
+              clearInterval(nameWatcher); 
+          }
+      }
+  }, 500); // Check every 500 milliseconds (half-second)
+
 })(); // <--- THIS IS THE FINAL WRAPPER CLOSING YOUR ENTIRE SCRIPT
 </script>
 
