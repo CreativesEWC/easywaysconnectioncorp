@@ -3021,33 +3021,45 @@ if (ticketBtn) {
           return;
       }
 
-      // 2. Draw the channel sidebar
-      channelList.innerHTML = channels.map(c => `
+      // 2. THE SECURITY BOUNCER (Filter based on Role/Position)
+      const myRole = emp.role || 'employee';
+      const myPos = (emp.positions && emp.positions.name) ? emp.positions.name.toLowerCase() : '';
+
+      const allowedChannels = channels.filter(c => {
+          if (c.type === 'global') return true; // Everyone sees the Shoutbox
+          if (myRole === 'admin' || myRole === 'president') return true; // Admins see all departments
+          
+          // Lock down specific department channels
+          if (c.name === 'Live Sellers HQ' && myPos.includes('live seller')) return true;
+          if (c.name === 'Office & CSR' && (myPos.includes('customer service') || myPos.includes('multimedia') || myPos.includes('rts'))) return true;
+          
+          return false;
+      });
+
+      // 3. Draw the filtered channel sidebar
+      channelList.innerHTML = allowedChannels.map(c => `
           <div class="chat-channel-item" data-id="${c.id}" data-name="${escapeHtml(c.name)}" style="padding: 8px 10px; border-radius: 6px; cursor: pointer; color: #9fb0d6; font-size: 13px; transition: background 0.2s;">
               # ${escapeHtml(c.name)}
           </div>
       `).join('');
 
-      // 3. Add click listeners to switch channels
+      // 4. Wire up the clicks
       document.querySelectorAll('.chat-channel-item').forEach(item => {
           item.addEventListener('click', () => {
-              // Reset all highlights
-              document.querySelectorAll('.chat-channel-item').forEach(i => {
+              document.querySelectorAll('.chat-channel-item, .chat-dm-item').forEach(i => {
                   i.style.background = 'transparent';
                   i.style.color = '#9fb0d6';
                   i.style.fontWeight = 'normal';
               });
               
-              // Highlight selected
               item.style.background = 'var(--navy-800)';
               item.style.color = 'var(--amber-400)';
               item.style.fontWeight = 'bold';
               
               activeChatId = item.dataset.id;
               document.getElementById('activeChatTitle').textContent = '# ' + item.dataset.name;
-              document.getElementById('activeChatDesc').textContent = 'Company Chat';
+              document.getElementById('activeChatDesc').textContent = 'Department Chat';
               
-              // Unlock the input box
               document.getElementById('chatInput').disabled = false;
               document.getElementById('chatSendBtn').disabled = false;
               
