@@ -186,13 +186,16 @@
   // --------- JAVA SCRIPT --------
 
  // ---- UPGRADED TIME CLOCK FILTER: DYNAMIC SHIFTS ----
-function calculateDynamicShiftHours(timeInDate, timeOutDate, scheduleStartStr, scheduleEndStr) {
-  const shiftStart = new Date(timeInDate);
+function calculateDynamicShiftHours(timeInDateStr, timeOutDateStr, scheduleStartStr, scheduleEndStr) {
+  const actualTimeIn = new Date(timeInDateStr);
+  const actualTimeOut = new Date(timeOutDateStr);
+
+  const shiftStart = new Date(timeInDateStr);
   // Break down "08:00" or "09:00" into hours and minutes
   const [startHour, startMin] = scheduleStartStr.split(':');
   shiftStart.setHours(parseInt(startHour), parseInt(startMin), 0, 0); 
   
-  const shiftEnd = new Date(timeOutDate);
+  const shiftEnd = new Date(timeOutDateStr);
   // Break down "18:00" or "17:00" into hours and minutes
   const [endHour, endMin] = scheduleEndStr.split(':');
   shiftEnd.setHours(parseInt(endHour), parseInt(endMin), 0, 0); 
@@ -201,14 +204,46 @@ function calculateDynamicShiftHours(timeInDate, timeOutDate, scheduleStartStr, s
   let validOtMinutes = 0;
 
   // LATENESS LOGIC: 1 min late = 5 min deduction
-  if (timeInDate > shiftStart) {
-    const exactMinutesLate = (timeInDate - shiftStart) / (1000 * 60);
+  if (actualTimeIn > shiftStart) {
+    const exactMinutesLate = (actualTimeIn - shiftStart) / (1000 * 60);
     latePenaltyMinutes = Math.ceil(exactMinutesLate / 5) * 5;
   }
 
-  // OVERTIME LOGIC: Must be in exact 30-minute blocks
-  if (timeOutDate > shiftEnd) {
-    const exactOtMinutes = (timeOutDate - shiftEnd) / (1000 * 60);
+  // OVERTIME LOGIC: Must be in exact 30-minute blocks. No grace period applied.
+  if (actualTimeOut > shiftEnd) {
+    const exactOtMinutes = (actualTimeOut - shiftEnd) / (1000 * 60);
+    validOtMinutes = Math.floor(exactOtMinutes / 30) * 30;
+  }
+
+  return {
+    latePenalty: latePenaltyMinutes,
+    earnedOt: validOtMinutes
+  };
+}
+
+// ---- TIME CLOCK FILTER: FIXED SHIFTS (9:00 AM - 6:00 PM) ----
+function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
+  const actualTimeIn = new Date(timeInDateStr);
+  const actualTimeOut = new Date(timeOutDateStr);
+
+  // Set fixed 9:00 AM start
+  const shiftStart = new Date(timeInDateStr);
+  shiftStart.setHours(9, 0, 0, 0);
+
+  // Set fixed 6:00 PM (18:00) end
+  const shiftEnd = new Date(timeOutDateStr);
+  shiftEnd.setHours(18, 0, 0, 0);
+
+  let latePenaltyMinutes = 0;
+  let validOtMinutes = 0;
+
+  if (actualTimeIn > shiftStart) {
+    const exactMinutesLate = (actualTimeIn - shiftStart) / (1000 * 60);
+    latePenaltyMinutes = Math.ceil(exactMinutesLate / 5) * 5;
+  }
+
+  if (actualTimeOut > shiftEnd) {
+    const exactOtMinutes = (actualTimeOut - shiftEnd) / (1000 * 60);
     validOtMinutes = Math.floor(exactOtMinutes / 30) * 30;
   }
 
