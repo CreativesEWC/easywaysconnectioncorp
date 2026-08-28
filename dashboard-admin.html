@@ -897,14 +897,32 @@ aside.sidebar.collapsed ~ main.main-content {
           <!-- Message Input Area -->
           <div class="ig-chat-input-wrapper">
             
-            <!-- Hidden Quick Emoji Tray -->
-            <div id="emojiTray" style="display: none; position: absolute; bottom: 65px; left: 15px; background: #1a1a1a; border: 1px solid #363636; border-radius: 24px; padding: 8px 16px; gap: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10;">
-              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">❤️</span>
-              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">😂</span>
-              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">😮</span>
-              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">😢</span>
-              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">🔥</span>
-              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">👍</span>
+            <!-- Hidden Quick Emoji Tray (SVG Upgraded) -->
+            <div id="emojiTray" style="display: none; position: absolute; bottom: 65px; left: 15px; background: #1a1a1a; border: 1px solid #363636; border-radius: 24px; padding: 10px 16px; gap: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10;">
+              <!-- Heart -->
+              <span class="quick-emoji" data-emoji="❤️" style="cursor: pointer; width: 24px; height: 24px; display: flex; transition: transform 0.1s;">
+                <svg viewBox="0 0 24 24" fill="#ff3040" stroke="none" style="pointer-events: none; width: 100%; height: 100%;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              </span>
+              <!-- Laugh -->
+              <span class="quick-emoji" data-emoji="😂" style="cursor: pointer; width: 24px; height: 24px; display: flex; transition: transform 0.1s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f2b854" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; width: 100%; height: 100%;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              </span>
+              <!-- Wow -->
+              <span class="quick-emoji" data-emoji="😮" style="cursor: pointer; width: 24px; height: 24px; display: flex; transition: transform 0.1s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f2b854" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; width: 100%; height: 100%;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="16" r="2"></circle><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              </span>
+              <!-- Sad -->
+              <span class="quick-emoji" data-emoji="😢" style="cursor: pointer; width: 24px; height: 24px; display: flex; transition: transform 0.1s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f2b854" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; width: 100%; height: 100%;"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              </span>
+              <!-- Fire -->
+              <span class="quick-emoji" data-emoji="🔥" style="cursor: pointer; width: 24px; height: 24px; display: flex; transition: transform 0.1s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ff9800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; width: 100%; height: 100%;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+              </span>
+              <!-- Like -->
+              <span class="quick-emoji" data-emoji="👍" style="cursor: pointer; width: 24px; height: 24px; display: flex; transition: transform 0.1s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3797F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; width: 100%; height: 100%;"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+              </span>
             </div>
 
             <div class="ig-chat-input-box">
@@ -4150,8 +4168,16 @@ if (calcDeltaBtn) {
       // Insert emoji and close tray
       document.querySelectorAll('.quick-emoji').forEach(emoji => {
           emoji.addEventListener('click', (e) => {
-              mainChatInput.value += e.target.textContent;
+              // Securely grab the text character from the data attribute
+              const emojiChar = e.currentTarget.getAttribute('data-emoji');
+              
+              mainChatInput.value += emojiChar;
               emojiTray.style.display = 'none';
+              
+              // Enable the send button since we just added text
+              const sendBtn = document.getElementById('chatSendBtn');
+              if (sendBtn) sendBtn.disabled = false;
+              
               mainChatInput.focus();
           });
       });
