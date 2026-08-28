@@ -3595,7 +3595,7 @@ if (saveScheduleBtn) {
       // 1. Fetch all active employees
       const { data: emps } = await supabaseClient
         .from('employees')
-        .select('id, name, badge_id, position')
+        .select('id, name, badge_id, position, positions(name)')
         .order('name');
 
       // 2. Fetch Tickets (for perfect attendance check)
@@ -3637,17 +3637,11 @@ if (saveScheduleBtn) {
         liveCommission += (parseFloat(log.earned_commission) || 0);
       });
 
-      // Perfect Attendance Logic
-      const hasOffenses = empTickets.some(t => 
-        ['absence', 'leave', 'emergency_leave', 'undertime'].includes(t.ticket_type)
-      );
-      const perfectAttendanceBonus = hasOffenses ? 0 : 1000;
-      
       // Video Commission Logic (₱100 per approved video)
       const videoCommission = empVideos.length * 100;
       
-      // (Placeholder for Base Pay - can be pulled from DB later)
-      const basePay = 0;
+      // Safely grab the position name
+      const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
 
       // Build the Table Row
       html += `
@@ -3657,10 +3651,7 @@ if (saveScheduleBtn) {
             <span style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(emp.badge_id)}</span>
           </td>
           <td style="padding: 12px;">
-            <div style="font-size: 13px; color: #9fb0d6;">Base: ₱${basePay.toLocaleString()}</div>
-            <div style="color: ${perfectAttendanceBonus > 0 ? 'var(--mint-500)' : 'var(--coral-500)'}; font-size: 12px; font-weight: bold; margin-top: 4px;">
-              + Bonus: ₱${perfectAttendanceBonus.toLocaleString()}
-            </div>
+            <div style="font-size: 13px; color: var(--amber-400); font-weight: 500;">${escapeHtml(posName)}</div>
           </td>
           <td style="padding: 12px;">
             <div style="color: var(--amber-400); font-weight: bold;">₱${videoCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
