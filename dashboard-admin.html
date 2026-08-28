@@ -1666,21 +1666,23 @@ aside.sidebar.collapsed ~ main.main-content {
 <script>
 
   window.openFinanceTab = function(tabId, clickedBtn) {
-      // Un-highlight all sub-nav buttons
-      document.querySelectorAll('#financeSubMenu button').forEach(btn => btn.classList.remove('active'));
+      // 1. Hide ALL main dashboard tabs (This removes Employee Monitoring from the screen)
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.style.display = 'none');
       
-      // Highlight the clicked button
-      clickedBtn.classList.add('active');
+      // 2. Show the main Finance wrapper
+      document.getElementById('tab-finance').style.display = 'block';
       
-      // Hide all finance panels
+      // 3. Hide all inner Finance sub-panels
       document.querySelectorAll('.finance-tab-content').forEach(panel => panel.style.display = 'none');
       
-      // Show target panel
-      document.getElementById(tabId).style.display = 'block';
+      // 4. Show the specific Finance sub-panel that was clicked
+      const targetForm = document.getElementById(tabId);
+      if (targetForm) targetForm.style.display = 'block';
       
-      // Switch sidebar active state to Finance tab
+      // 5. Update the button highlight colors
+      document.querySelectorAll('#financeSubMenu button').forEach(btn => btn.classList.remove('active'));
+      clickedBtn.classList.add('active');
       document.querySelectorAll('.sidebar-nav > button').forEach(b => b.classList.remove('active'));
-      document.getElementById('tab-finance').style.display = 'block';
   };
 
   // ---- SUB-NAVIGATION TOGGLE ----
