@@ -88,10 +88,9 @@
   .ig-msg-wrapper:hover .ig-msg-time { display: block; } /* Show time on hover */
 
   /* Input Area */
-  .ig-chat-input-wrapper { padding: 20px; }
-  .ig-chat-input-box { display: flex; align-items: center; background: #000; border: 1px solid #363636; border-radius: 24px; padding: 8px 16px; gap: 10px; }
-  .ig-chat-input-box input { flex: 1; background: transparent; border: none; color: #f5f5f5; font-size: 14px; padding: 4px 0; outline: none; }
-  .ig-chat-input-box input::placeholder { color: #737373; }
+  .ig-chat-input-wrapper { padding: 15px; box-sizing: border-box; width: 100%; overflow: visible; position: relative; }
+  .ig-chat-input-box { display: flex; align-items: center; background: #000; border: 1px solid #363636; border-radius: 24px; padding: 8px 16px; gap: 10px; width: 100%; box-sizing: border-box; }  .ig-chat-input-box input { flex: 1; background: transparent; border: none; color: #f5f5f5; font-size: 14px; padding: 4px 0; outline: none; }
+  .ig-chat-input-box input { flex: 1; min-width: 0; background: transparent; border: none; color: #f5f5f5; font-size: 14px; padding: 4px 0; outline: none; }
   .ig-send-text { background: transparent; border: none; color: #3797F0; font-weight: 600; font-size: 14px; cursor: pointer; padding: 0 10px; }
   .ig-send-text:disabled { color: #004c8b; cursor: default; }
 
@@ -996,16 +995,25 @@ aside.sidebar.collapsed ~ main.main-content {
 
           <!-- Message Input Area -->
           <div class="ig-chat-input-wrapper">
+            
+            <!-- Hidden Quick Emoji Tray -->
+            <div id="emojiTray" style="display: none; position: absolute; bottom: 65px; left: 15px; background: #1a1a1a; border: 1px solid #363636; border-radius: 24px; padding: 8px 16px; gap: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10;">
+              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">❤️</span>
+              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">😂</span>
+              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">😮</span>
+              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">😢</span>
+              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">🔥</span>
+              <span class="quick-emoji" style="cursor: pointer; font-size: 22px; transition: transform 0.1s;">👍</span>
+            </div>
+
             <div class="ig-chat-input-box">
-              <button class="ig-icon-btn" style="padding: 0 10px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></button>
+              <button id="chatEmojiBtn" class="ig-icon-btn" style="padding: 0 5px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              </button>
               <input type="text" id="chatInput" placeholder="Message..." disabled>
               <button id="chatSendBtn" class="ig-send-text" disabled>Send</button>
             </div>
           </div>
-          
-        </div>
-      </div>
-    </div>
 
     <!-- 6. ACCOUNT TAB PANEL -->
     <div id="tab-account" class="tab-panel" style="display:none;">
@@ -1593,6 +1601,36 @@ aside.sidebar.collapsed ~ main.main-content {
           scheduleList.innerHTML = html;
       }
   };
+
+  // ==========================================================
+  // 7. EMOJI TRAY ENGINE
+  // ==========================================================
+  const emojiTray = document.getElementById('emojiTray');
+  const chatEmojiBtn = document.getElementById('chatEmojiBtn');
+  const mainChatInput = document.getElementById('chatInput');
+
+  if (chatEmojiBtn && emojiTray && mainChatInput) {
+      // Toggle tray open/closed
+      chatEmojiBtn.addEventListener('click', () => {
+          emojiTray.style.display = emojiTray.style.display === 'flex' ? 'none' : 'flex';
+      });
+
+      // Insert emoji and close tray
+      document.querySelectorAll('.quick-emoji').forEach(emoji => {
+          emoji.addEventListener('click', (e) => {
+              mainChatInput.value += e.target.textContent;
+              emojiTray.style.display = 'none';
+              mainChatInput.focus();
+          });
+      });
+      
+      // Close tray if they click anywhere else on the screen
+      document.addEventListener('click', (e) => {
+          if (!chatEmojiBtn.contains(e.target) && !emojiTray.contains(e.target)) {
+              emojiTray.style.display = 'none';
+          }
+      });
+  }
 
   // Trigger it on load
   setTimeout(() => {
