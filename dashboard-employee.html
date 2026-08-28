@@ -124,6 +124,28 @@
   main.main-content.expanded-right { 
     margin-right: 0 !important; 
   }
+
+  /* ---- LIVE HOST PORTAL STYLES ---- */
+  .lh-portal-wrapper { max-width: 900px; margin: 0 auto; font-family: sans-serif; }
+  
+  /* Sub-Navigation */
+  .lh-subnav { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+  .lh-subnav-btn { background: transparent; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; color: #666; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+  .lh-subnav-btn:hover { background: #f0f0f0; }
+  .lh-subnav-btn.active { background: #4CAF50; color: white; }
+
+  /* Form & Table Cards */
+  .lh-form-card { background: white; border: 1px solid #4CAF50; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  
+  /* Read-Only Tally Table */
+  .lh-tally-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .lh-tally-table th { background: #f8f9fa; border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 12px; font-weight: bold; color: #333; text-transform: uppercase; }
+  .lh-tally-table td { border: 1px solid #ddd; padding: 12px; font-size: 14px; color: #333; }
+  .lh-tally-table .highlight-val { font-weight: bold; color: #2c3e50; font-size: 16px; }
+  
+  /* History Button */
+  .lh-history-btn { background: transparent; border: 1px solid #4CAF50; color: #4CAF50; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.2s; }
+  .lh-history-btn:hover { background: #4CAF50; color: white; }
   
   /* Internal Styles (Keep these exactly as they are) */
   .rs-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
@@ -1016,53 +1038,7 @@ aside.sidebar.collapsed ~ main.main-content {
       <!-- NEW: Sales Report Form -->
       <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
         <h2 style="color: var(--mint-500);">Submit Daily Sales Report</h2>
-        <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
-                    <input type="date" id="salesDate" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Time (e.g., 8:00 - 12:00)</label>
-                    <input type="text" id="salesTime" required placeholder="Shift Time" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-            </div>
-
-            <!-- The Core Metrics Grid -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Buyer</label>
-                    <input type="number" id="salesBuyer" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Commi</label>
-                    <input type="number" step="0.01" id="salesCommi" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Sold</label>
-                    <input type="number" id="salesSold" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH Sold</label>
-                    <input type="number" id="salesLhSold" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">GMV</label>
-                    <input type="number" step="0.01" id="salesGmv" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH GMV</label>
-                    <input type="number" step="0.01" id="salesLhGmv" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                </div>
-            </div>
-            
-            <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
-                <input type="file" id="salesScreenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-            </div>
-
-            <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none;">Submit Live Commission</button>
-        </form>
+        
       </section>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -1070,6 +1046,53 @@ aside.sidebar.collapsed ~ main.main-content {
         <!-- We reuse your existing ticketBtn ID so the modal opens automatically! -->
         <button id="ticketBtn" class="btn2 primary">Submit New Form</button>
       </div>
+
+      <!-- LIVE HOST PORTAL AREA -->
+<div class="lh-portal-wrapper">
+  
+  <!-- Sub-Navigation -->
+  <div class="lh-subnav">
+    <button class="lh-subnav-btn" onclick="switchLhTab('lh-requests')">My Request</button>
+    <button class="lh-subnav-btn active" onclick="switchLhTab('lh-live-commi')">Live Commission</button>
+    <button class="lh-subnav-btn" onclick="switchLhTab('lh-video-commi')">Video Commission</button>
+  </div>
+
+  <!-- TAB: LIVE COMMISSION -->
+  <div id="lh-live-commi" class="lh-tab-content active">
+    
+    <!-- YOUR EXISTING FORM GOES HERE -->
+    <div class="lh-form-card">
+      <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 14px; letter-spacing: 1px;">SUBMIT DAILY SALES REPORT</h3>
+      <!-- [Paste your existing form inputs here] -->
+    </div>
+
+    <!-- DAILY TOTAL TALLY (READ-ONLY) -->
+    <div class="lh-form-card" style="margin-top: 20px;">
+      <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 14px; letter-spacing: 1px;">SUMMARY: OVERALL TOTAL (AUTO-TALLY)</h3>
+      <table class="lh-tally-table">
+        <thead>
+          <tr>
+            <th>DATE</th>
+            <th>TOTAL COMMI</th>
+            <th>LH SOLD</th>
+            <th>LH GMV</th>
+            <th>HISTORY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td id="tallyDate">Today</td>
+            <td id="tallyCommi" class="highlight-val">0</td>
+            <td id="tallyLhSold" class="highlight-val">0</td>
+            <td id="tallyLhGmv" class="highlight-val">0</td>
+            <td><button class="lh-history-btn">View Shifts</button></td>
+          </tr>
+        </tbody>
+      </table>
+     
+  </div>
+
+</div>
 
       <section class="panel">
         <table style="width:100%; border-collapse:collapse;">
@@ -1470,6 +1493,38 @@ aside.sidebar.collapsed ~ main.main-content {
 
 <script src="supabase-config.js"></script>
 <script>
+
+  // ---- LIVE HOST SUB-NAV LOGIC ----
+  window.switchLhTab = function(tabId) {
+      // Hide all tabs
+      document.querySelectorAll('.lh-tab-content').forEach(tab => {
+          tab.style.display = 'none';
+      });
+      
+      // Remove active class from all buttons
+      document.querySelectorAll('.lh-subnav-btn').forEach(btn => {
+          btn.classList.remove('active');
+      });
+      
+      // Show targeted tab
+      document.getElementById(tabId).style.display = 'block';
+      
+      // Add active class to clicked button
+      event.currentTarget.classList.add('active');
+  };
+
+  // ---- AUTO-TALLY LOGIC (PREP FOR SUPABASE) ----
+  window.updateDailyTally = function(commi, lhSold, lhGmv) {
+      // In the future, this function will query Supabase to sum up all shifts for the day.
+      // For now, this is where the frontend variables would update the read-only table.
+      
+      document.getElementById('tallyCommi').textContent = commi;
+      document.getElementById('tallyLhSold').textContent = lhSold;
+      document.getElementById('tallyLhGmv').textContent = lhGmv;
+      
+      const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('tallyDate').textContent = today;
+  };
 
 // ---- TIME CLOCK FILTER: 9AM to 6PM SHIFTS ----
   function calculateFixedShiftHours(timeInDate, timeOutDate) {
