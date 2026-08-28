@@ -3174,8 +3174,8 @@ if (ticketBtn) {
 
   window.loadChatMessages = async function(channelId) {
       const feed = document.getElementById('chatMessageFeed');
-      feed.innerHTML = '<div class="loading-note" style="text-align:center; margin-top:auto;">Loading messages...</div>';
-
+      if(feed.querySelector('.ig-empty-chat')) feed.innerHTML = ''; // Clear placeholder
+      
       const { data: messages, error } = await supabaseClient
           .from('chat_messages')
           .select('*, employees(name, avatar_url)')
@@ -3183,17 +3183,8 @@ if (ticketBtn) {
           .order('created_at', { ascending: true })
           .limit(100);
 
-      if (error) {
-          feed.innerHTML = '<div class="error-note" style="text-align:center; margin-top:auto;">Failed to load messages.</div>';
-          return;
-      }
+      if (error || !messages) return;
 
-      if (!messages || messages.length === 0) {
-          feed.innerHTML = '<div class="empty-note" style="text-align:center; margin-top:auto; margin-bottom:auto;">No messages yet. Be the first to say hello!</div>';
-          return;
-      }
-
-      // Draw messages (Slack/iMessage style)
       feed.innerHTML = messages.map(m => {
           const isMe = m.sender_id === emp.id;
           const senderName = m.employees ? m.employees.name.split(' ')[0] : 'Unknown';
@@ -3201,32 +3192,25 @@ if (ticketBtn) {
           const timeStr = new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
           
           if (isMe) {
-              // My messages on the right (Mint Green)
               return `
-              <div style="display: flex; gap: 10px; align-self: flex-end; max-width: 80%; flex-direction: row-reverse;">
+              <div class="ig-msg-wrapper me">
                   <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                      <div style="font-size: 10px; color: #7488b6; margin-bottom: 4px;">${timeStr}</div>
-                      <div style="background: var(--mint-700); color: var(--paper); padding: 10px 14px; border-radius: 12px; border-top-right-radius: 2px; font-size: 13px; line-height: 1.4; word-break: break-word;">
-                          ${escapeHtml(m.content)}
-                      </div>
+                    <div class="ig-msg-bubble">${escapeHtml(m.content)}</div>
+                    <div class="ig-msg-time">${timeStr}</div>
                   </div>
               </div>`;
           } else {
-              // Others' messages on the left (Navy Blue)
               return `
-              <div style="display: flex; gap: 10px; align-self: flex-start; max-width: 80%;">
-                  <img src="${avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; background: #fff;">
+              <div class="ig-msg-wrapper them">
+                  <img src="${avatar}" class="ig-msg-avatar" title="${escapeHtml(senderName)}">
                   <div style="display: flex; flex-direction: column; align-items: flex-start;">
-                      <div style="font-size: 10px; color: #7488b6; margin-bottom: 4px;">${escapeHtml(senderName)} &bull; ${timeStr}</div>
-                      <div style="background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); padding: 10px 14px; border-radius: 12px; border-top-left-radius: 2px; font-size: 13px; line-height: 1.4; word-break: break-word;">
-                          ${escapeHtml(m.content)}
-                      </div>
+                    <div class="ig-msg-bubble">${escapeHtml(m.content)}</div>
+                    <div class="ig-msg-time" style="text-align: left;">${escapeHtml(senderName)} &bull; ${timeStr}</div>
                   </div>
               </div>`;
           }
       }).join('');
 
-      // Auto-scroll to the bottom of the feed
       feed.scrollTop = feed.scrollHeight;
   };
 
