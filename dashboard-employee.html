@@ -1139,6 +1139,50 @@ aside.sidebar.collapsed ~ main.main-content {
             <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none;">Submit Live Commission</button>
           </form>
 
+          <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
+          <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
+            <!-- Yellow Header mimicking the paper form -->
+            <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
+              Summary: Overall Total
+            </div>
+            <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
+                  <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
+                  <th style="padding: 12px; border-right: 1px solid var(--line);">Total Commi</th>
+                  <th style="padding: 12px; border-right: 1px solid var(--line);">LH Sold</th>
+                  <th style="padding: 12px; border-right: 1px solid var(--line);">LH GMV</th>
+                  <th style="padding: 12px;">Sign</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Primary Employee Row -->
+                <tr>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);" id="summaryName">
+                    Employee Name
+                  </td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryCommi">0.00</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhSold">0</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhGmv">0.00</td>
+                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--mint-500);">Auto-Signed</td>
+                </tr>
+                <!-- Shift Buddy Row -->
+                <tr style="border-top: 1px solid var(--line);">
+                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddyName">
+                    Shift Buddy
+                  </td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddyCommi">0.00</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddyLhSold">0</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddyLhGmv">0.00</td>
+                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 8px 15px; font-size: 10px; color: var(--text-muted); background: var(--navy-800); text-align: right; text-transform: uppercase;">
+              *Read-Only. Do not use any other format forms.
+            </div>
+          </div>
+
         </section>
       </div>
 
@@ -4277,6 +4321,43 @@ if (ticketBtn) {
       document.querySelectorAll('.sidebar-sub-menu button').forEach(btn => btn.classList.remove('active'));
       clickedBtn.classList.add('active');
   };
+
+  // ==========================================================
+  // REAL-TIME SUMMARY TALLY SYNC
+  // ==========================================================
+  const commiInput = document.getElementById('salesCommi');
+  const lhSoldInput = document.getElementById('salesLhSold');
+  const lhGmvInput = document.getElementById('salesLhGmv');
+
+  const summaryCommi = document.getElementById('summaryCommi');
+  const summaryLhSold = document.getElementById('summaryLhSold');
+  const summaryLhGmv = document.getElementById('summaryLhGmv');
+  
+  // Shift buddy mirror fields
+  const buddyCommi = document.getElementById('summaryBuddyCommi');
+  const buddyLhSold = document.getElementById('summaryBuddyLhSold');
+  const buddyLhGmv = document.getElementById('summaryBuddyLhGmv');
+
+  function updateSummaryTally() {
+      const commiVal = commiInput.value || '0.00';
+      const soldVal = lhSoldInput.value || '0';
+      const gmvVal = lhGmvInput.value || '0.00';
+
+      // Update primary row
+      summaryCommi.textContent = commiVal;
+      summaryLhSold.textContent = soldVal;
+      summaryLhGmv.textContent = gmvVal;
+      
+      // Update shift buddy row automatically
+      buddyCommi.textContent = commiVal;
+      buddyLhSold.textContent = soldVal;
+      buddyLhGmv.textContent = gmvVal;
+  }
+
+  // Listen for typing in the input fields and trigger the sync
+  if (commiInput) commiInput.addEventListener('input', updateSummaryTally);
+  if (lhSoldInput) lhSoldInput.addEventListener('input', updateSummaryTally);
+  if (lhGmvInput) lhGmvInput.addEventListener('input', updateSummaryTally);
 
 })(); // <--- THIS IS THE FINAL WRAPPER CLOSING YOUR ENTIRE SCRIPT
 </script>
