@@ -3968,10 +3968,15 @@ if (ticketBtn) {
 
       const grouped = {};
       onlineUsers.forEach(user => {
-          const pos = user.employees.positions ? user.employees.positions.name : 'Staff';
-          if (!grouped[pos]) grouped[pos] = [];
-          grouped[pos].push(user);
-      });
+        let pos = user.employees.positions ? user.employees.positions.name : 'Staff';
+        
+        // Clean up and shorten the database position names
+        if (pos.includes('Customer Service')) pos = 'CSR';
+        if (pos.includes('RTS Administrative') || pos.includes('RTS Admin')) pos = 'RTS Admin';
+        
+        if (!grouped[pos]) grouped[pos] = [];
+        grouped[pos].push(user);
+    });
 
       let html = '';
       for (const [position, users] of Object.entries(grouped)) {
