@@ -1091,9 +1091,54 @@ aside.sidebar.collapsed ~ main.main-content {
         <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
           <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Submit Daily Sales Report</h2>
           
-          <!-- PASTE YOUR EXISTING SALES REPORT FORM CODE HERE -->
-          <!-- (The grid with date, shift time, commi, sold, gmv, etc.) -->
-          
+          <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
+                <input type="date" id="salesDate" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Time (e.g., 8:00 - 12:00)</label>
+                <input type="text" id="salesTime" required placeholder="Shift Time" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+            </div>
+
+            <!-- Core Metrics Grid -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Buyer</label>
+                <input type="number" id="salesBuyer" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Commi</label>
+                <input type="number" step="0.01" id="salesCommi" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Sold</label>
+                <input type="number" id="salesSold" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH Sold</label>
+                <input type="number" id="salesLhSold" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">GMV</label>
+                <input type="number" step="0.01" id="salesGmv" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH GMV</label>
+                <input type="number" step="0.01" id="salesLhGmv" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
+              <input type="file" id="salesScreenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+            </div>
+
+            <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none;">Submit Live Commission</button>
+          </form>
+
         </section>
       </div>
 
