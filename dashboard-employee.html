@@ -57,29 +57,32 @@
     --amber-500: #b45309; 
   }
 
-  /* ---- RIGHT SIDEBAR (ONLINE ROSTER) ---- */
+ /* ---- RIGHT SIDEBAR (ONLINE ROSTER) ---- */
   aside.right-sidebar { 
     width: 320px; 
     background: var(--navy-950); 
     display: flex; 
     flex-direction: column; 
-    position: fixed; 
-    top: 0; 
-    bottom: 0; 
-    right: 0; 
+    
+    /* These 4 lines guarantee it glues to the far right monitor edge */
+    position: fixed !important; 
+    top: 0 !important; 
+    bottom: 0 !important; 
+    right: 0 !important; 
+    
     z-index: 90; 
     padding: 35px 20px; 
     overflow-y: auto; 
     border-left: 1px solid var(--line); 
-    /* Force a physical left-to-right glide */
     transform: translateX(0);
     transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1); 
     -ms-overflow-style: none; 
     scrollbar-width: none; 
   }
+  
   aside.right-sidebar::-webkit-scrollbar { display: none; }
   
-  /* Slides 100% of its own width left-to-right off the screen */
+  /* Slides 100% of its own width left-to-right completely off the screen */
   aside.right-sidebar.hidden { 
     transform: translateX(100%); 
   }
