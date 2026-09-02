@@ -1019,11 +1019,22 @@ aside.sidebar.collapsed ~ main.main-content {
 
       <section class="panel">
         <h2>Recent Attendance</h2>
+        <!-- ADD THIS FILTER BAR -->
+      <div class="filter-bar" style="margin-bottom: 10px;">
+        <button id="viewCurrentCutoffBtn" class="active">Current Cutoff</button>
+        <button id="viewHistoryBtn">Full History</button>
+      </div>
+      <div id="cutoffDateLabel" style="font-size: 11px; color: var(--amber-400); font-family: var(--font-mono); margin-bottom: 15px;">
+        Loading active period...
+      </div>
+      <!-- END FILTER BAR -->
         <table>
           <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Status</th></tr></thead>
           <tbody id="attendanceTable"><tr class="empty-row"><td colspan="4">No attendance records yet</td></tr></tbody>
         </table>
       </section>
+
+      
 
     </div>
 
@@ -1657,6 +1668,28 @@ aside.sidebar.collapsed ~ main.main-content {
   
   //<<------------------ JAVA SCRIPT --------------->>
 (async function(){
+
+  let activeCutoffStart = null;
+  let activeCutoffEnd = null;
+  let showingFullHistory = false;
+
+  async function fetchActiveCutoff() {
+      const { data } = await supabaseClient
+          .from('payroll_settings')
+          .select('period_start, period_end')
+          .limit(1)
+          .maybeSingle();
+          
+      if (data && data.period_start && data.period_end) {
+          activeCutoffStart = data.period_start;
+          activeCutoffEnd = data.period_end;
+          
+          // Format for the UI (e.g., Aug 13 - Aug 27)
+          const startStr = new Date(data.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const endStr = new Date(data.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          document.getElementById('cutoffDateLabel').textContent = `Showing records from: ${startStr} - ${endStr}`;
+      }
+  }
 
   // ---- CROSS-DASHBOARD THEME ENGINE ----
     
