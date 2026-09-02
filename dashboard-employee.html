@@ -2867,126 +2867,125 @@ if (digitalIdBtn) {
   });
 
   // ---- Load attendance history ----
-  const { data: rows, error } = await supabaseClient
-    .from('attendance_logs')
-    .select('*')
-    .eq('employee_id', emp.id)
-    .order('log_date', { ascending: false })
-    .limit(60);
+  window.loadAttendance = async function() {
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
 
-  document.getElementById('loadingMsg').style.display = 'none';
-  document.getElementById('content').style.display = 'block';
+      // 1. Build the base query
+      let query = supabaseClient
+          .from('attendance_logs')
+          .select('*')
+          .eq('employee_id', emp.id)
+          .order('log_date', { ascending: false });
 
-  if (error) {
-    document.getElementById('attendanceTable').innerHTML =
-      '<tr class="empty-row"><td colspan="4">Could not load attendance records. Please refresh.</td></tr>';
-    console.error(error);
-    return;
-  }
-
-  const list = rows || [];
-
- // ---- Stats (Dynamic Payroll Cut-off via Supabase) ----
-  const now = new Date();
-  let startStr, endStr, label;
-
-  // 1. Try to fetch the active cut-off dates from Supabase
-  const { data: payrollSet, error: prErr } = await supabaseClient
-      .from('payroll_settings')
-      .select('period_start, period_end')
-      .limit(1)
-      .maybeSingle();
-
-  if (!prErr && payrollSet && payrollSet.period_start && payrollSet.period_end) {
-      // Use Admin-defined dates
-      startStr = payrollSet.period_start;
-      endStr = payrollSet.period_end;
-      
-      // Format label to look clean (e.g., "Days (Aug 13 - Aug 25)")
-      const sd = new Date(startStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const ed = new Date(endStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      label = `Days (${sd} - ${ed})`;
-  } else {
-      // 2. Fallback: 13-27 & 28-12 Default Math (If database fails or is empty)
-      const year = now.getFullYear();
-      const month = now.getMonth();
-      const date = now.getDate();
-      let periodStart, periodEnd;
-
-      if (date >= 13 && date <= 27) {
-          periodStart = new Date(year, month, 13);
-          periodEnd = new Date(year, month, 27);
-      } else if (date >= 28) {
-          periodStart = new Date(year, month, 28);
-          periodEnd = new Date(year, month + 1, 12);
-      } else {
-          periodStart = new Date(year, month - 1, 28);
-          periodEnd = new Date(year, month, 12);
+      // 2. ONLY apply the date filter if we are NOT viewing Full History
+      if (!showingFullHistory && activeCutoffStart && activeCutoffEnd) {
+          query = query.gte('log_date', activeCutoffStart).lte('log_date', activeCutoffEnd);
+      } else if (showingFullHistory) {
+          query = query.limit(60); // Limit full history to 60 to prevent massive lag
       }
 
-      startStr = periodStart.getFullYear() + '-' + String(periodStart.getMonth() + 1).padStart(2, '0') + '-' + String(periodStart.getDate()).padStart(2, '0');
-      endStr = periodEnd.getFullYear() + '-' + String(periodEnd.getMonth() + 1).padStart(2, '0') + '-' + String(periodEnd.getDate()).padStart(2, '0');
+      const { data: rows, error } = await query;
+
+      if (error) {
+          document.getElementById('attendanceTable').innerHTML =
+            '<tr class="empty-row"><td colspan="4">Could not load attendance records. Please refresh.</td></tr>';
+          console.error(error);
+          return;
+      }
+
+      const list = rows || [];
       
-      const sd = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const ed = periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      label = `Days (${sd} - ${ed})`;
-  }
+      // Calculate Stats for the currently viewed list
+      const completed = list.filter(r => r.time_in && r.time_out).length;
+      const pending = list.filter(r => r.time_in && !r.time_out).length;
 
-  // Update the UI label to show exactly what date range they are looking at
-  document.querySelector('#statThisMonth').nextElementSibling.textContent = label;
+      let totalLateMins = 0;
+      let totalOtMins = 0;
+      list.forEach(r => {
+          totalLateMins += (r.late_penalty_minutes || 0);
+          totalOtMins += (r.earned_ot_minutes || 0);
+      });
 
-  // Filter attendance logs to only include the current cut-off period
-  const cutoffRows = list.filter(r => r.log_date >= startStr && r.log_date <= endStr);
-  const completed = cutoffRows.filter(r => r.time_in && r.time_out).length;
-  const pending = cutoffRows.filter(r => r.time_in && !r.time_out).length;
+      // Inject totals into the HTML
+      document.getElementById('statThisMonth').textContent = list.length;
+      document.getElementById('statOnTime').textContent = completed;
+      document.getElementById('statPending').textContent = pending;
 
-  let totalLateMins = 0;
-  let totalOtMins = 0;
-  cutoffRows.forEach(r => {
-    totalLateMins += (r.late_penalty_minutes || 0);
-    totalOtMins += (r.earned_ot_minutes || 0);
+      const lateEl = document.getElementById('statTotalLate');
+      const otEl = document.getElementById('statTotalOt');
+      if (lateEl) lateEl.textContent = totalLateMins;
+      if (otEl) otEl.textContent = (totalOtMins / 60).toFixed(1); // Converts mins to hrs
+
+      // Update the label
+      let label = 'Full History (Last 60 Logs)';
+      if (!showingFullHistory && activeCutoffStart && activeCutoffEnd) {
+          const sd = new Date(activeCutoffStart + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const ed = new Date(activeCutoffEnd + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          label = `Days (${sd} - ${ed})`;
+      }
+      const monthLabelEl = document.querySelector('#statThisMonth').nextElementSibling;
+      if (monthLabelEl) monthLabelEl.textContent = label;
+
+      // ---- Table Rendering ----
+      function fmtTime(iso){
+          if(!iso) return '—';
+          return new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
+      function fmtDate(dateStr){
+          const d = new Date(dateStr + 'T00:00:00');
+          return d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric', weekday:'short'});
+      }
+
+      const tbody = document.getElementById('attendanceTable');
+      if (list.length === 0) {
+          tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No attendance records yet</td></tr>';
+      } else {
+          tbody.innerHTML = list.map(r => {
+              const isComplete = r.time_in && r.time_out;
+              const pill = isComplete
+                  ? '<span class="status-pill complete">Complete</span>'
+                  : '<span class="status-pill pending">Missing Time Out</span>';
+              return `
+                  <tr>
+                      <td>${fmtDate(r.log_date)}</td>
+                      <td class="mono">${fmtTime(r.time_in)}</td>
+                      <td class="mono">${fmtTime(r.time_out)}</td>
+                      <td>${pill}</td>
+                  </tr>
+              `;
+          }).join('');
+      }
+  };
+
+  // ---- Button Listeners ----
+  document.getElementById('viewCurrentCutoffBtn')?.addEventListener('click', (e) => {
+      document.getElementById('viewHistoryBtn').classList.remove('active');
+      e.target.classList.add('active');
+      
+      showingFullHistory = false;
+      const lbl = document.getElementById('cutoffDateLabel');
+      if(lbl) lbl.style.display = 'block'; 
+      
+      window.loadAttendance();
   });
 
-  // Inject totals into the HTML
-  document.getElementById('statThisMonth').textContent = cutoffRows.length;
-  document.getElementById('statOnTime').textContent = completed;
-  document.getElementById('statPending').textContent = pending;
+  document.getElementById('viewHistoryBtn')?.addEventListener('click', (e) => {
+      document.getElementById('viewCurrentCutoffBtn').classList.remove('active');
+      e.target.classList.add('active');
+      
+      showingFullHistory = true;
+      const lbl = document.getElementById('cutoffDateLabel');
+      if(lbl) lbl.style.display = 'none'; 
+      
+      window.loadAttendance();
+  });
 
-  // Display Total Lates (Mins) and Overtime (converted to Hrs)
-  const lateEl = document.getElementById('statTotalLate');
-  const otEl = document.getElementById('statTotalOt');
-  if (lateEl) lateEl.textContent = totalLateMins;
-  if (otEl) otEl.textContent = totalOtMins / 60;
-
-  // ---- Table ----
-  function fmtTime(iso){
-    if(!iso) return '—';
-    return new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  }
-  function fmtDate(dateStr){
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric', weekday:'short'});
-  }
-
-  const tbody = document.getElementById('attendanceTable');
-  if (list.length === 0) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No attendance records yet</td></tr>';
-  } else {
-    tbody.innerHTML = list.map(r => {
-      const isComplete = r.time_in && r.time_out;
-      const pill = isComplete
-        ? '<span class="status-pill complete">Complete</span>'
-        : '<span class="status-pill pending">Missing Time Out</span>';
-      return `
-        <tr>
-          <td>${fmtDate(r.log_date)}</td>
-          <td class="mono">${fmtTime(r.time_in)}</td>
-          <td class="mono">${fmtTime(r.time_out)}</td>
-          <td>${pill}</td>
-        </tr>
-      `;
-    }).join('');
-  }
+  // ---- Boot up ----
+  setTimeout(async () => {
+      await fetchActiveCutoff();
+      window.loadAttendance();
+  }, 500);
 
   // ==========================================================
   // PART 2 — Live Seller Schedule
