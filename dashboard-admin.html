@@ -4972,6 +4972,29 @@ if (calcDeltaBtn) {
   // ==========================================================
   // ADMIN PAYROLL CUT-OFF MANAGER
   // ==========================================================
+  
+  // Helper to format the big calendar text
+  function updateBigCalendarDisplay(startStr, endStr) {
+      if (!startStr || !endStr) return;
+      
+      const sDate = new Date(startStr);
+      const eDate = new Date(endStr);
+      
+      // Update the "13 - 27" text
+      document.getElementById('bigCalendarDates').textContent = `${sDate.getDate()} - ${eDate.getDate()}`;
+      
+      // Update the "AUGUST 2026" or "AUG - SEPT 2026" text
+      const sMonth = sDate.toLocaleString('default', { month: 'long' });
+      const eMonth = eDate.toLocaleString('default', { month: 'long' });
+      const year = eDate.getFullYear();
+      
+      if (sMonth === eMonth) {
+          document.getElementById('bigCalendarMonth').textContent = `${sMonth} ${year}`;
+      } else {
+          document.getElementById('bigCalendarMonth').textContent = `${sMonth} - ${eMonth} ${year}`;
+      }
+  }
+
   async function loadPayrollSettings() {
       const { data: settings, error } = await supabaseClient
           .from('payroll_settings')
@@ -4982,6 +5005,9 @@ if (calcDeltaBtn) {
       if (settings) {
           document.getElementById('adminPeriodStart').value = settings.period_start || '';
           document.getElementById('adminPeriodEnd').value = settings.period_end || '';
+          
+          // Force the big text to match the database on load
+          updateBigCalendarDisplay(settings.period_start, settings.period_end);
       }
   }
 
@@ -5006,12 +5032,17 @@ if (calcDeltaBtn) {
               .eq('id', 1);
 
           savePayrollDatesBtn.disabled = false;
-          savePayrollDatesBtn.textContent = 'Save Dates';
+          savePayrollDatesBtn.textContent = 'Save Active Cutoff';
 
           if (error) {
               alert('Failed to save dates: ' + error.message);
           } else {
+              // Instantly update the big text without refreshing the page
+              updateBigCalendarDisplay(start, end);
               alert('Payroll cut-off dates updated successfully! Employee dashboards will now reflect this period.');
+              
+              // Trigger a recalculation of the Master Total Sheet with the new dates
+              if(typeof loadMasterTotalsSheet === 'function') loadMasterTotalsSheet();
           }
       });
   }
