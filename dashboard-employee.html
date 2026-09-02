@@ -1020,9 +1020,9 @@ aside.sidebar.collapsed ~ main.main-content {
       <section class="panel">
         <h2>Recent Attendance</h2>
         <!-- ADD THIS FILTER BAR -->
-      <div class="filter-bar" style="margin-bottom: 10px;">
-        <button id="viewCurrentCutoffBtn" class="active">Current Cutoff</button>
-        <button id="viewHistoryBtn">Full History</button>
+      <div class="filter-bar" style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <button id="viewCurrentCutoffBtn" class="btn2 primary">Current Cutoff</button>
+        <button id="viewHistoryBtn" class="btn2">Full History</button>
       </div>
       <div id="cutoffDateLabel" style="font-size: 11px; color: var(--amber-400); font-family: var(--font-mono); margin-bottom: 15px;">
         Loading active period...
@@ -1674,7 +1674,7 @@ aside.sidebar.collapsed ~ main.main-content {
   let showingFullHistory = false;
 
   async function fetchActiveCutoff() {
-      const { data } = await supabaseClient
+      const { data, error } = await supabaseClient
           .from('payroll_settings')
           .select('period_start, period_end')
           .limit(1)
@@ -1683,12 +1683,24 @@ aside.sidebar.collapsed ~ main.main-content {
       if (data && data.period_start && data.period_end) {
           activeCutoffStart = data.period_start;
           activeCutoffEnd = data.period_end;
+      } else {
+          // FALLBACK: If Supabase RLS blocks the employee, manually calculate the current cutoff
+          const now = new Date();
+          const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+          let pStart, pEnd;
           
-          // Format for the UI (e.g., Aug 13 - Aug 27)
-          const startStr = new Date(data.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const endStr = new Date(data.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          document.getElementById('cutoffDateLabel').textContent = `Showing records from: ${startStr} - ${endStr}`;
+          if (d >= 13 && d <= 27) { pStart = new Date(y, m, 13); pEnd = new Date(y, m, 27); } 
+          else if (d >= 28) { pStart = new Date(y, m, 28); pEnd = new Date(y, m + 1, 12); } 
+          else { pStart = new Date(y, m - 1, 28); pEnd = new Date(y, m, 12); }
+          
+          activeCutoffStart = pStart.getFullYear() + '-' + String(pStart.getMonth() + 1).padStart(2, '0') + '-' + String(pStart.getDate()).padStart(2, '0');
+          activeCutoffEnd = pEnd.getFullYear() + '-' + String(pEnd.getMonth() + 1).padStart(2, '0') + '-' + String(pEnd.getDate()).padStart(2, '0');
       }
+      
+      // Update the UI Label
+      const startStr = new Date(activeCutoffStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endStr = new Date(activeCutoffEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      document.getElementById('cutoffDateLabel').textContent = `Showing records from: ${startStr} - ${endStr}`;
   }
 
   // ---- CROSS-DASHBOARD THEME ENGINE ----
@@ -2960,8 +2972,8 @@ if (digitalIdBtn) {
 
   // ---- Button Listeners ----
   document.getElementById('viewCurrentCutoffBtn')?.addEventListener('click', (e) => {
-      document.getElementById('viewHistoryBtn').classList.remove('active');
-      e.target.classList.add('active');
+      document.getElementById('viewHistoryBtn').classList.remove('primary');
+      e.target.classList.add('primary');
       
       showingFullHistory = false;
       const lbl = document.getElementById('cutoffDateLabel');
@@ -2971,8 +2983,8 @@ if (digitalIdBtn) {
   });
 
   document.getElementById('viewHistoryBtn')?.addEventListener('click', (e) => {
-      document.getElementById('viewCurrentCutoffBtn').classList.remove('active');
-      e.target.classList.add('active');
+      document.getElementById('viewCurrentCutoffBtn').classList.remove('primary');
+      e.target.classList.add('primary');
       
       showingFullHistory = true;
       const lbl = document.getElementById('cutoffDateLabel');
