@@ -2875,27 +2875,6 @@ async function reviewTicket(ticketId, status, approverName) {
     filterSel.innerHTML = '<option value="">All live sellers</option>' +
       liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
   }
-
-  function toggleSchStatusFields(){
-    const isDayOff = document.getElementById('schStatus').value === 'day_off';
-    document.getElementById('schLiveDetailsRow').style.display = isDayOff ? 'none' : 'flex';
-    document.getElementById('schShiftRow').style.display = isDayOff ? 'none' : 'flex';
-  }
-  document.getElementById('schStatus').addEventListener('change', toggleSchStatusFields);
-  toggleSchStatusFields();
-
-  function datesInRange(fromStr, toStr, allowedWeekdays){
-    const dates = [];
-    let d = new Date(fromStr + 'T00:00:00');
-    const end = new Date(toStr + 'T00:00:00');
-    while(d <= end){
-      if(allowedWeekdays.has(d.getDay())){
-        dates.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
-      }
-      d.setDate(d.getDate()+1);
-    }
-    return dates;
-  }
   
   // --- NEW: MONTHLY MATRIX BUILDER ENGINE ---
 
