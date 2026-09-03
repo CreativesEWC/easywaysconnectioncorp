@@ -3080,23 +3080,46 @@ async function reviewTicket(ticketId, status, approverName) {
   async function loadSchedule(){
     document.getElementById('schLoading').style.display = 'block';
     document.getElementById('schLoading').className = 'loading-note';
-    document.getElementById('schLoading').textContent = 'Loading schedule…';
-    document.getElementById('schTable').style.display = 'none';
+    document.getElementById('schLoading').textContent = 'Loading schedule matrix…';
+    
+    const tableEl = document.getElementById('schTable');
+    tableEl.style.display = 'none';
 
     const filterEmployee = document.getElementById('schFilterEmployee').value;
     
-    // Fetch upcoming schedules, sorted by date and then by shift start time
+    // Calculate Current Week (Monday - Sunday)
+    const today = new Date();
+    const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); 
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - dayOfWeek + 1);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    
+    const pad = n => String(n).padStart(2, '0');
+    const monStr = `${monday.getFullYear()}-${pad(monday.getMonth()+1)}-${pad(monday.getDate())}`;
+    const sunStr = `${sunday.getFullYear()}-${pad(sunday.getMonth()+1)}-${pad(sunday.getDate())}`;
+
+    const weekDates = [];
+    for(let i=0; i<7; i++){
+        let d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        weekDates.push(d);
+    }
+
+    // Fetch this week's schedules
     let query = supabaseClient
       .from('live_seller_schedule')
-      .select('*, employees!employee_id(name, badge_id), brands(name), platforms(name)')
-      .gte('schedule_date', todayStr())
-      .order('schedule_date', { ascending: true })
-      .order('shift_start', { ascending: true }); 
+      .select('*, employees!employee_id(name), brands(name)')
+      .gte('schedule_date', monStr)
+      .lte('schedule_date', sunStr)
+      .order('schedule_date', { ascending: true }); 
       
     if(filterEmployee) query = query.eq('employee_id', filterEmployee);
 
     const { data, error } = await query;
     document.getElementById('schLoading').style.display = 'none';
+    
     if(error){
       document.getElementById('schLoading').textContent = 'Could not load schedule: ' + error.message;
       document.getElementById('schLoading').className = 'error-note';
@@ -3105,92 +3128,81 @@ async function reviewTicket(ticketId, status, approverName) {
     }
 
     const rows = data || [];
-    document.getElementById('schTable').style.display = 'table';
-    document.getElementById('schCount').textContent = rows.length + (rows.length === 1 ? ' shift' : ' shifts');
-    const tbody = document.getElementById('schTableBody');
+    tableEl.style.display = 'table';
+    tableEl.classList.add('matrix-table'); // Applies your builder's CSS automatically
     
+    document.getElementById('schCount').textContent = `This Week (${monday.toLocaleDateString('en-US', {month:'short', day:'numeric'})} - ${sunday.toLocaleDateString('en-US', {month:'short', day:'numeric'})})`;
+
     if(rows.length === 0){
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No upcoming schedule entries</td></tr>';
+      tableEl.innerHTML = '<tbody><tr class="empty-row"><td colspan="8">No schedules found for this week.</td></tr></tbody>';
       return;
     }
 
-    // --- NEW: GROUP BY BRAND / PLATFORM ---
+    // Group by Brand -> Employee -> Date
     const grouped = {};
     rows.forEach(r => {
-      const brandPlatform = r.status === 'day_off' ? 'Day Off / Unassigned' :
-        [r.brands ? r.brands.name : null, r.platforms ? r.platforms.name : null].filter(Boolean).map(escapeHtml).join(' · ') || 'Unassigned';
+      const brand = r.brands ? r.brands.name : 'Unassigned';
+      const emp = r.employees ? r.employees.name : 'Unknown';
       
-      if(!grouped[brandPlatform]) grouped[brandPlatform] = [];
-      grouped[brandPlatform].push(r);
+      if(!grouped[brand]) grouped[brand] = {};
+      if(!grouped[brand][emp]) grouped[brand][emp] = {};
+
+      let shiftStr = 'OFF';
+      if(r.status !== 'day_off' && r.shift_start && r.shift_end) {
+          const formatTime = (t) => {
+              let [h, m] = t.split(':');
+              h = parseInt(h);
+              const ampm = h >= 12 ? 'PM' : 'AM';
+              h = h % 12 || 12;
+              return m === '00' ? `${h}${ampm}` : `${h}:${m}${ampm}`;
+          };
+          shiftStr = `${formatTime(r.shift_start)}-${formatTime(r.shift_end)}`;
+      }
+      
+      grouped[brand][emp][r.schedule_date] = shiftStr;
     });
 
     let html = '';
     
-    // Array of nice IG-style accent colors to cycle through for the brand headers
-    const accentColors = ['var(--amber-500)', 'var(--mint-500)', '#d9614f', '#3797F0', '#a63e2f', '#4fb286'];
-    let colorIndex = 0;
-
-    // Loop through the groups and build the table
-    for (const [groupName, groupRows] of Object.entries(grouped)) {
-      const headerColor = groupName === 'Day Off / Unassigned' ? '#5c6d99' : accentColors[colorIndex % accentColors.length];
-      colorIndex++;
-
-      // 1. Create the Bold Group Header Row
+    for (const [brand, emps] of Object.entries(grouped)) {
       html += `
-        <tr style="background: var(--navy-900);">
-          <td colspan="6" style="padding: 16px 12px; font-family: var(--font-display); font-size: 16px; color: ${headerColor}; text-transform: uppercase; font-weight: bold; border-top: 2px solid ${headerColor}; border-bottom: 1px solid var(--line); letter-spacing: 1px;">
-            ${groupName}
-          </td>
-        </tr>
-      `;
-
-      // 2. Create the Employee Rows underneath the Header
-      groupRows.forEach(r => {
-        const dateLabel = new Date(r.schedule_date + 'T00:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
-        const statusPill = r.status === 'day_off'
-          ? '<span class="pill rejected" style="padding: 2px 8px; font-size: 9px;">Day Off</span>'
-          : '<span class="pill approved" style="padding: 2px 8px; font-size: 9px;">Scheduled</span>';
-        
-        // Format Shift 24hr time to 12hr time (e.g. 08:00 to 8:00 AM)
-        let shift = '—';
-        if (r.shift_start && r.shift_end) {
-            const formatTime = (t) => {
-                const [h, m] = t.split(':');
-                const date = new Date(); date.setHours(h, m);
-                return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
-            };
-            shift = `${formatTime(r.shift_start)} - ${formatTime(r.shift_end)}`;
-        }
-
-        html += `
-          <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--navy-800)'" onmouseout="this.style.background='transparent'">
-            <td class="mono" style="color: #9fb0d6; font-size: 11px; width: 100px;">${dateLabel}</td>
-            <td style="font-weight: 600; color: var(--paper);">${r.employees ? escapeHtml(r.employees.name) : '(removed)'}</td>
-            <td>${statusPill}</td>
-            <td style="color: #5c6d99; font-size: 11px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${groupName}</td>
-            <td class="mono" style="color: var(--amber-400); font-weight: bold; font-size: 11px;">${shift}</td>
-            <td class="row-actions" style="text-align: right;">
-                <button class="btn danger" data-delsch="${r.id}" style="padding: 4px 8px; font-size: 10px; background: transparent;">Delete</button>
+        <tbody>
+          <tr style="background: var(--navy-900);">
+            <td colspan="8" style="padding: 12px 15px; font-family: var(--font-display); font-size: 16px; color: var(--amber-400); text-transform: uppercase; font-weight: bold; border: 1px solid var(--line); letter-spacing: 1px; text-align: left;">
+              SHOP: ${escapeHtml(brand)}
             </td>
           </tr>
-        `;
+          <tr style="background: rgba(0,0,0,0.2);">
+            <th style="padding: 10px; border: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: #7488b6; text-transform: uppercase; text-align: left; width: 16%;">Live Host</th>
+      `;
+      
+      weekDates.forEach(d => {
+          const dayName = d.toLocaleDateString('en-US', {weekday:'short'});
+          const dayNum = d.getDate();
+          html += `<th style="padding: 10px; border: 1px solid var(--line); text-align: center; font-family: var(--font-mono); font-size: 11px; color: #7488b6; text-transform: uppercase; width: 12%;">${dayName} ${dayNum}</th>`;
       });
+      html += `</tr>`;
+
+      for (const [emp, shifts] of Object.entries(emps)) {
+          html += `
+          <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--navy-800)'" onmouseout="this.style.background='transparent'">
+            <td style="font-weight: bold; color: var(--paper); border: 1px solid var(--line); padding: 8px 12px; text-align: left;">${escapeHtml(emp)}</td>
+          `;
+          
+          weekDates.forEach(d => {
+              const dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+              const shift = shifts[dateStr] || '~';
+              const isOff = shift === 'OFF';
+              
+              html += `<td class="mono" style="text-align: center; border: 1px solid var(--line); padding: 8px; font-size: 11px; ${isOff ? 'color: var(--coral-500); font-weight: bold;' : 'color: var(--paper);'}">${shift}</td>`;
+          });
+          html += `</tr>`;
+      }
+      html += `</tbody>`;
     }
 
-    tbody.innerHTML = html;
-    
-    // Re-attach delete listeners
-    tbody.querySelectorAll('[data-delsch]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        if(!confirm('Delete this schedule entry?')) return;
-        const { error } = await supabaseClient.from('live_seller_schedule').delete().eq('id', btn.dataset.delsch);
-        if(error){ alert('Could not delete: ' + error.message); return; }
-        await loadSchedule();
-      });
-    });
+    tableEl.innerHTML = html;
   }
-
-  document.getElementById('schFilterEmployee').addEventListener('change', loadSchedule);
 
   await loadPlatforms();
   loadBrandsIntoSchForm();
