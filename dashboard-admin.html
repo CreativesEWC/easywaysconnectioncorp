@@ -543,6 +543,24 @@ aside.sidebar.collapsed ~ main.main-content {
       /* Ensures the white background stays inside the perfect circle */
       object-fit: cover; 
   }
+
+  /* ---- LIVE SELLER MATRIX BUILDER STYLES ---- */
+  .matrix-shop-block { background: var(--navy-800); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
+  .matrix-shop-header { background: var(--navy-900); padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }
+  .matrix-shop-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 16px; color: var(--amber-400); text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+  .matrix-shop-title select { background: var(--navy-950); border: 1px solid var(--line); color: var(--amber-400); font-weight: bold; font-size: 14px; padding: 4px 8px; border-radius: 4px; }
+  
+  .matrix-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; min-width: 800px; }
+  .matrix-table th { background: rgba(0,0,0,0.2); padding: 10px; font-family: var(--font-mono); font-size: 11px; color: #7488b6; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-transform: uppercase; }
+  .matrix-table td { padding: 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .matrix-table td:last-child, .matrix-table th:last-child { border-right: none; }
+  
+  .matrix-input { width: 100%; background: transparent; border: 1px solid transparent; color: var(--paper); text-align: center; font-size: 12px; padding: 8px 4px; border-radius: 4px; font-family: var(--font-mono); text-transform: uppercase; transition: 0.2s; }
+  .matrix-input:hover, .matrix-input:focus { background: var(--navy-900); border-color: var(--amber-500); outline: none; }
+  .matrix-input.off { color: var(--coral-500); font-weight: bold; }
+  
+  .matrix-host-select { width: 100%; background: var(--navy-900); border: 1px solid transparent; color: var(--paper); font-weight: bold; font-size: 12px; padding: 8px; border-radius: 4px; cursor: pointer; }
+  .matrix-host-select:hover { border-color: var(--line); }
   
 </style>
 </head>
@@ -1293,59 +1311,47 @@ aside.sidebar.collapsed ~ main.main-content {
     <button data-sched="csr">CSR Sunday Rotation</button>
   </div>
 
-  <!-- LIVE SELLER VIEW WRAPPER -->
+  <!-- LIVE SELLER VIEW WRAPPER (MONTHLY MATRIX BUILDER) -->
   <div id="view-liveseller">
-    <section class="panel">
-      <h2>Assign Schedule</h2>
-      <div class="form-row">
-        <select id="schEmployee" style="flex:1; min-width:200px;"><option value="">Loading live sellers…</option></select>
-        <select id="schStatus">
-          <option value="scheduled">Scheduled (live day)</option>
-          <option value="day_off">Day Off</option>
-        </select>
+    <section class="panel" style="border-color: var(--amber-500);">
+      
+      <!-- Builder Header -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 style="margin: 0; color: var(--amber-400); font-size: 18px;">Monthly Live Matrix Builder</h2>
+          <p style="font-size: 11px; color: #7488b6; margin: 4px 0 0 0;">Assign a repeating weekly pattern for the entire month. Formats: "8AM-6PM", "12NN-9PM", "OFF", "~"</p>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div style="display: flex; flex-direction: column;">
+            <label style="font-size: 9px; color: #7488b6; font-family: var(--font-mono); text-transform: uppercase; margin-bottom: 4px;">Target Month</label>
+            <input type="month" id="matrixMonth" style="background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 12px; font-size: 13px;">
+          </div>
+          <button class="btn2" id="addShopMatrixBtn" style="height: 38px; margin-top: 17px; border-color: var(--amber-500); color: var(--amber-400);">+ Add Shop Block</button>
+          <button class="btn2 primary" id="saveMatrixBtn" style="height: 38px; margin-top: 17px;">Save Entire Month</button>
+        </div>
       </div>
 
-      <div class="form-row">
-        <input type="date" id="schDateFrom" title="From date">
-        <input type="date" id="schDateTo" title="To date (leave same as From for a single day)">
+      <!-- The Container Where JS will inject the Shop Blocks -->
+      <div id="matrixContainer" style="display: flex; flex-direction: column; gap: 15px; margin-top: 30px; overflow-x: auto;">
+         <!-- JS will dynamically add shop blocks here -->
+         <div class="empty-note" style="text-align: center; padding: 30px;">Click "+ Add Shop Block" to start building your schedule.</div>
       </div>
-      <div class="form-row" id="schWeekdayRow">
-        <label style="font-family:var(--font-mono); font-size:11px; color:#7488b6; display:flex; align-items:center; margin-right:4px;">Apply to:</label>
-        <label class="wd-check"><input type="checkbox" value="1" checked> Mon</label>
-        <label class="wd-check"><input type="checkbox" value="2" checked> Tue</label>
-        <label class="wd-check"><input type="checkbox" value="3" checked> Wed</label>
-        <label class="wd-check"><input type="checkbox" value="4" checked> Thu</label>
-        <label class="wd-check"><input type="checkbox" value="5" checked> Fri</label>
-        <label class="wd-check"><input type="checkbox" value="6" checked> Sat</label>
-        <label class="wd-check"><input type="checkbox" value="0" checked> Sun</label>
-      </div>
-      <div class="form-row" id="schLiveDetailsRow">
-        <select id="schBrand"><option value="">Select brand…</option></select>
-        <select id="schPlatform"><option value="">Select platform…</option></select>
-      </div>
-      <div class="form-row" id="schShiftRow">
-        <input type="time" id="schShiftStart" title="Shift start">
-        <input type="time" id="schShiftEnd" title="Shift end">
-      </div>
-      <div class="form-row">
-        <textarea id="schNotes" placeholder="Optional note (shown to the employee)…"></textarea>
-      </div>
-      <div class="form-row">
-        <button class="btn primary" id="schSubmitBtn">Save Schedule</button>
-      </div>
-      <p class="loading-note" style="padding-top:0;">Saving posts one row per matching date and automatically notifies the employee on their dashboard — no extra step needed.</p>
+      
     </section>
 
+    <!-- Read-Only View of Saved Schedules -->
     <section class="panel">
-      <h2>Upcoming Schedule <span class="count" id="schCount">—</span></h2>
+      <h2>Saved Schedule Database <span class="count" id="schCount">—</span></h2>
       <div class="form-row">
         <select id="schFilterEmployee"><option value="">All live sellers</option></select>
       </div>
       <div id="schLoading" class="loading-note">Loading schedule…</div>
-      <table style="display:none;" id="schTable">
-        <thead><tr><th>Date</th><th>Employee</th><th>Status</th><th>Brand / Platform</th><th>Shift</th><th></th></tr></thead>
-        <tbody id="schTableBody"></tbody>
-      </table>
+      <div style="overflow-x: auto;">
+        <table style="display:none; min-width: 700px;" id="schTable">
+          <thead><tr><th>Date</th><th>Employee</th><th>Status</th><th>Brand / Platform</th><th>Shift</th><th></th></tr></thead>
+          <tbody id="schTableBody"></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
@@ -2891,56 +2897,210 @@ async function reviewTicket(ticketId, status, approverName) {
     return dates;
   }
 
-  document.getElementById('schSubmitBtn').addEventListener('click', async ()=>{
-    const employee_id = document.getElementById('schEmployee').value;
-    const status = document.getElementById('schStatus').value;
-    const dateFrom = document.getElementById('schDateFrom').value;
-    const dateTo = document.getElementById('schDateTo').value || dateFrom;
-    const brand_id = document.getElementById('schBrand').value || null;
-    const platform_id = document.getElementById('schPlatform').value || null;
-    const shift_start = document.getElementById('schShiftStart').value || null;
-    const shift_end = document.getElementById('schShiftEnd').value || null;
-    const notes = document.getElementById('schNotes').value.trim() || null;
+  // --- NEW: MONTHLY MATRIX BUILDER ENGINE ---
 
-    if(!employee_id){ alert('Select a live seller.'); return; }
-    if(!dateFrom){ alert('Pick at least a From date.'); return; }
-    if(dateTo < dateFrom){ alert('The To date is before the From date.'); return; }
-    if(status === 'scheduled' && !brand_id){ alert('Select a brand for a scheduled (live) day.'); return; }
+  // 1. Set default target month to current month
+  const matrixMonthPicker = document.getElementById('matrixMonth');
+  if (matrixMonthPicker) {
+      const today = new Date();
+      matrixMonthPicker.value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+  }
 
-    const allowedWeekdays = new Set(
-      Array.from(document.querySelectorAll('#schWeekdayRow input:checked')).map(cb => Number(cb.value))
-    );
-    if(allowedWeekdays.size === 0){ alert('Select at least one weekday to apply this to.'); return; }
+  let shopBlockCounter = 0;
+  const matrixContainer = document.getElementById('matrixContainer');
 
-    const dates = datesInRange(dateFrom, dateTo, allowedWeekdays);
-    if(dates.length === 0){ alert('No matching dates in that range for the selected weekdays.'); return; }
+  // 2. Add Shop Block Logic
+  document.getElementById('addShopMatrixBtn')?.addEventListener('click', () => {
+      // Remove empty placeholder
+      const emptyNote = matrixContainer.querySelector('.empty-note');
+      if (emptyNote) emptyNote.remove();
 
-    const rows = dates.map(schedule_date => ({
-      employee_id, schedule_date, status,
-      brand_id: status === 'day_off' ? null : brand_id,
-      platform_id: status === 'day_off' ? null : platform_id,
-      shift_start: status === 'day_off' ? null : shift_start,
-      shift_end: status === 'day_off' ? null : shift_end,
-      notes, created_by: emp.id
-    }));
+      shopBlockCounter++;
+      const blockId = 'shop-block-' + shopBlockCounter;
 
-    const btn = document.getElementById('schSubmitBtn');
-    btn.disabled = true; btn.textContent = 'Saving…';
+      const brandOptions = '<option value="">Select Brand/Shop...</option>' + 
+          allBrands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
 
-    // upsert so re-running an overlapping range updates existing days
-    // (and fires the update-notification trigger) instead of erroring
-    // on the unique(employee_id, schedule_date) constraint.
-    const { error } = await supabaseClient
-      .from('live_seller_schedule')
-      .upsert(rows, { onConflict: 'employee_id,schedule_date' });
+      const blockHTML = `
+          <div class="matrix-shop-block" id="${blockId}">
+            <div class="matrix-shop-header">
+              <div class="matrix-shop-title">
+                Shop: 
+                <select class="matrix-brand-select">${brandOptions}</select>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                  <button class="btn2 add-host-btn" data-target="${blockId}" style="font-size: 10px; padding: 4px 8px;">+ Add Host Row</button>
+                  <button class="btn danger remove-shop-btn" style="font-size: 10px; padding: 4px 8px;">Remove Shop</button>
+              </div>
+            </div>
+            <table class="matrix-table">
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Live Host</th>
+                  <th style="width: 12%;">Mon</th>
+                  <th style="width: 12%;">Tue</th>
+                  <th style="width: 12%;">Wed</th>
+                  <th style="width: 12%;">Thu</th>
+                  <th style="width: 12%;">Fri</th>
+                  <th style="width: 12%;">Sat</th>
+                  <th style="width: 12%;">Sun</th>
+                  <th style="width: 3%;"></th>
+                </tr>
+              </thead>
+              <tbody class="matrix-tbody"></tbody>
+            </table>
+          </div>
+      `;
+      
+      matrixContainer.insertAdjacentHTML('beforeend', blockHTML);
+      const newBlock = document.getElementById(blockId);
+      
+      // Wire up buttons for this block
+      newBlock.querySelector('.add-host-btn').addEventListener('click', () => addMatrixHostRow(blockId));
+      newBlock.querySelector('.remove-shop-btn').addEventListener('click', () => newBlock.remove());
+      
+      // Add first empty row automatically
+      addMatrixHostRow(blockId);
+  });
 
-    btn.disabled = false; btn.textContent = 'Save Schedule';
+  // 3. Add Host Row Logic
+  function addMatrixHostRow(blockId) {
+      const tbody = document.querySelector(`#${blockId} .matrix-tbody`);
+      if (!tbody) return;
 
-    if(error){ alert('Could not save schedule: ' + error.message); return; }
+      const hostOptions = '<option value="">Select Host...</option>' + 
+          liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
 
-    document.getElementById('schNotes').value = '';
-    await loadSchedule();
-    alert(`Saved ${dates.length} day${dates.length === 1 ? '' : 's'}. The employee has been notified on their dashboard.`);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+          <td><select class="matrix-host-select">${hostOptions}</select></td>
+          <td><input type="text" class="matrix-input" placeholder="8AM-6PM"></td>
+          <td><input type="text" class="matrix-input" placeholder="8AM-6PM"></td>
+          <td><input type="text" class="matrix-input" placeholder="8AM-6PM"></td>
+          <td><input type="text" class="matrix-input" placeholder="8AM-6PM"></td>
+          <td><input type="text" class="matrix-input" placeholder="8AM-6PM"></td>
+          <td><input type="text" class="matrix-input" placeholder="8AM-6PM"></td>
+          <td><input type="text" class="matrix-input" placeholder="OFF"></td>
+          <td><button class="btn danger remove-row-btn" style="padding: 2px 6px; font-size: 10px;">X</button></td>
+      `;
+
+      // Auto-style "OFF" visually
+      tr.querySelectorAll('.matrix-input').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+              if (e.target.value.toUpperCase() === 'OFF') e.target.classList.add('off');
+              else e.target.classList.remove('off');
+          });
+      });
+
+      tr.querySelector('.remove-row-btn').addEventListener('click', () => tr.remove());
+      tbody.appendChild(tr);
+  }
+
+  // 4. Time Parser (Translates "12NN" or "3PM" to database "12:00" format)
+  function parseShiftTime(timeStr) {
+      if (!timeStr) return null;
+      timeStr = timeStr.toUpperCase().replace(/ /g, '');
+      if (timeStr === '12NN') return '12:00';
+      if (timeStr === '12MN') return '00:00'; // Technically midnight
+      
+      let hours = parseInt(timeStr, 10);
+      if (isNaN(hours)) return null;
+      
+      if (timeStr.includes('PM') && hours !== 12) hours += 12;
+      if (timeStr.includes('AM') && hours === 12) hours = 0;
+      
+      return String(hours).padStart(2, '0') + ':00';
+  }
+
+  // 5. The Core Save Engine (Expands the grid to the full month)
+  document.getElementById('saveMatrixBtn')?.addEventListener('click', async () => {
+      const targetMonthVal = document.getElementById('matrixMonth').value;
+      if (!targetMonthVal) return alert('Please select a target month.');
+
+      const [year, month] = targetMonthVal.split('-').map(Number);
+      const shopBlocks = document.querySelectorAll('.matrix-shop-block');
+      const schedulePayload = [];
+      let hasError = false;
+
+      shopBlocks.forEach(block => {
+          const brandId = block.querySelector('.matrix-brand-select').value;
+          if (!brandId) {
+              alert('One of your Shop Blocks is missing a Brand selection.');
+              hasError = true; return;
+          }
+
+          const rows = block.querySelectorAll('.matrix-tbody tr');
+          rows.forEach(row => {
+              const employeeId = row.querySelector('.matrix-host-select').value;
+              if (!employeeId) return; // Skip empty rows
+
+              const inputs = row.querySelectorAll('.matrix-input');
+              // Indices 0-6 map to Mon-Sun
+              const weeklyPattern = Array.from(inputs).map(inp => inp.value.trim().toUpperCase());
+
+              // Loop through every single day of the selected month
+              const daysInMonth = new Date(year, month, 0).getDate();
+              
+              for (let d = 1; d <= daysInMonth; d++) {
+                  const currentDay = new Date(year, month - 1, d);
+                  let dayOfWeek = currentDay.getDay(); // 0=Sun, 1=Mon...
+                  
+                  // Shift to match our array (Mon=0... Sun=6)
+                  const arrayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                  const shiftVal = weeklyPattern[arrayIndex];
+                  
+                  if (!shiftVal || shiftVal === '~') continue; // Skip blank or ~ cells
+
+                  const scheduleDate = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                  let status = 'scheduled';
+                  let shiftStart = null;
+                  let shiftEnd = null;
+                  let actualBrandId = brandId;
+
+                  if (shiftVal === 'OFF') {
+                      status = 'day_off';
+                      actualBrandId = null;
+                  } else {
+                      const parts = shiftVal.split('-');
+                      if (parts.length === 2) {
+                          shiftStart = parseShiftTime(parts[0]);
+                          shiftEnd = parseShiftTime(parts[1]);
+                      }
+                  }
+
+                  schedulePayload.push({
+                      employee_id: employeeId,
+                      schedule_date: scheduleDate,
+                      status: status,
+                      brand_id: actualBrandId,
+                      platform_id: null, // Left null as platforms are mapped via brands later
+                      shift_start: shiftStart,
+                      shift_end: shiftEnd,
+                      created_by: emp.id
+                  });
+              }
+          });
+      });
+
+      if (hasError) return;
+      if (schedulePayload.length === 0) return alert('No valid schedules found to save.');
+
+      const btn = document.getElementById('saveMatrixBtn');
+      btn.disabled = true; btn.textContent = 'Saving Month...';
+
+      // Push all ~30 days per employee to the database in one shot
+      const { error } = await supabaseClient
+          .from('live_seller_schedule')
+          .upsert(schedulePayload, { onConflict: 'employee_id,schedule_date' });
+
+      btn.disabled = false; btn.textContent = 'Save Entire Month';
+
+      if (error) {
+          alert('Error saving schedule: ' + error.message);
+      } else {
+          alert(`Successfully scheduled ${schedulePayload.length} shifts for the month!`);
+          await loadSchedule(); // Refresh the table below
+      }
   });
 
   async function loadSchedule(){
