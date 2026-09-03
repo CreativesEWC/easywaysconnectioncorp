@@ -2860,16 +2860,16 @@ async function reviewTicket(ticketId, status, approverName) {
     }
   }
 
-  async function loadLiveSellers(){
+ async function loadLiveSellers(){
     const liveSellerPos = allPositions.find(p => p.name === 'Live Seller');
     liveSellers = liveSellerPos ? allEmployees.filter(e => e.position_id === liveSellerPos.id) : [];
 
-    const empSel = document.getElementById('schEmployee');
     const filterSel = document.getElementById('schFilterEmployee');
-    if(liveSellers.length === 0){
-      empSel.innerHTML = '<option value="">No employees with the "Live Seller" position yet</option>';
-      return;
+    if(filterSel) {
+        filterSel.innerHTML = '<option value="">All live sellers</option>' +
+          liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
     }
+  }
     empSel.innerHTML = '<option value="">Select a live seller…</option>' +
       liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${escapeHtml(e.badge_id)})</option>`).join('');
     filterSel.innerHTML = '<option value="">All live sellers</option>' +
@@ -4345,6 +4345,27 @@ if (calcDeltaBtn) {
     document.getElementById('attendanceModal').classList.remove('open');
     await loadAttendance(); // Refresh table
   });
+
+  // --- ATTENDANCE CORRECTION ENGINE ---
+  function toLocalDatetimeString(isoString) {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  window.openAttendanceEditor = function(recordId) {
+    const record = currentAttendanceRows.find(r => r.id === recordId);
+    if (!record) return;
+
+    document.getElementById('editAttId').value = record.id;
+    document.getElementById('editAttEmpName').textContent = record.employees ? `${record.employees.name} (${record.employees.badge_id})` : 'Unknown Employee';
+    
+    document.getElementById('editAttTimeIn').value = toLocalDatetimeString(record.time_in);
+    document.getElementById('editAttTimeOut').value = toLocalDatetimeString(record.time_out);
+
+    document.getElementById('attendanceModal').classList.add('open');
+  };
 
   // ---- 4. SAVE VIDEO AUDIT TO PAYROLL ----
   const saveVideoBtn = document.getElementById('saveVideoAuditBtn');
