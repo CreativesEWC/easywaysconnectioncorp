@@ -3082,7 +3082,6 @@ async function reviewTicket(ticketId, status, approverName) {
     document.getElementById('schLoading').className = 'loading-note';
     document.getElementById('schLoading').textContent = 'Loading schedule matrix…';
     
-    // Convert the old HTML table into a modern Flexbox container for our blocks
     let container = document.getElementById('schTable');
     if (container.tagName === 'TABLE') {
         const newDiv = document.createElement('div');
@@ -3148,14 +3147,16 @@ async function reviewTicket(ticketId, status, approverName) {
       return;
     }
 
-    // Group by Brand -> Employee -> Date
+    // Group by Brand -> Employee -> Date (Now storing Database IDs for the Delete buttons)
     const grouped = {};
     rows.forEach(r => {
       const brand = r.brands ? r.brands.name : 'Unassigned';
+      const brandId = r.brand_id;
       const emp = r.employees ? r.employees.name : 'Unknown';
+      const empId = r.employee_id;
       
-      if(!grouped[brand]) grouped[brand] = {};
-      if(!grouped[brand][emp]) grouped[brand][emp] = {};
+      if(!grouped[brand]) grouped[brand] = { brandId: brandId, emps: {} };
+      if(!grouped[brand].emps[emp]) grouped[brand].emps[emp] = { empId: empId, shifts: {} };
 
       let shiftStr = 'OFF';
       if(r.status !== 'day_off' && r.shift_start && r.shift_end) {
@@ -3169,16 +3170,17 @@ async function reviewTicket(ticketId, status, approverName) {
           shiftStr = `${formatTime(r.shift_start)}-${formatTime(r.shift_end)}`;
       }
       
-      grouped[brand][emp][r.schedule_date] = shiftStr;
+      grouped[brand].emps[emp].shifts[r.schedule_date] = shiftStr;
     });
 
     let html = '';
     
-    for (const [brand, emps] of Object.entries(grouped)) {
+    for (const [brand, brandData] of Object.entries(grouped)) {
       html += `
         <div class="matrix-shop-block">
-          <div class="matrix-shop-header">
+          <div class="matrix-shop-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="matrix-shop-title">SHOP: ${escapeHtml(brand)}</div>
+            <button class="btn danger" onclick="deleteShopWeek('${brandData.brandId}', '${monStr}', '${sunStr}')" style="font-size: 10px; padding: 4px 12px; background: transparent; border: 1px solid var(--coral-500);">Remove Shop</button>
           </div>
           <div style="overflow-x: auto;">
             <table class="matrix-table">
@@ -3190,27 +3192,31 @@ async function reviewTicket(ticketId, status, approverName) {
       weekDates.forEach(d => {
           const dayName = d.toLocaleDateString('en-US', {weekday:'short'});
           const dayNum = d.getDate();
-          html += `<th style="width: 12%;">${dayName} ${dayNum}</th>`;
+          html += `<th style="width: 11%;">${dayName} ${dayNum}</th>`;
       });
       
       html += `
+                  <th style="width: 8%;"></th>
                 </tr>
               </thead>
               <tbody class="matrix-tbody">
       `;
 
-      for (const [emp, shifts] of Object.entries(emps)) {
+      for (const [emp, empData] of Object.entries(brandData.emps)) {
           html += `<tr><td style="text-align: left; font-weight: bold; color: var(--paper); padding-left: 15px;">${escapeHtml(emp)}</td>`;
           
           weekDates.forEach(d => {
               const dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-              const shift = shifts[dateStr] || '~';
+              const shift = empData.shifts[dateStr] || '~';
               const isOff = shift === 'OFF';
               
-              // We reuse your matrix-input CSS class but make it read-only so it matches the builder perfectly
               html += `<td><input type="text" class="matrix-input ${isOff ? 'off' : ''}" value="${shift}" readonly style="cursor: default;"></td>`;
           });
-          html += `</tr>`;
+          html += `
+            <td style="text-align: center;">
+               <button class="btn danger" onclick="deleteHostWeek('${empData.empId}', '${brandData.brandId}', '${monStr}', '${sunStr}')" style="padding: 2px 8px; font-size: 10px; background: transparent;" title="Remove Host">X</button>
+            </td>
+          </tr>`;
       }
       
       html += `
@@ -3223,6 +3229,29 @@ async function reviewTicket(ticketId, status, approverName) {
 
     container.innerHTML = html;
   }
+
+  // --- NEW: GLOBAL DELETE HELPERS ---
+  window.deleteShopWeek = async function(brandId, startStr, endStr) {
+      if (!confirm("Are you sure you want to completely clear this shop's schedule for this week?")) return;
+      
+      let query = supabaseClient.from('live_seller_schedule').delete().gte('schedule_date', startStr).lte('schedule_date', endStr);
+      query = (brandId && brandId !== 'null' && brandId !== 'undefined') ? query.eq('brand_id', brandId) : query.is('brand_id', null);
+
+      const { error } = await query;
+      if (error) alert("Error clearing shop: " + error.message);
+      else loadSchedule();
+  };
+
+  window.deleteHostWeek = async function(empId, brandId, startStr, endStr) {
+      if (!confirm("Remove this host from this shop for the week?")) return;
+      
+      let query = supabaseClient.from('live_seller_schedule').delete().eq('employee_id', empId).gte('schedule_date', startStr).lte('schedule_date', endStr);
+      query = (brandId && brandId !== 'null' && brandId !== 'undefined') ? query.eq('brand_id', brandId) : query.is('brand_id', null);
+
+      const { error } = await query;
+      if (error) alert("Error removing host: " + error.message);
+      else loadSchedule();
+  };
 
   await loadPlatforms();
   loadBrandsIntoSchForm();
