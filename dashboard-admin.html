@@ -3033,7 +3033,7 @@ async function reviewTicket(ticketId, status, approverName) {
 
                   if (shiftVal === 'OFF') {
                       status = 'day_off';
-                      actualBrandId = null;
+                      actualBrandId = brandId; // Keeps the brand ID attached so Supabase accepts it!
                   } else {
                       const parts = shiftVal.split('-');
                       if (parts.length === 2) {
