@@ -2914,10 +2914,47 @@ if (digitalIdBtn) {
 
       let totalLateMins = 0;
       let totalOtMins = 0;
-      list.forEach(r => {
-          totalLateMins += (r.late_penalty_minutes || 0);
-          totalOtMins += (r.earned_ot_minutes || 0);
+
+    // Identify if the logged-in employee is on the fixed 9-to-6 schedule
+      const posName = (emp.positions && emp.positions.name) ? emp.positions.name.toUpperCase() : (emp.position || '').toUpperCase();
+      const isFixed9to6 = posName.includes('MULTIMEDIA ARTIST') || 
+                          posName.includes('RTS ADMINISTRATIVE') || 
+                          posName.includes('EXECUTIVE SECRETARY');
+
+    list.forEach(r => {
+          if (isFixed9to6) {
+              // Dynamic calculation based on exact timestamps for office staff
+              if (r.time_in) {
+                  const tIn = new Date(r.time_in);
+                  const shiftStart = new Date(tIn);
+                  shiftStart.setHours(9, 0, 0, 0); // 9:00 AM
+                  
+                  if (tIn > shiftStart) {
+                      const exactMinsLate = (tIn - shiftStart) / 60000;
+                      totalLateMins += Math.ceil(exactMinsLate / 5) * 5;
+                  }
+              }
+              if (r.time_out) {
+                  const tOut = new Date(r.time_out);
+                  const shiftEnd = new Date(tOut);
+                  shiftEnd.setHours(18, 0, 0, 0); // 6:00 PM
+                  
+                  if (tOut > shiftEnd) {
+                      const exactOtMins = (tOut - shiftEnd) / 60000;
+                      totalOtMins += Math.floor(exactOtMins / 30) * 30;
+                  }
+              }
+          } else {
+              // Database fallback for rotating shifts (CSRs, Live Sellers, etc.)
+              totalLateMins += (r.late_penalty_minutes || 0);
+              totalOtMins += (r.earned_ot_minutes || 0);
+          }
       });
+    
+      //list.forEach(r => {
+        //  totalLateMins += (r.late_penalty_minutes || 0);
+       //   totalOtMins += (r.earned_ot_minutes || 0);
+     // });
 
       // Inject totals into the HTML
       document.getElementById('statThisMonth').textContent = list.length;
