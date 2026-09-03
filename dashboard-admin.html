@@ -2870,11 +2870,6 @@ async function reviewTicket(ticketId, status, approverName) {
           liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
     }
   }
-    empSel.innerHTML = '<option value="">Select a live seller…</option>' +
-      liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${escapeHtml(e.badge_id)})</option>`).join('');
-    filterSel.innerHTML = '<option value="">All live sellers</option>' +
-      liveSellers.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
-  }
   
   // --- NEW: MONTHLY MATRIX BUILDER ENGINE ---
 
