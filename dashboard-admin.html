@@ -2992,12 +2992,18 @@ async function reviewTicket(ticketId, status, approverName) {
       if (!targetMonthVal) return alert('Please select a target month.');
 
       const [year, month] = targetMonthVal.split('-').map(Number);
-      const shopBlocks = document.querySelectorAll('.matrix-shop-block');
-      const schedulePayload = [];
+      
+      // FIX: Only grab blocks from the top Builder container! Ignores the saved schedules below.
+      const shopBlocks = document.querySelectorAll('#matrixContainer .matrix-shop-block');
+      
+      const scheduleMap = new Map();
       let hasError = false;
 
       shopBlocks.forEach(block => {
-          const brandId = block.querySelector('.matrix-brand-select').value;
+          const brandSelect = block.querySelector('.matrix-brand-select');
+          if (!brandSelect) return; // Safety check
+          
+          const brandId = brandSelect.value;
           if (!brandId) {
               alert('One of your Shop Blocks is missing a Brand selection.');
               hasError = true; return;
@@ -3005,25 +3011,23 @@ async function reviewTicket(ticketId, status, approverName) {
 
           const rows = block.querySelectorAll('.matrix-tbody tr');
           rows.forEach(row => {
-              const employeeId = row.querySelector('.matrix-host-select').value;
+              const hostSelect = row.querySelector('.matrix-host-select');
+              if (!hostSelect) return; // Extra safety check against non-input rows
+              
+              const employeeId = hostSelect.value;
               if (!employeeId) return; // Skip empty rows
 
               const inputs = row.querySelectorAll('.matrix-input');
-              // Indices 0-6 map to Mon-Sun
               const weeklyPattern = Array.from(inputs).map(inp => inp.value.trim().toUpperCase());
-
-              // Loop through every single day of the selected month
               const daysInMonth = new Date(year, month, 0).getDate();
               
               for (let d = 1; d <= daysInMonth; d++) {
                   const currentDay = new Date(year, month - 1, d);
-                  let dayOfWeek = currentDay.getDay(); // 0=Sun, 1=Mon...
-                  
-                  // Shift to match our array (Mon=0... Sun=6)
+                  let dayOfWeek = currentDay.getDay(); 
                   const arrayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                   const shiftVal = weeklyPattern[arrayIndex];
                   
-                  if (!shiftVal || shiftVal === '~') continue; // Skip blank or ~ cells
+                  if (!shiftVal || shiftVal === '~') continue; 
 
                   const scheduleDate = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                   let status = 'scheduled';
@@ -3033,7 +3037,7 @@ async function reviewTicket(ticketId, status, approverName) {
 
                   if (shiftVal === 'OFF') {
                       status = 'day_off';
-                      actualBrandId = brandId; // Keeps the brand ID attached so Supabase accepts it!
+                      actualBrandId = brandId; 
                   } else {
                       const parts = shiftVal.split('-');
                       if (parts.length === 2) {
@@ -3042,12 +3046,14 @@ async function reviewTicket(ticketId, status, approverName) {
                       }
                   }
 
-                  schedulePayload.push({
+                  // Deduplicate double-entries automatically
+                  const uniqueKey = `${employeeId}_${scheduleDate}`;
+                  scheduleMap.set(uniqueKey, {
                       employee_id: employeeId,
                       schedule_date: scheduleDate,
                       status: status,
                       brand_id: actualBrandId,
-                      platform_id: null, // Left null as platforms are mapped via brands later
+                      platform_id: null, 
                       shift_start: shiftStart,
                       shift_end: shiftEnd,
                       created_by: emp.id
@@ -3057,12 +3063,13 @@ async function reviewTicket(ticketId, status, approverName) {
       });
 
       if (hasError) return;
+      
+      const schedulePayload = Array.from(scheduleMap.values());
       if (schedulePayload.length === 0) return alert('No valid schedules found to save.');
 
       const btn = document.getElementById('saveMatrixBtn');
       btn.disabled = true; btn.textContent = 'Saving Month...';
 
-      // Push all ~30 days per employee to the database in one shot
       const { error } = await supabaseClient
           .from('live_seller_schedule')
           .upsert(schedulePayload, { onConflict: 'employee_id,schedule_date' });
@@ -3072,8 +3079,8 @@ async function reviewTicket(ticketId, status, approverName) {
       if (error) {
           alert('Error saving schedule: ' + error.message);
       } else {
-          alert(`Successfully scheduled ${schedulePayload.length} shifts for the month!`);
-          await loadSchedule(); // Refresh the table below
+          // Success alert silenced for a smoother workflow
+          await loadSchedule(); 
       }
   });
 
