@@ -2062,8 +2062,9 @@ aside.sidebar.collapsed ~ main.main-content {
                       statusColor = 'var(--coral-500)';
                   }
               } else {
-                  if (emp.mon_sat_shift === 'morning') { shiftStatus = 'Shift 1 (6 AM - 3 PM)'; statusColor = 'var(--mint-400)'; }
-                  else if (emp.mon_sat_shift === 'night') { shiftStatus = 'Shift 2 (3 PM - 12 AM)'; statusColor = 'var(--mint-400)'; }
+                  if (emp.mon_sat_shift === 'morning') { shiftStatus = 'Morning (6 AM - 3 PM)'; statusColor = 'var(--mint-400)'; }
+                  else if (emp.mon_sat_shift === 'mid') { shiftStatus = 'Mid Shift (12 PM - 9 PM)'; statusColor = 'var(--amber-400)'; }
+                  else if (emp.mon_sat_shift === 'night') { shiftStatus = 'Night Shift (3 PM - 12 AM)'; statusColor = 'var(--coral-400)'; }
               }
 
               html += `
@@ -2914,38 +2915,57 @@ if (digitalIdBtn) {
 
       let totalLateMins = 0;
       let totalOtMins = 0;
-
-    // Identify if the logged-in employee is on the fixed 9-to-6 schedule
+      
       const posName = (emp.positions && emp.positions.name) ? emp.positions.name.toUpperCase() : (emp.position || '').toUpperCase();
       const isFixed9to6 = posName.includes('MULTIMEDIA ARTIST') || 
                           posName.includes('RTS ADMINISTRATIVE') || 
                           posName.includes('EXECUTIVE SECRETARY');
+      const isCSR = posName.includes('CUSTOMER SERVICE');
 
-    list.forEach(r => {
+      list.forEach(r => {
+          let expectedStartHour = null;
+          let expectedEndHour = null;
+
           if (isFixed9to6) {
-              // Dynamic calculation based on exact timestamps for office staff
+              expectedStartHour = 9;  // 9 AM
+              expectedEndHour = 18;   // 6 PM
+          } else if (isCSR) {
+              if (emp.mon_sat_shift === 'morning') { expectedStartHour = 6; expectedEndHour = 15; } // 6 AM - 3 PM
+              else if (emp.mon_sat_shift === 'mid') { expectedStartHour = 12; expectedEndHour = 21; } // 12 PM - 9 PM
+              else if (emp.mon_sat_shift === 'night') { expectedStartHour = 15; expectedEndHour = 24; } // 3 PM - 12 AM
+          }
+
+          if (expectedStartHour !== null && expectedEndHour !== null) {
+              // Dynamic calculation based on mapped shift hours
               if (r.time_in) {
                   const tIn = new Date(r.time_in);
                   const shiftStart = new Date(tIn);
-                  shiftStart.setHours(9, 0, 0, 0); // 9:00 AM
+                  shiftStart.setHours(expectedStartHour, 0, 0, 0);
                   
                   if (tIn > shiftStart) {
                       const exactMinsLate = (tIn - shiftStart) / 60000;
-                      totalLateMins += Math.ceil(exactMinsLate / 5) * 5;
+                      totalLateMins += Math.ceil(exactMinsLate / 5) * 5; // 5-min increments
                   }
               }
               if (r.time_out) {
                   const tOut = new Date(r.time_out);
                   const shiftEnd = new Date(tOut);
-                  shiftEnd.setHours(18, 0, 0, 0); // 6:00 PM
+                  
+                  // Handle midnight wrap-around for the Night Shift
+                  if (expectedEndHour === 24) {
+                      shiftEnd.setHours(0, 0, 0, 0);
+                      shiftEnd.setDate(shiftEnd.getDate() + 1); // Pushes the target to 12:00 AM the next day
+                  } else {
+                      shiftEnd.setHours(expectedEndHour, 0, 0, 0);
+                  }
                   
                   if (tOut > shiftEnd) {
                       const exactOtMins = (tOut - shiftEnd) / 60000;
-                      totalOtMins += Math.floor(exactOtMins / 30) * 30;
+                      totalOtMins += Math.floor(exactOtMins / 30) * 30; // 30-min blocks
                   }
               }
           } else {
-              // Database fallback for rotating shifts (CSRs, Live Sellers, etc.)
+              // Database fallback for Live Sellers (Since their schedules change daily)
               totalLateMins += (r.late_penalty_minutes || 0);
               totalOtMins += (r.earned_ot_minutes || 0);
           }
