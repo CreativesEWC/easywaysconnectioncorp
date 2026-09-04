@@ -1103,51 +1103,52 @@ aside.sidebar.collapsed ~ main.main-content {
           <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Submit Daily Sales Report</h2>
           
           <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
-                <input type="date" id="salesDate" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Time (e.g., 8:00 - 12:00)</label>
-                <input type="text" id="salesTime" required placeholder="Shift Time" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-            </div>
+            
+            <!-- Dynamic Container for Shops -->
+            <div id="salesRowsContainer" style="display: flex; flex-direction: column; gap: 15px;">
+              
+              <!-- Shop Block 1 (Template) -->
+              <div class="sales-upload-row" style="background: var(--navy-800); padding: 15px; border-radius: 8px; border: 1px solid var(--line); position: relative;">
+                <button type="button" class="remove-sales-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1; z-index: 10; display: none;">&times;</button>
+                
+                <!-- NEW: Shop/Brand Name -->
+                <div style="margin-bottom: 15px;">
+                  <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shop / Brand Name</label>
+                  <input type="text" class="sales-shop" required placeholder="e.g., Momom Food & Seoul Secrets" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
 
-            <!-- Core Metrics Grid -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Buyer</label>
-                <input type="number" id="salesBuyer" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Commi</label>
-                <input type="number" step="0.01" id="salesCommi" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Sold</label>
-                <input type="number" id="salesSold" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH Sold</label>
-                <input type="number" id="salesLhSold" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">GMV</label>
-                <input type="number" step="0.01" id="salesGmv" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH GMV</label>
-                <input type="number" step="0.01" id="salesLhGmv" required style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              </div>
-            </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px;">
+                  <div>
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
+                    <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Time</label>
+                    <input type="text" class="sales-time" required placeholder="Shift Time (e.g. 8:00 - 12:00)" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                  </div>
+                </div>
 
-            <div>
-              <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
-              <input type="file" id="salesScreenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-            </div>
+                <!-- Core Metrics Grid -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Buyer</label><input type="number" class="sales-buyer" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Commi</label><input type="number" step="0.01" class="sales-commi" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Sold</label><input type="number" class="sales-sold" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH Sold</label><input type="number" class="sales-lh-sold" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">GMV</label><input type="number" step="0.01" class="sales-gmv" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH GMV</label><input type="number" step="0.01" class="sales-lh-gmv" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                </div>
 
-            <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none;">Submit Live Commission</button>
+                <div>
+                  <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
+                  <input type="file" class="sales-screenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                </div>
+              </div>
+
+            </div> <!-- End of salesRowsContainer -->
+
+            <button type="button" id="addSalesRowBtn" class="btn2" style="border: 1px dashed var(--mint-500); color: var(--mint-500); background: transparent; padding: 10px; margin-top: 5px;">[+] Add Another Shop Report</button>
+
+            <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;">Submit Live Commission</button>
           </form>
 
           <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
@@ -3742,86 +3743,170 @@ if (ticketBtn) {
   }
 
   // ==========================================================
-  // DAILY SALES REPORT SUBMISSION (EXACT PAPER FORMAT)
+  // DAILY SALES REPORT (MULTI-SHOP BATCH UPLOADER)
   // ==========================================================
   const salesReportForm = document.getElementById('salesReportForm');
+  const addSalesRowBtn = document.getElementById('addSalesRowBtn');
+  const salesRowsContainer = document.getElementById('salesRowsContainer');
+
+  // --- 1. Add New Shop Block Logic ---
+  if (addSalesRowBtn && salesRowsContainer) {
+      addSalesRowBtn.addEventListener('click', () => {
+          // Clone the very first block as a template
+          const firstRow = salesRowsContainer.querySelector('.sales-upload-row');
+          const newRow = firstRow.cloneNode(true);
+          
+          // Wipe inputs clean
+          newRow.querySelectorAll('input').forEach(inp => inp.value = '');
+          
+          // Show the Remove Button
+          const removeBtn = newRow.querySelector('.remove-sales-row');
+          removeBtn.style.display = 'block';
+          removeBtn.addEventListener('click', () => {
+              newRow.remove();
+              updateSummaryTally(); // Update yellow total when row is deleted
+          });
+
+          salesRowsContainer.appendChild(newRow);
+          attachSalesListeners(newRow); // Attach math listeners
+      });
+  }
+
+  // --- 2. Live Tally Math Engine ---
+  function updateSummaryTally() {
+      let totalCommi = 0, totalLhSold = 0, totalLhGmv = 0;
+      
+      document.querySelectorAll('.sales-upload-row').forEach(row => {
+          totalCommi += parseFloat(row.querySelector('.sales-commi').value) || 0;
+          totalLhSold += parseInt(row.querySelector('.sales-lh-sold').value) || 0;
+          totalLhGmv += parseFloat(row.querySelector('.sales-lh-gmv').value) || 0;
+      });
+
+      // Update Primary Row
+      const fmtCommi = totalCommi.toFixed(2);
+      const fmtGmv = totalLhGmv.toFixed(2);
+      
+      const sCommi = document.getElementById('summaryCommi');
+      const sSold = document.getElementById('summaryLhSold');
+      const sGmv = document.getElementById('summaryLhGmv');
+      if (sCommi) sCommi.textContent = fmtCommi;
+      if (sSold) sSold.textContent = totalLhSold;
+      if (sGmv) sGmv.textContent = fmtGmv;
+
+      // Auto-update Shift Buddy Row
+      const bCommi = document.getElementById('summaryBuddyCommi');
+      const bSold = document.getElementById('summaryBuddyLhSold');
+      const bGmv = document.getElementById('summaryBuddyLhGmv');
+      if (bCommi) bCommi.textContent = fmtCommi;
+      if (bSold) bSold.textContent = totalLhSold;
+      if (bGmv) bGmv.textContent = fmtGmv;
+  }
+
+  function attachSalesListeners(row) {
+      row.querySelector('.sales-commi').addEventListener('input', updateSummaryTally);
+      row.querySelector('.sales-lh-sold').addEventListener('input', updateSummaryTally);
+      row.querySelector('.sales-lh-gmv').addEventListener('input', updateSummaryTally);
+  }
+
+  // Attach listeners to the very first block on page load
+  const initialSalesRow = document.querySelector('.sales-upload-row');
+  if (initialSalesRow) attachSalesListeners(initialSalesRow);
+
+  // --- 3. Batch Form Submission ---
   if (salesReportForm) {
       salesReportForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           
+          const rows = document.querySelectorAll('.sales-upload-row');
+          if (rows.length === 0) return;
+
           const submitBtn = document.getElementById('salesSubmitBtn');
           submitBtn.textContent = 'Uploading... Please wait.';
           submitBtn.disabled = true;
+          let successCount = 0;
 
           try {
-              // 1. Grab all the exact inputs
-              const salesDate = document.getElementById('salesDate').value;
-              const salesTime = document.getElementById('salesTime').value;
-              const salesBuyer = parseInt(document.getElementById('salesBuyer').value) || 0;
-              const salesCommi = parseFloat(document.getElementById('salesCommi').value) || 0;
-              const salesSold = parseInt(document.getElementById('salesSold').value) || 0;
-              const salesLhSold = parseInt(document.getElementById('salesLhSold').value) || 0;
-              const salesGmv = parseFloat(document.getElementById('salesGmv').value) || 0;
-              const salesLhGmv = parseFloat(document.getElementById('salesLhGmv').value) || 0;
-              
-              const fileInput = document.getElementById('salesScreenshot');
-              const file = fileInput.files[0];
+              // Loop through and upload each block
+              for (let i = 0; i < rows.length; i++) {
+                  submitBtn.textContent = `Uploading report ${i + 1} of ${rows.length}...`;
+                  
+                  const row = rows[i];
+                  const sShop = row.querySelector('.sales-shop').value.trim();
+                  const sDate = row.querySelector('.sales-date').value;
+                  const sTime = row.querySelector('.sales-time').value.trim();
+                  const sBuyer = parseInt(row.querySelector('.sales-buyer').value) || 0;
+                  const sCommi = parseFloat(row.querySelector('.sales-commi').value) || 0;
+                  const sSold = parseInt(row.querySelector('.sales-sold').value) || 0;
+                  const sLhSold = parseInt(row.querySelector('.sales-lh-sold').value) || 0;
+                  const sGmv = parseFloat(row.querySelector('.sales-gmv').value) || 0;
+                  const sLhGmv = parseFloat(row.querySelector('.sales-lh-gmv').value) || 0;
+                  
+                  const file = row.querySelector('.sales-screenshot').files[0];
+                  if (!file) throw new Error("Missing screenshot on one of the shops.");
 
-              if (!file) throw new Error("Please select a screenshot.");
+                  // 1. Upload Screenshot to Storage
+                  const fileExt = file.name.split('.').pop();
+                  const fileName = `public/${emp.id}_${Date.now()}_${i}_sales.${fileExt}`;
 
-              // 2. Upload the Image
-              const fileExt = file.name.split('.').pop();
-              const fileName = `public/${emp.id}_${Date.now()}_sales.${fileExt}`;
+                  const { error: uploadErr } = await supabaseClient
+                      .storage.from('sales-screenshots')
+                      .upload(fileName, file, { upsert: false });
 
-              const { error: uploadErr } = await supabaseClient
-                  .storage
-                  .from('sales-screenshots')
-                  .upload(fileName, file, { upsert: false });
+                  if (uploadErr) throw uploadErr;
 
-              if (uploadErr) throw uploadErr;
+                  const { data: publicUrlData } = supabaseClient
+                      .storage.from('sales-screenshots')
+                      .getPublicUrl(fileName);
 
-              const { data: publicUrlData } = supabaseClient
-                  .storage
-                  .from('sales-screenshots')
-                  .getPublicUrl(fileName);
+                  // 2. Insert Row to Database (WITH THE NEW SHOP_NAME PROPERTY!)
+                  const { error: dbErr } = await supabaseClient
+                      .from('sales_reports')
+                      .insert({
+                          employee_id: emp.id,
+                          report_date: sDate,
+                          shift_time: sTime,
+                          shop_name: sShop, // <--- NEW DB FIELD!
+                          buyers: sBuyer,
+                          actual_sales: sCommi,
+                          sold: sSold,
+                          lh_sold: sLhSold,
+                          gmv: sGmv,
+                          lh_gmv: sLhGmv,
+                          screenshot_url: publicUrlData.publicUrl
+                      });
 
-              // 3. Save all data to the database
-              const { error: dbErr } = await supabaseClient
-                  .from('sales_reports')
-                  .insert({
-                      employee_id: emp.id,
-                      report_date: salesDate,
-                      shift_time: salesTime,
-                      buyers: salesBuyer,
-                      actual_sales: salesCommi, // Saving COMMI here
-                      sold: salesSold,
-                      lh_sold: salesLhSold,
-                      gmv: salesGmv,
-                      lh_gmv: salesLhGmv,
-                      screenshot_url: publicUrlData.publicUrl
-                  });
+                  if (dbErr) throw dbErr;
+                  successCount++;
+              }
 
-              if (dbErr) throw dbErr;
-
-              alert('Live commission data submitted successfully!');
+              alert(`Successfully submitted ${successCount} live commission reports!`);
               salesReportForm.reset();
+              
+              // Reset visual UI back to exactly 1 empty block
+              const firstRow = salesRowsContainer.querySelector('.sales-upload-row').cloneNode(true);
+              firstRow.querySelector('.remove-sales-row').style.display = 'none';
+              salesRowsContainer.innerHTML = '';
+              salesRowsContainer.appendChild(firstRow);
+              attachSalesListeners(firstRow);
+              updateSummaryTally();
 
           } catch (err) {
               console.error("Sales Report Upload Error:", err);
-              alert(`Upload failed: ${err.message}`);
+              alert(`Batch upload interrupted: ${err.message}`);
           } finally {
               submitBtn.textContent = 'Submit Live Commission';
               submitBtn.disabled = false;
           }
       });
   }
+  
 
   // ==========================================================
   // REAL-TIME MESSAGING ENGINE
   // ==========================================================
   let activeChatId = null;
 
- window.loadChatChannels = async function() {
+  window.loadChatChannels = async function() {
       const channelList = document.getElementById('chatChannelList');
       if (!channelList) return;
 
