@@ -3768,49 +3768,52 @@ if (ticketBtn) {
       });
   }
 
-  // --- 2. Live Addition Math Engine (Dynamic Multi-Table) ---
+  // --- 2. Live Addition Math Engine (Dynamic Grand Total) ---
   function updateSummaryTally() {
       const container = document.getElementById('dynamicSummaryContainer');
       if (!container) return;
       
       const myName = document.getElementById('empName').textContent || 'Submitter';
-      let summaryHTML = '';
+      
+      let grandCommi = 0;
+      let grandSold = 0;
+      let grandGmv = 0;
 
-      document.querySelectorAll('.sales-upload-row').forEach((row, index) => {
-          const shopName = row.querySelector('.sales-shop').value.trim() || `SHOP ${index + 1}`;
-          const shopDate = row.querySelector('.sales-date').value || 'CURRENT DATE';
-
-          const meCommi = parseFloat(row.querySelector('.inp-me-commi').value) || 0;
-          const meSold = parseInt(row.querySelector('.inp-me-sold').value) || 0;
-          const meGmv = parseFloat(row.querySelector('.inp-me-gmv').value) || 0;
-
-          summaryHTML += `
-          <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
-            <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
-              ${escapeHtml(shopName)} SUMMARY: MY OVERALL TOTAL (${escapeHtml(shopDate)})
-            </div>
-            <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
-              <thead>
-                <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">My Commi</th>
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">My LH Sold</th>
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">My LH GMV</th>
-                  <th style="padding: 12px;">Sign</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);">${escapeHtml(myName)}</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;">${meCommi.toFixed(2)}</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;">${meSold}</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;">${meGmv.toFixed(2)}</td>
-                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--mint-500);">Auto-Signed</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>`;
+      // Loop through every shop block and sum up the calculated "Delta" totals
+      document.querySelectorAll('.sales-upload-row').forEach((row) => {
+          grandCommi += parseFloat(row.querySelector('.inp-me-commi').value) || 0;
+          grandSold += parseInt(row.querySelector('.inp-me-sold').value) || 0;
+          grandGmv += parseFloat(row.querySelector('.inp-me-gmv').value) || 0;
       });
+
+      // Output exactly ONE table that acts as the global overall total
+      container.innerHTML = `
+      <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
+        <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
+          SUMMARY: OVERALL TOTAL (ALL SHIFTS)
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
+              <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
+              <th style="padding: 12px; border-right: 1px solid var(--line);">Total Commi</th>
+              <th style="padding: 12px; border-right: 1px solid var(--line);">LH Sold</th>
+              <th style="padding: 12px; border-right: 1px solid var(--line);">LH GMV</th>
+              <th style="padding: 12px;">Sign</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);">${escapeHtml(myName)}</td>
+              <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">${grandCommi.toFixed(2)}</td>
+              <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">${grandSold}</td>
+              <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">${grandGmv.toFixed(2)}</td>
+              <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--mint-500);">Auto-Signed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+  }
 
       container.innerHTML = summaryHTML;
   }
