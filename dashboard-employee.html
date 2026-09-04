@@ -3889,11 +3889,10 @@ if (ticketBtn) {
   });
 
   function attachSalesListeners(row) {
-      row.querySelector('.sales-commi').addEventListener('input', updateSummaryTally);
-      row.querySelector('.sales-sold').addEventListener('input', updateSummaryTally);
-      row.querySelector('.sales-lh-sold').addEventListener('input', updateSummaryTally);
-      row.querySelector('.sales-gmv').addEventListener('input', updateSummaryTally);
-      row.querySelector('.sales-lh-gmv').addEventListener('input', updateSummaryTally);
+      // Find all number inputs in the block and attach the calculator listener
+      row.querySelectorAll('input[type="number"]').forEach(inp => {
+          inp.addEventListener('input', updateSummaryTally);
+      });
   }
 
   const initialSalesRow = document.querySelector('.sales-upload-row');
