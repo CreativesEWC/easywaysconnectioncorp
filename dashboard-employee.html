@@ -1151,6 +1151,14 @@ aside.sidebar.collapsed ~ main.main-content {
             <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;">Submit Live Commission</button>
           </form>
 
+          
+
+          <!-- NEW: SHIFT BUDDY INPUT -->
+          <div style="margin-top: 10px; margin-bottom: 20px;">
+            <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Name of Shift Buddy</label>
+            <input type="text" id="buddyNameInput" placeholder="Enter shift buddy's name (Leave blank if solo)..." style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+          </div>
+          
           <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
           <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
             <!-- Yellow Header mimicking the paper form -->
@@ -3772,43 +3780,70 @@ if (ticketBtn) {
       });
   }
 
-  // --- 2. Live Tally Math Engine ---
+  // --- 2. Live Tally Math Engine (Deduction Logic) ---
   function updateSummaryTally() {
-      let totalCommi = 0, totalLhSold = 0, totalLhGmv = 0;
+      let totalCommi = 0;
+      let totalSold = 0;
+      let totalLhSold = 0;
+      let totalGmv = 0;
+      let totalLhGmv = 0;
       
+      // Sum up every single shop block
       document.querySelectorAll('.sales-upload-row').forEach(row => {
           totalCommi += parseFloat(row.querySelector('.sales-commi').value) || 0;
+          totalSold += parseInt(row.querySelector('.sales-sold').value) || 0;
           totalLhSold += parseInt(row.querySelector('.sales-lh-sold').value) || 0;
+          totalGmv += parseFloat(row.querySelector('.sales-gmv').value) || 0;
           totalLhGmv += parseFloat(row.querySelector('.sales-lh-gmv').value) || 0;
       });
 
-      // Update Primary Row
-      const fmtCommi = totalCommi.toFixed(2);
-      const fmtGmv = totalLhGmv.toFixed(2);
+      // THE MATH: Deduct "My" sales from the "Total" sales to find the Buddy's numbers
+      let buddySold = totalSold - totalLhSold;
+      let buddyGmv = totalGmv - totalLhGmv;
       
+      // Failsafe: Prevent negative numbers if they typed something backwards
+      if (buddySold < 0) buddySold = 0;
+      if (buddyGmv < 0) buddyGmv = 0;
+
+      // Commission Math: Splits the total commission 50/50
+      let myCommi = totalCommi / 2;
+      let buddyCommi = totalCommi / 2;
+
+      // Update Primary Row (My Totals)
       const sCommi = document.getElementById('summaryCommi');
       const sSold = document.getElementById('summaryLhSold');
       const sGmv = document.getElementById('summaryLhGmv');
-      if (sCommi) sCommi.textContent = fmtCommi;
+      if (sCommi) sCommi.textContent = myCommi.toFixed(2);
       if (sSold) sSold.textContent = totalLhSold;
-      if (sGmv) sGmv.textContent = fmtGmv;
+      if (sGmv) sGmv.textContent = totalLhGmv.toFixed(2);
 
-      // Auto-update Shift Buddy Row
+      // Update Shift Buddy Row
       const bCommi = document.getElementById('summaryBuddyCommi');
       const bSold = document.getElementById('summaryBuddyLhSold');
       const bGmv = document.getElementById('summaryBuddyLhGmv');
-      if (bCommi) bCommi.textContent = fmtCommi;
-      if (bSold) bSold.textContent = totalLhSold;
-      if (bGmv) bGmv.textContent = fmtGmv;
+      if (bCommi) bCommi.textContent = buddyCommi.toFixed(2);
+      if (bSold) bSold.textContent = buddySold;
+      if (bGmv) bGmv.textContent = buddyGmv.toFixed(2);
   }
 
+  // --- Real-time Name Typer ---
+  const buddyNameInput = document.getElementById('buddyNameInput');
+  if (buddyNameInput) {
+      buddyNameInput.addEventListener('input', (e) => {
+          const display = document.getElementById('summaryBuddyName');
+          if (display) display.textContent = e.target.value.trim() || 'Shift Buddy';
+      });
+  }
+
+  // --- Attach listeners to trigger math ---
   function attachSalesListeners(row) {
       row.querySelector('.sales-commi').addEventListener('input', updateSummaryTally);
+      row.querySelector('.sales-sold').addEventListener('input', updateSummaryTally);
       row.querySelector('.sales-lh-sold').addEventListener('input', updateSummaryTally);
+      row.querySelector('.sales-gmv').addEventListener('input', updateSummaryTally);
       row.querySelector('.sales-lh-gmv').addEventListener('input', updateSummaryTally);
   }
 
-  // Attach listeners to the very first block on page load
   const initialSalesRow = document.querySelector('.sales-upload-row');
   if (initialSalesRow) attachSalesListeners(initialSalesRow);
 
@@ -3820,13 +3855,15 @@ if (ticketBtn) {
           const rows = document.querySelectorAll('.sales-upload-row');
           if (rows.length === 0) return;
 
+          // Grab the Buddy's Name so we can send it to Supabase!
+          const shiftBuddyName = document.getElementById('buddyNameInput').value.trim() || null;
+
           const submitBtn = document.getElementById('salesSubmitBtn');
           submitBtn.textContent = 'Uploading... Please wait.';
           submitBtn.disabled = true;
           let successCount = 0;
 
           try {
-              // Loop through and upload each block
               for (let i = 0; i < rows.length; i++) {
                   submitBtn.textContent = `Uploading report ${i + 1} of ${rows.length}...`;
                   
@@ -3844,7 +3881,6 @@ if (ticketBtn) {
                   const file = row.querySelector('.sales-screenshot').files[0];
                   if (!file) throw new Error("Missing screenshot on one of the shops.");
 
-                  // 1. Upload Screenshot to Storage
                   const fileExt = file.name.split('.').pop();
                   const fileName = `public/${emp.id}_${Date.now()}_${i}_sales.${fileExt}`;
 
@@ -3858,14 +3894,14 @@ if (ticketBtn) {
                       .storage.from('sales-screenshots')
                       .getPublicUrl(fileName);
 
-                  // 2. Insert Row to Database (WITH THE NEW SHOP_NAME PROPERTY!)
                   const { error: dbErr } = await supabaseClient
                       .from('sales_reports')
                       .insert({
                           employee_id: emp.id,
                           report_date: sDate,
                           shift_time: sTime,
-                          shop_name: sShop, // <--- NEW DB FIELD!
+                          shop_name: sShop, 
+                          shift_buddy: shiftBuddyName, // <--- NEW DB FIELD!
                           buyers: sBuyer,
                           actual_sales: sCommi,
                           sold: sSold,
@@ -3881,8 +3917,9 @@ if (ticketBtn) {
 
               alert(`Successfully submitted ${successCount} live commission reports!`);
               salesReportForm.reset();
+              if (document.getElementById('buddyNameInput')) document.getElementById('buddyNameInput').value = '';
+              if (document.getElementById('summaryBuddyName')) document.getElementById('summaryBuddyName').textContent = 'Shift Buddy';
               
-              // Reset visual UI back to exactly 1 empty block
               const firstRow = salesRowsContainer.querySelector('.sales-upload-row').cloneNode(true);
               firstRow.querySelector('.remove-sales-row').style.display = 'none';
               salesRowsContainer.innerHTML = '';
