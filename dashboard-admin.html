@@ -4242,6 +4242,18 @@ if (saveScheduleBtn) {
       });
   }
 
+  // --- RE-ADDED MISSING FUNCTION ---
+  async function populateVideoAuditSellers() {
+    const auditSelect = document.getElementById('auditEmployee');
+    if (!auditSelect) return;
+    const { data: posData } = await supabaseClient.from('positions').select('id').eq('name', 'Live Seller').single();
+    if (!posData) return;
+    const { data: sellers } = await supabaseClient.from('employees').select('id, name').eq('position_id', posData.id).order('name');
+    if (sellers) {
+      auditSelect.innerHTML = '<option value="">Select Live Seller...</option>' + sellers.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    }
+  }
+
   setTimeout(() => {
       loadPayrollSettings();
   }, 1500);
@@ -4251,8 +4263,8 @@ if (saveScheduleBtn) {
   populateVideoAuditSellers();
   loadFinanceVideoTracker();
   loadFinanceLiveTracker();
-  
-})();
+
+})(); 
 </script>
 </body>
 </html>
