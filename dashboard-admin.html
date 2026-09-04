@@ -3836,17 +3836,23 @@ if (saveScheduleBtn) {
 
     tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
+    // Safely generate the exact first and last day of the current month
     const today = new Date();
-    const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    
+    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDayObj = new Date(year, month + 1, 0); // 0 automatically gets the last day of the month
+    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
     try {
       const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name)').order('name');
-      const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').like('date_from', `${currentMonth}%`); 
-      const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').like('log_date', `${currentMonth}%`);
-      const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').like('upload_date', `${currentMonth}%`);
       
-      // NEW: Fetch all explicitly submitted Live Sales for the month
-      const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').like('report_date', `${currentMonth}%`);
+      // Use .gte() and .lte() instead of .like() to properly search strict DATE columns!
+      const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').gte('date_from', firstDay).lte('date_from', lastDay); 
+      const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').gte('log_date', firstDay).lte('log_date', lastDay);
+      const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').gte('upload_date', firstDay).lte('upload_date', lastDay);
+      const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').gte('report_date', firstDay).lte('report_date', lastDay);
 
       let html = '';
 
