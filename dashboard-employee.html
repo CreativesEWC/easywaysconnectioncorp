@@ -1153,10 +1153,13 @@ aside.sidebar.collapsed ~ main.main-content {
 
           
 
-          <!-- NEW: SHIFT BUDDY INPUT -->
+          <!-- NEW: SHIFT BUDDY DROPDOWN -->
           <div style="margin-top: 10px; margin-bottom: 20px;">
-            <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Name of Shift Buddy</label>
-            <input type="text" id="buddyNameInput" placeholder="Enter shift buddy's name (Leave blank if solo)..." style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+            <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Select Shift Buddy</label>
+            <select id="buddyNameInput" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+              <option value="">No shift buddy (Solo)</option>
+              <!-- Javascript will automatically load her teammates here -->
+            </select>
           </div>
           
           <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
@@ -2210,8 +2213,15 @@ aside.sidebar.collapsed ~ main.main-content {
 
         if (logErr) throw logErr;
 
-        // 4. Build the UI Status Cards
+        // 4. Build the UI Status Cards & Populate Buddy Dropdown
         let html = '';
+        
+        // Grab the buddy dropdown and clear it out
+        const buddyDropdown = document.getElementById('buddyNameInput');
+        if (buddyDropdown) {
+            buddyDropdown.innerHTML = '<option value="">No shift buddy (Solo)</option>';
+        }
+
         team.forEach(member => {
             const log = todayLogs?.find(l => l.employee_id === member.id);
             let statusColor = '#5c6d99'; 
@@ -2248,6 +2258,14 @@ aside.sidebar.collapsed ~ main.main-content {
                     </div>
                 </div>
             `;
+
+            // NEW: Add this teammate to the shift buddy dropdown (skipping the logged-in user)
+            if (buddyDropdown && member.id !== emp.id) {
+                const opt = document.createElement('option');
+                opt.value = member.name;
+                opt.textContent = member.name;
+                buddyDropdown.appendChild(opt);
+            }
         });
 
         loadingNote.style.display = 'none';
@@ -3826,12 +3844,12 @@ if (ticketBtn) {
       if (bGmv) bGmv.textContent = buddyGmv.toFixed(2);
   }
 
-  // --- Real-time Name Typer ---
+  /// --- Real-time Name Selector ---
   const buddyNameInput = document.getElementById('buddyNameInput');
   if (buddyNameInput) {
-      buddyNameInput.addEventListener('input', (e) => {
+      buddyNameInput.addEventListener('change', (e) => {
           const display = document.getElementById('summaryBuddyName');
-          if (display) display.textContent = e.target.value.trim() || 'Shift Buddy';
+          if (display) display.textContent = e.target.value || 'Shift Buddy';
       });
   }
 
