@@ -3842,7 +3842,7 @@ if (saveScheduleBtn) {
     const month = today.getMonth();
     
     const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDayObj = new Date(year, month + 1, 0); // 0 automatically gets the last day of the month
+    const lastDayObj = new Date(year, month + 1, 0); 
     const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
     try {
@@ -3914,7 +3914,6 @@ if (saveScheduleBtn) {
     }
   }
 
-
     // 3. Delegation Toggle Logic (For Eden/Catherine to unlock Creatives)
     const toggleFinance = document.getElementById('toggleCreativesFinance');
     if (toggleFinance && isSuperAdmin) {
@@ -3978,15 +3977,18 @@ if (saveScheduleBtn) {
       if (!tbody) return;
       tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading video matrix...</td></tr>';
       
-      const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDayObj = new Date(year, month + 1, 0);
+      const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
       
-      // Fetch employees and videos
       const { data: emps } = await supabaseClient.from('employees').select('id, name, positions(name)');
-      const { data: vids } = await supabaseClient.from('video_submissions').select('*').like('upload_date', `${currentMonth}%`);
+      const { data: vids } = await supabaseClient.from('video_submissions').select('*').gte('upload_date', firstDay).lte('upload_date', lastDay);
       
       if (!emps) { tbody.innerHTML = '<tr class="empty-row"><td colspan="18">No data found.</td></tr>'; return; }
       
-      // Filter strictly to Live Sellers
       const sellers = emps.filter(e => e.positions && e.positions.name.includes('Live Seller'));
       
       tbody.innerHTML = sellers.map(seller => {
@@ -4016,16 +4018,20 @@ if (saveScheduleBtn) {
       if (!tbody) return;
       tbody.innerHTML = '<tr><td colspan="5" class="loading-note">Loading live commissions...</td></tr>';
       
-      const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDayObj = new Date(year, month + 1, 0);
+      const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
       
-      const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').like('report_date', `${currentMonth}%`);
+      const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').gte('report_date', firstDay).lte('report_date', lastDay);
       
       if (!reps || reps.length === 0) {
         tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No sales reported this month.</td></tr>';
         return;
       }
       
-      // Aggregate data by employee name
       const aggregated = {};
       reps.forEach(r => {
         const name = r.employees ? r.employees.name : 'Unknown';
