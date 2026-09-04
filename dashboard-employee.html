@@ -2220,14 +2220,14 @@ aside.sidebar.collapsed ~ main.main-content {
 
         if (logErr) throw logErr;
 
-        // 4. Build the UI Status Cards & Populate Buddy Dropdown
+        // 4. Build the UI Status Cards & Populate Buddy Dropdowns
         let html = '';
         
-        // Grab the buddy dropdown and clear it out
-        const buddyDropdown = document.getElementById('buddyNameInput');
-        if (buddyDropdown) {
-            buddyDropdown.innerHTML = '<option value="">No shift buddy (Solo)</option>';
-        }
+        // Grab BOTH buddy dropdowns and clear them out
+        const buddy1Dropdown = document.getElementById('buddy1NameInput');
+        const buddy2Dropdown = document.getElementById('buddy2NameInput');
+        if (buddy1Dropdown) buddy1Dropdown.innerHTML = '<option value="">None (Solo)</option>';
+        if (buddy2Dropdown) buddy2Dropdown.innerHTML = '<option value="">None</option>';
 
         team.forEach(member => {
             const log = todayLogs?.find(l => l.employee_id === member.id);
