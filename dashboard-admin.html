@@ -3689,6 +3689,110 @@ async function reviewTicket(ticketId, status, approverName) {
     });
 }
 
+  // ---- CSR SUNDAY ROTATION LOADER ----
+  async function loadCSRRoster() {
+    const loadingText = document.getElementById('csrLoading'); 
+    const rosterContainer = document.getElementById('csrRosterContainer');
+    
+    if (!loadingText || !rosterContainer) return;
+
+    try {
+      // 1. Ask Supabase for all CSRs using their exact position_id
+      const { data: csrs, error } = await supabaseClient
+        .from('employees')
+        .select('id, badge_id, name, avatar_url, position') 
+        .eq('position_id', '5f2ba83f-0773-42a0-b436-1834bd28e680') // Uses the exact UUID for CSR
+        .order('name'); 
+
+      if (error) throw error;
+
+      loadingText.style.display = 'none';
+
+      if (!csrs || csrs.length === 0) {
+        rosterContainer.innerHTML = '<p style="color: var(--amber-400);">No active CSRs found in the database.</p>';
+        return;
+      }
+
+      rosterContainer.innerHTML = csrs.map(csr => `
+        <div style="background: var(--navy-800); border: 1px solid var(--navy-600); padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 200px;">
+            <img src="${csr.avatar_url || 'easyway_icon.svg'}" alt="${csr.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.onerror=null; this.src='easyway_icon.svg';">
+            <div>
+              <strong style="color: var(--paper); text-transform: uppercase;">${escapeHtml(csr.name)}</strong><br>
+              <span style="color: #7488b6; font-size: 11px;">ID NUMBER: ${escapeHtml(csr.badge_id || 'N/A')}</span><br>
+              <span style="color: var(--amber-400); font-size: 11px;">${escapeHtml(csr.position)}</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div>
+              <label style="font-size: 11px; color: #7488b6; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Mon-Sat Team</label>
+              <select class="shift-select" data-employee-id="${csr.id}" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-900); color: var(--amber-400); font-weight: bold; cursor: pointer;">
+                <option value="unassigned" ${!csr.mon_sat_shift || csr.mon_sat_shift === 'unassigned' ? 'selected' : ''}>Select Team...</option>
+                <option value="morning" ${csr.mon_sat_shift === 'morning' ? 'selected' : ''}>Morning (6:00 AM - 3:00 PM)</option>
+                <option value="mid" ${csr.mon_sat_shift === 'mid' ? 'selected' : ''}>Mid Shift (12:00 PM - 9:00 PM)</option>
+                <option value="night" ${csr.mon_sat_shift === 'night' ? 'selected' : ''}>Night Shift (3:00 PM - 12:00 AM)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 11px; color: #7488b6; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Weekend Shift</label>
+              <div style="background: var(--navy-900); border: 1px solid var(--navy-600); padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 8px; height: 33px;">
+                <input type="checkbox" id="sun_${csr.id}" class="sunday-toggle" data-employee-id="${csr.id}" style="cursor: pointer; width: 16px; height: 16px;" ${csr.sunday_duty ? 'checked' : ''}>
+                <label for="sun_${csr.id}" style="color: var(--amber-400); font-size: 13px; cursor: pointer; font-weight: bold; margin: 0;">Sunday (9:00 AM - 6:00 PM)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+    // Wire up Mon-Sat Dropdowns
+    document.querySelectorAll('.shift-select').forEach(select => {
+        select.addEventListener('change', async (e) => {
+            const employeeId = e.target.getAttribute('data-employee-id');
+            const newShift = e.target.value;
+            e.target.style.opacity = '0.5';
+            const { error } = await supabaseClient.from('employees').update({ mon_sat_shift: newShift }).eq('id', employeeId);
+            if (error) alert("Error saving shift: " + error.message);
+            e.target.style.opacity = '1';
+        });
+    });
+
+    // Auto-calculate Upcoming Sunday Date
+    const today = new Date();
+    const diffToSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
+    const nextSun = new Date(today);
+    nextSun.setDate(today.getDate() + diffToSunday);
+    const sunLabel = nextSun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    // Wire up Sunday Toggles
+    document.querySelectorAll('.sunday-toggle').forEach(checkbox => {
+        const labelEl = document.querySelector(`label[for="${checkbox.id}"]`);
+        if (labelEl) labelEl.textContent = `Active Duty (${sunLabel})`;
+        
+        checkbox.addEventListener('change', async (e) => {
+            const employeeId = e.target.getAttribute('data-employee-id');
+            const isAssigned = e.target.checked;
+            
+            // Smart Logic: Instantly turn everyone else off if one is checked
+            if (isAssigned) {
+                document.querySelectorAll('.sunday-toggle').forEach(async (otherBox) => {
+                    if (otherBox !== e.target && otherBox.checked) {
+                        otherBox.checked = false; 
+                        const otherId = otherBox.getAttribute('data-employee-id');
+                        await supabaseClient.from('employees').update({ sunday_duty: false }).eq('id', otherId);
+                    }
+                });
+            }
+            const { error } = await supabaseClient.from('employees').update({ sunday_duty: isAssigned }).eq('id', employeeId);
+            if (error) alert("Error saving Sunday duty: " + error.message);
+        });
+    });
+    } catch (err) {
+      console.error("Failed to load CSRs:", err);
+      loadingText.textContent = "Error loading roster. Check console for details.";
+      loadingText.style.color = "#d9614f"; 
+    }
+  }
+
 // ---- TEAM SCHEDULES: BRAND ASSIGNMENT (Moved OUTSIDE the toggle loop!) ----
 const saveScheduleBtn = document.getElementById('saveScheduleBtn');
 if (saveScheduleBtn) {
