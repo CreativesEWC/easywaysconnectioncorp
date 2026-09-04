@@ -86,6 +86,20 @@
   .chat-input-wrapper input::placeholder { color: #888; }
   .chat-input-wrapper svg { color: #f5f5f5; cursor: pointer; }
 
+  /* ---- SMART RIGHT SIDEBAR FOR MOBILE ---- */
+  @media (max-width: 1300px) {
+    aside.right-sidebar { 
+      transform: translateX(100%); 
+      display: flex !important; 
+      box-shadow: -5px 0 25px rgba(0,0,0,0.7); 
+      transition: transform 0.3s ease; 
+    }
+    aside.right-sidebar.mobile-open { 
+      transform: translateX(0); 
+    }
+    main.main-content { margin-right: 0 !important; }
+  }
+
  /* ---- RIGHT SIDEBAR (ONLINE ROSTER) ---- */
   aside.right-sidebar { 
     width: 320px; 
@@ -4429,12 +4443,30 @@ if (ticketBtn) {
   const toggleBtn = document.getElementById('toggleRightSidebarBtn');
   const rightSb = document.getElementById('rightSidebar');
   const mainCont = document.querySelector('main.main-content');
+  const mobileOverlayDark = document.getElementById('mobileOverlay');
 
-  // Wire up the Discord-style Toggle Button
+  // Wire up the Discord-style Toggle Button (Smart Mobile & Desktop)
   if (toggleBtn && rightSb && mainCont) {
       toggleBtn.addEventListener('click', () => {
-          rightSb.classList.toggle('hidden');
-          mainCont.classList.toggle('expanded-right');
+          if (window.innerWidth <= 1300) {
+              // Mobile Mode: Slide in over the screen
+              rightSb.classList.toggle('mobile-open');
+              if (mobileOverlayDark) mobileOverlayDark.classList.toggle('show');
+          } else {
+              // Desktop Mode: Slide out and expand dashboard
+              rightSb.classList.toggle('hidden');
+              mainCont.classList.toggle('expanded-right');
+          }
+      });
+  }
+
+  // Allow tapping the dark background overlay to seamlessly close the roster on mobile
+  if (mobileOverlayDark && rightSb) {
+      mobileOverlayDark.addEventListener('click', () => {
+          if (rightSb.classList.contains('mobile-open')) {
+              rightSb.classList.remove('mobile-open');
+              mobileOverlayDark.classList.remove('show');
+          }
       });
   }
 
