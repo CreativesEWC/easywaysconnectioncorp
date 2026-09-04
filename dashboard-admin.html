@@ -4062,6 +4062,32 @@ if (saveScheduleBtn) {
 
         const videoCommission = empVideos.length * 100;
         const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
+        const isLive = posName.toLowerCase().includes('live seller');
+        const totalDaysPresent = empLogs.length;
+
+        // SMART CHECK: Change the Commission column based on their specific role!
+        let commiCell = '';
+        if (isLive) {
+            commiCell = `
+              <div style="display: flex; gap: 15px; align-items: center;">
+                <div>
+                  <div style="color: var(--mint-400); font-weight: bold; font-family: var(--font-mono); font-size: 12px;">₱${liveCommission.toLocaleString(undefined, {minimumFractionDigits: 2})} <span style="font-size:9px; color:#7488b6; font-family: var(--font-body); font-weight:normal; text-transform:uppercase;">Live</span></div>
+                  <div style="color: var(--amber-400); font-weight: bold; font-family: var(--font-mono); font-size: 12px; margin-top:4px;">₱${videoCommission.toLocaleString(undefined, {minimumFractionDigits: 2})} <span style="font-size:9px; color:#7488b6; font-family: var(--font-body); font-weight:normal; text-transform:uppercase;">Video</span></div>
+                </div>
+                <button class="btn" style="font-size: 10px; padding: 4px 8px; border-color: var(--amber-500); color: var(--amber-500);">Upload Payslip</button>
+              </div>
+            `;
+        } else {
+            commiCell = `
+              <div style="display: flex; gap: 15px; align-items: center;">
+                <div>
+                  <div style="color: #5c6d99; font-weight: bold; font-size: 12px;">N/A</div>
+                  <div style="font-size: 10px; color: #7488b6;">Fixed Salary</div>
+                </div>
+                <button class="btn" style="font-size: 10px; padding: 4px 8px; border-color: var(--amber-500); color: var(--amber-500);">Upload Payslip</button>
+              </div>
+            `;
+        }
 
         html += `
           <tr style="border-bottom: 1px solid var(--navy-700);">
@@ -4072,20 +4098,17 @@ if (saveScheduleBtn) {
             <td style="padding: 12px;">
               <div style="font-size: 13px; color: var(--amber-400); font-weight: 500;">${escapeHtml(posName)}</div>
             </td>
-            <td style="padding: 12px;">
-              <div style="color: var(--amber-400); font-weight: bold;">₱${videoCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-              <div style="font-size: 10px; color: #7488b6;">${empVideos.length} approved</div>
+            <td style="padding: 12px; font-family: var(--font-mono); font-size: 14px; font-weight: bold; color: var(--paper);">
+              ${totalDaysPresent} <span style="font-size: 10px; color: #7488b6; font-weight: normal; font-family: var(--font-body);">days</span>
+            </td>
+            <td style="padding: 12px; font-family: var(--font-mono); font-size: 14px; font-weight: bold; color: var(--coral-500);">
+              ${totalLateMins} <span style="font-size: 10px; color: #7488b6; font-weight: normal; font-family: var(--font-body);">mins</span>
+            </td>
+            <td style="padding: 12px; font-family: var(--font-mono); font-size: 14px; font-weight: bold; color: var(--mint-500);">
+              +${(totalOtMins / 60).toFixed(1)} <span style="font-size: 10px; color: #7488b6; font-weight: normal; font-family: var(--font-body);">hrs</span>
             </td>
             <td style="padding: 12px;">
-              <div style="color: var(--mint-400); font-weight: bold;">₱${liveCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-              <div style="font-size: 10px; color: #7488b6;">From Live Streams</div>
-            </td>
-            <td style="padding: 12px;">
-               <div style="color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">+${(totalOtMins / 60).toFixed(1)} hrs</div>
-               <div style="color: var(--coral-500); font-family: var(--font-mono); font-size: 11px;">-${totalLateMins} mins</div>
-            </td>
-            <td style="padding: 12px;">
-              <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Payslip</button>
+              ${commiCell}
             </td>
           </tr>
         `;
