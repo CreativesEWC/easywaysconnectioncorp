@@ -3844,84 +3844,77 @@ if (saveScheduleBtn) {
 
     try {
       // 1. Fetch all active employees
-      const { data: emps } = await supabaseClient
-        .from('employees')
-        .select('id, name, badge_id, position, positions(name)')
-        .order('name');
+      const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name)').order('name');
 
       // 2. Fetch Tickets (for perfect attendance check)
-      const { data: tickets } = await supabaseClient
-        .from('tickets')
-        .select('*')
-        .eq('status', 'approved')
-        .like('date_from', `${currentMonth}%`); 
+      const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').like('date_from', `${currentMonth}%`); 
 
-     // 3. Fetch Attendance Logs (for late, OT, and LIVE COMMISSIONS)
-    const { data: logs } = await supabaseClient
-      .from('attendance_logs')
-      .select('employee_id, late_penalty_minutes, earned_ot_minutes, earned_commission')
-      .like('log_date', `${currentMonth}%`);
+      // 3. Fetch Attendance Logs (for late & OT)
+      const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').like('log_date', `${currentMonth}%`);
 
-     // 4. Fetch APPROVED Video Submissions (for VIDEO COMMISSIONS)
-    const { data: videos } = await supabaseClient
-      .from('video_submissions')
-      .select('employee_id')
-      .eq('status', 'approved')
-      .like('upload_date', `${currentMonth}%`);
+      // 4. Fetch APPROVED Video Submissions (for VIDEO COMMISSIONS)
+      const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').like('upload_date', `${currentMonth}%`);
 
-    let html = '';
+      // 5. NEW: Fetch Sales Reports (for LIVE COMMISSIONS)
+      const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').like('report_date', `${currentMonth}%`);
 
-    // Loop through every employee and run the Audit
-    emps.forEach(emp => {
-      const empTickets = tickets?.filter(t => t.employee_id === emp.id) || [];
-      const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
-      const empVideos = videos?.filter(v => v.employee_id === emp.id) || [];
-      
-      let totalLateMins = 0;
-      let totalOtMins = 0;
-      let liveCommission = 0;
-      
-      // Sum up late mins, OT mins, and Delta Live Commissions
-      empLogs.forEach(log => {
-        totalLateMins += (log.late_penalty_minutes || 0);
-        totalOtMins += (log.earned_ot_minutes || 0);
-        liveCommission += (parseFloat(log.earned_commission) || 0);
+      let html = '';
+
+      // Loop through every employee and run the Audit
+      emps.forEach(emp => {
+        const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
+        const empVideos = videos?.filter(v => v.employee_id === emp.id) || [];
+        const empSales = sales?.filter(s => s.employee_id === emp.id) || [];
+        
+        let totalLateMins = 0;
+        let totalOtMins = 0;
+        let liveCommission = 0;
+        
+        // Sum up late mins and OT mins
+        empLogs.forEach(log => {
+          totalLateMins += (log.late_penalty_minutes || 0);
+          totalOtMins += (log.earned_ot_minutes || 0);
+        });
+
+        // Sum up exactly what they submitted from their multi-shop forms
+        empSales.forEach(sale => {
+          liveCommission += (parseFloat(sale.actual_sales) || 0);
+        });
+
+        // Video Commission Logic (₱100 per approved video)
+        const videoCommission = empVideos.length * 100;
+        
+        // Safely grab the position name
+        const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
+
+        // Build the Table Row
+        html += `
+          <tr style="border-bottom: 1px solid var(--navy-700);">
+            <td style="padding: 12px;">
+              <strong style="color: var(--paper);">${escapeHtml(emp.name)}</strong><br>
+              <span style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(emp.badge_id)}</span>
+            </td>
+            <td style="padding: 12px;">
+              <div style="font-size: 13px; color: var(--amber-400); font-weight: 500;">${escapeHtml(posName)}</div>
+            </td>
+            <td style="padding: 12px;">
+              <div style="color: var(--amber-400); font-weight: bold;">₱${videoCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+              <div style="font-size: 10px; color: #7488b6;">${empVideos.length} approved</div>
+            </td>
+            <td style="padding: 12px;">
+              <div style="color: var(--mint-400); font-weight: bold;">₱${liveCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+              <div style="font-size: 10px; color: #7488b6;">From Live Streams</div>
+            </td>
+            <td style="padding: 12px;">
+               <div style="color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">+${(totalOtMins / 60).toFixed(1)} hrs</div>
+               <div style="color: var(--coral-500); font-family: var(--font-mono); font-size: 11px;">-${totalLateMins} mins</div>
+            </td>
+            <td style="padding: 12px;">
+              <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Payslip</button>
+            </td>
+          </tr>
+        `;
       });
-
-      // Video Commission Logic (₱100 per approved video)
-      const videoCommission = empVideos.length * 100;
-      
-      // Safely grab the position name
-      const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
-
-      // Build the Table Row
-      html += `
-        <tr style="border-bottom: 1px solid var(--navy-700);">
-          <td style="padding: 12px;">
-            <strong style="color: var(--paper);">${escapeHtml(emp.name)}</strong><br>
-            <span style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(emp.badge_id)}</span>
-          </td>
-          <td style="padding: 12px;">
-            <div style="font-size: 13px; color: var(--amber-400); font-weight: 500;">${escapeHtml(posName)}</div>
-          </td>
-          <td style="padding: 12px;">
-            <div style="color: var(--amber-400); font-weight: bold;">₱${videoCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-            <div style="font-size: 10px; color: #7488b6;">${empVideos.length} approved</div>
-          </td>
-          <td style="padding: 12px;">
-            <div style="color: var(--mint-400); font-weight: bold;">₱${liveCommission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-            <div style="font-size: 10px; color: #7488b6;">From Shift Deltas</div>
-          </td>
-          <td style="padding: 12px;">
-             <div style="color: var(--mint-500); font-family: var(--font-mono); font-size: 13px;">+${(totalOtMins / 60).toFixed(1)} hrs</div>
-             <div style="color: var(--coral-500); font-family: var(--font-mono); font-size: 11px;">-${totalLateMins} mins</div>
-          </td>
-          <td style="padding: 12px;">
-            <button class="btn" style="font-size: 11px; padding: 6px 10px; border-color: var(--amber-500); color: var(--amber-500);">Upload Payslip</button>
-          </td>
-        </tr>
-      `;
-    });
 
       tbody.innerHTML = html;
 
@@ -3931,105 +3924,6 @@ if (saveScheduleBtn) {
     }
   }
 
-    // ---- 2. LIVE SELLER DELTA COMMISSION ENGINE ----
-  let lastShiftTotals = { buyers: 0, commi: 0, sold: 0, gmv: 0 };
-
-  async function populateDeltaSellers() {
-    const sellerSelect = document.getElementById('deltaSeller');
-    if (!sellerSelect) return;
-
-    // 1. Dynamically find the exact UUID for 'Live Seller'
-    const { data: posData } = await supabaseClient
-      .from('positions')
-      .select('id')
-      .eq('name', 'Live Seller')
-      .single();
-
-    if (!posData) return;
-
-    // 2. Fetch only employees with that specific position ID
-    const { data: sellers } = await supabaseClient
-      .from('employees')
-      .select('id, name')
-      .eq('position_id', posData.id)
-      .order('name');
-
-    if (sellers) {
-      sellerSelect.innerHTML = '<option value="">Select Seller...</option>' + 
-        sellers.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
-    }
-  }
-
-  const calcDeltaBtn = document.getElementById('calcDeltaBtn');
-if (calcDeltaBtn) {
-    // 1. Added 'async' here so we can talk to the database!
-    calcDeltaBtn.addEventListener('click', async () => { 
-        
-        // 1. Grab the raw inputs from the dashboard
-        const currentBuyers = parseFloat(document.getElementById('deltaBuyer').value) || 0;
-        const currentCommi = parseFloat(document.getElementById('deltaCommi').value) || 0;
-        const currentSold = parseFloat(document.getElementById('deltaSold').value) || 0;
-        const currentGmv = parseFloat(document.getElementById('deltaGmv').value) || 0;
-        const sellerId = document.getElementById('deltaSeller').value;
-
-        if (!sellerId) {
-            alert("Please select a Live Seller first!");
-            return;
-        }
-
-        // 2. The Delta Math (Current Shift Total MINUS Previous Shift Total)
-        const shiftBuyers = currentBuyers - lastShiftTotals.buyers;
-        const shiftCommi = currentCommi - lastShiftTotals.commi;
-        const shiftSold = currentSold - lastShiftTotals.sold;
-        const shiftGmv = currentGmv - lastShiftTotals.gmv;
-
-        // Prevent negative numbers if someone enters data wrong
-        if (shiftCommi < 0 || shiftSold < 0) {
-            alert("Error: The totals you entered are LOWER than the previous shift. Please check your numbers.");
-            return;
-        }
-
-        // 3. Update the "Last Known Totals" so the next seller's math is ready
-        lastShiftTotals = {
-            buyers: currentBuyers,
-            commi: currentCommi,
-            sold: currentSold,
-            gmv: currentGmv
-        };
-
-        // 4. ---- NEW: SAVE TO DATABASE! ----
-        try {
-            // Format today's date (YYYY-MM-DD) to match the attendance log
-            const today = new Date();
-            const logDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-
-            // Send the calculated commission straight to Supabase
-            const { error } = await supabaseClient
-                .from('attendance_logs')
-                .update({ earned_commission: shiftCommi }) 
-                .eq('employee_id', sellerId)
-                .eq('log_date', logDate);
-
-            if (error) throw error;
-            
-            // Fire the success alert!
-            alert(`SHIFT YIELD SAVED TO DATABASE!\n\nBuyers: ${shiftBuyers}\nCommission: ₱${shiftCommi.toLocaleString()}\nItems Sold: ${shiftSold}\nGMV: ₱${shiftGmv.toLocaleString()}`);
-
-        } catch (err) {
-            console.error("Database save failed:", err);
-            alert("Calculated the delta, but failed to save to the database. Check console.");
-        }
-
-        // Clear the input boxes for the next person
-        document.getElementById('deltaBuyer').value = '';
-        document.getElementById('deltaCommi').value = '';
-        document.getElementById('deltaSold').value = '';
-        document.getElementById('deltaGmv').value = '';
-    });
-}
-
-  // Initialize the seller dropdown
-  populateDeltaSellers();
 
     // 3. Delegation Toggle Logic (For Eden/Catherine to unlock Creatives)
     const toggleFinance = document.getElementById('toggleCreativesFinance');
