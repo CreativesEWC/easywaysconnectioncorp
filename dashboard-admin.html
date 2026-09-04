@@ -1252,13 +1252,12 @@ aside.sidebar.collapsed ~ main.main-content {
                   <tr>
                       <th>Date</th>
                       <th>Shift Time</th>
-                      <th>Employee</th>
+                      <th>Employee (Submitter)</th>
                       <th style="color: var(--amber-400);">Shop / Brand</th>
-                      <th>Buyer</th>
+                      <th style="color: #7488b6;">Shift Buddies</th>
+                      <th>Buyers</th>
                       <th>Commi</th>
-                      <th>Sold</th>
                       <th>LH Sold</th>
-                      <th>GMV</th>
                       <th>LH GMV</th>
                       <th>Proof</th>
                   </tr>
@@ -3835,32 +3834,22 @@ if (saveScheduleBtn) {
     const tbody = document.getElementById('masterTotalsBody');
     if (!tbody) return;
 
-    // Show loading state
     tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
-    // Get the current month (Format: YYYY-MM) to filter records
     const today = new Date();
     const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
 
     try {
-      // 1. Fetch all active employees
       const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name)').order('name');
-
-      // 2. Fetch Tickets (for perfect attendance check)
       const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').like('date_from', `${currentMonth}%`); 
-
-      // 3. Fetch Attendance Logs (for late & OT)
       const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').like('log_date', `${currentMonth}%`);
-
-      // 4. Fetch APPROVED Video Submissions (for VIDEO COMMISSIONS)
       const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').like('upload_date', `${currentMonth}%`);
-
-      // 5. NEW: Fetch Sales Reports (for LIVE COMMISSIONS)
+      
+      // NEW: Fetch all explicitly submitted Live Sales for the month
       const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').like('report_date', `${currentMonth}%`);
 
       let html = '';
 
-      // Loop through every employee and run the Audit
       emps.forEach(emp => {
         const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
         const empVideos = videos?.filter(v => v.employee_id === emp.id) || [];
@@ -3870,24 +3859,19 @@ if (saveScheduleBtn) {
         let totalOtMins = 0;
         let liveCommission = 0;
         
-        // Sum up late mins and OT mins
         empLogs.forEach(log => {
           totalLateMins += (log.late_penalty_minutes || 0);
           totalOtMins += (log.earned_ot_minutes || 0);
         });
 
-        // Sum up exactly what they submitted from their multi-shop forms
+        // Automatically sum up all of their individual submissions!
         empSales.forEach(sale => {
           liveCommission += (parseFloat(sale.actual_sales) || 0);
         });
 
-        // Video Commission Logic (₱100 per approved video)
         const videoCommission = empVideos.length * 100;
-        
-        // Safely grab the position name
         const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
 
-        // Build the Table Row
         html += `
           <tr style="border-bottom: 1px solid var(--navy-700);">
             <td style="padding: 12px;">
@@ -4362,9 +4346,6 @@ if (saveScheduleBtn) {
   initFinanceTab();
   populateVideoAuditSellers(); // <-- ADD THIS ONE!
 
- // ==========================================================
-  // INBOX: LOAD LIVE COMMISSIONS (SALES REPORTS)
-  // ==========================================================
   // ==========================================================
   // INBOX: LOAD LIVE COMMISSIONS (SALES REPORTS)
   // ==========================================================
@@ -4372,7 +4353,7 @@ if (saveScheduleBtn) {
       const tbody = document.getElementById('adminLiveTable');
       if (!tbody) return;
 
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="11">Fetching latest sales reports...</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Fetching latest sales reports...</td></tr>';
 
       try {
           const { data, error } = await supabaseClient
@@ -4384,7 +4365,7 @@ if (saveScheduleBtn) {
           if (error) throw error;
 
           if (!data || data.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="11">No sales reports submitted yet.</td></tr>';
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No sales reports submitted yet.</td></tr>';
               return;
           }
 
@@ -4392,14 +4373,13 @@ if (saveScheduleBtn) {
               const empName = report.employees ? report.employees.name : 'Unknown Seller';
               const dateStr = new Date(report.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               
-              // Pulling the exact paper metrics
               const shiftTime = report.shift_time ? escapeHtml(report.shift_time) : '—';
-              const shopName = report.shop_name ? escapeHtml(report.shop_name) : '—'; // NEW!
+              const shopName = report.shop_name ? escapeHtml(report.shop_name) : '—'; 
+              const buddies = report.shift_buddy ? escapeHtml(report.shift_buddy) : 'Solo'; 
+              
               const buyers = report.buyers || 0;
-              const commi = parseFloat(report.actual_sales) || 0; // Commi was saved to actual_sales
-              const sold = report.sold || 0;
+              const commi = parseFloat(report.actual_sales) || 0; 
               const lhSold = report.lh_sold || 0;
-              const gmv = parseFloat(report.gmv) || 0;
               const lhGmv = parseFloat(report.lh_gmv) || 0;
 
               return `
@@ -4408,11 +4388,10 @@ if (saveScheduleBtn) {
                       <td style="font-family: var(--font-mono); font-size: 11px; color: #7488b6; white-space: nowrap;">${shiftTime}</td>
                       <td style="font-weight: 600; color: var(--paper); font-size: 12px; white-space: nowrap;">${empName}</td>
                       <td style="color: var(--amber-400); font-weight: bold; font-size: 12px; white-space: nowrap;">${shopName}</td>
+                      <td style="color: #7488b6; font-size: 11px; white-space: nowrap;">${buddies}</td>
                       <td style="color: #9fb0d6; font-family: var(--font-mono);">${buyers}</td>
                       <td style="color: var(--mint-400); font-weight: bold; font-family: var(--font-mono);">₱${commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td style="color: #9fb0d6; font-family: var(--font-mono);">${sold}</td>
                       <td style="color: #7488b6; font-family: var(--font-mono);">${lhSold}</td>
-                      <td style="color: #9fb0d6; font-family: var(--font-mono);">₱${gmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td style="color: #7488b6; font-family: var(--font-mono);">₱${lhGmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td>
                           <button type="button" class="btn" onclick="openImageViewer('${report.screenshot_url}')" style="display: inline-block; padding: 4px 8px; font-size: 10px; border-color: var(--mint-500); color: var(--mint-400); background: transparent; cursor: pointer; white-space: nowrap;">
@@ -4424,9 +4403,10 @@ if (saveScheduleBtn) {
           }).join('');
       } catch (err) {
           console.error("Error loading live commissions:", err);
-          tbody.innerHTML = `<tr class="empty-row"><td colspan="11" style="color: var(--coral-500);">Failed to load reports: ${err.message}</td></tr>`;
+          tbody.innerHTML = `<tr class="empty-row"><td colspan="10" style="color: var(--coral-500);">Failed to load reports: ${err.message}</td></tr>`;
       }
   };
+  
   // ==========================================================
   // INBOX: LOAD VIDEO AUDITS (WITH APPROVAL WORKFLOW)
   // ==========================================================
