@@ -1153,18 +1153,24 @@ aside.sidebar.collapsed ~ main.main-content {
 
           
 
-          <!-- NEW: SHIFT BUDDY DROPDOWN -->
-          <div style="margin-top: 10px; margin-bottom: 20px;">
-            <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Select Shift Buddy</label>
-            <select id="buddyNameInput" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-              <option value="">No shift buddy (Solo)</option>
-              <!-- Javascript will automatically load her teammates here -->
-            </select>
+         <!-- NEW: SHIFT BUDDY DROPDOWNS (2 SLOTS) -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; margin-bottom: 20px;">
+            <div>
+              <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 1</label>
+              <select id="buddy1NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                <option value="">None (Solo)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 2</label>
+              <select id="buddy2NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                <option value="">None</option>
+              </select>
+            </div>
           </div>
           
           <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
           <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
-            <!-- Yellow Header mimicking the paper form -->
             <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
               Summary: Overall Total
             </div>
@@ -1181,22 +1187,26 @@ aside.sidebar.collapsed ~ main.main-content {
               <tbody>
                 <!-- Primary Employee Row -->
                 <tr>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);" id="summaryName">
-                    Employee Name
-                  </td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);" id="summaryName">Employee Name</td>
                   <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryCommi">0.00</td>
                   <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhSold">0</td>
                   <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhGmv">0.00</td>
                   <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--mint-500);">Auto-Signed</td>
                 </tr>
-                <!-- Shift Buddy Row -->
+                <!-- Shift Buddy 1 Row -->
                 <tr style="border-top: 1px solid var(--line);">
-                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddyName">
-                    Shift Buddy
-                  </td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddyCommi">0.00</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddyLhSold">0</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddyLhGmv">0.00</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddy1Name">Shift Buddy 1</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1Commi">0.00</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1LhSold">0</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1LhGmv">0.00</td>
+                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
+                </tr>
+                <!-- Shift Buddy 2 Row -->
+                <tr style="border-top: 1px solid var(--line);">
+                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddy2Name">Shift Buddy 2</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2Commi">0.00</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2LhSold">0</td>
+                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2LhGmv">0.00</td>
                   <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
                 </tr>
               </tbody>
@@ -1205,9 +1215,6 @@ aside.sidebar.collapsed ~ main.main-content {
               *Read-Only. Do not use any other format forms.
             </div>
           </div>
-
-        </section>
-      </div>
 
       <!-- 3. MY REQUESTS TAB -->
       <div id="lh-requests" class="lh-tab-content" style="display: none;">
@@ -2259,12 +2266,20 @@ aside.sidebar.collapsed ~ main.main-content {
                 </div>
             `;
 
-            // NEW: Add this teammate to the shift buddy dropdown (skipping the logged-in user)
-            if (buddyDropdown && member.id !== emp.id) {
-                const opt = document.createElement('option');
-                opt.value = member.name;
-                opt.textContent = member.name;
-                buddyDropdown.appendChild(opt);
+            // NEW: Add this teammate to BOTH shift buddy dropdowns (skipping the logged-in user)
+            if (member.id !== emp.id) {
+                if (buddy1Dropdown) {
+                    const opt1 = document.createElement('option');
+                    opt1.value = member.name;
+                    opt1.textContent = member.name;
+                    buddy1Dropdown.appendChild(opt1);
+                }
+                if (buddy2Dropdown) {
+                    const opt2 = document.createElement('option');
+                    opt2.value = member.name;
+                    opt2.textContent = member.name;
+                    buddy2Dropdown.appendChild(opt2);
+                }
             }
         });
 
@@ -3798,15 +3813,10 @@ if (ticketBtn) {
       });
   }
 
-  // --- 2. Live Tally Math Engine (Deduction Logic) ---
+  // --- 2. Live Tally Math Engine (Dynamic 3-Way Split) ---
   function updateSummaryTally() {
-      let totalCommi = 0;
-      let totalSold = 0;
-      let totalLhSold = 0;
-      let totalGmv = 0;
-      let totalLhGmv = 0;
+      let totalCommi = 0, totalSold = 0, totalLhSold = 0, totalGmv = 0, totalLhGmv = 0;
       
-      // Sum up every single shop block
       document.querySelectorAll('.sales-upload-row').forEach(row => {
           totalCommi += parseFloat(row.querySelector('.sales-commi').value) || 0;
           totalSold += parseInt(row.querySelector('.sales-sold').value) || 0;
@@ -3815,45 +3825,51 @@ if (ticketBtn) {
           totalLhGmv += parseFloat(row.querySelector('.sales-lh-gmv').value) || 0;
       });
 
-      // THE MATH: Deduct "My" sales from the "Total" sales to find the Buddy's numbers
-      let buddySold = totalSold - totalLhSold;
-      let buddyGmv = totalGmv - totalLhGmv;
+      const b1Name = document.getElementById('buddy1NameInput').value;
+      const b2Name = document.getElementById('buddy2NameInput').value;
       
-      // Failsafe: Prevent negative numbers if they typed something backwards
-      if (buddySold < 0) buddySold = 0;
-      if (buddyGmv < 0) buddyGmv = 0;
+      // Determine how many people are on the stream
+      let totalPeople = 1;
+      let extraBuddies = 0;
+      if (b1Name) { totalPeople++; extraBuddies++; }
+      if (b2Name) { totalPeople++; extraBuddies++; }
 
-      // Commission Math: Splits the total commission 50/50
-      let myCommi = totalCommi / 2;
-      let buddyCommi = totalCommi / 2;
+      // MATH: Split Commission evenly by 1, 2, or 3
+      let splitCommi = totalCommi / totalPeople;
 
-      // Update Primary Row (My Totals)
-      const sCommi = document.getElementById('summaryCommi');
-      const sSold = document.getElementById('summaryLhSold');
-      const sGmv = document.getElementById('summaryLhGmv');
-      if (sCommi) sCommi.textContent = myCommi.toFixed(2);
-      if (sSold) sSold.textContent = totalLhSold;
-      if (sGmv) sGmv.textContent = totalLhGmv.toFixed(2);
+      // MATH: Remaining Sales/GMV divided by the number of extra buddies
+      let remainingSold = Math.max(0, totalSold - totalLhSold);
+      let remainingGmv = Math.max(0, totalGmv - totalLhGmv);
+      let buddySold = extraBuddies > 0 ? (remainingSold / extraBuddies) : 0;
+      let buddyGmv = extraBuddies > 0 ? (remainingGmv / extraBuddies) : 0;
 
-      // Update Shift Buddy Row
-      const bCommi = document.getElementById('summaryBuddyCommi');
-      const bSold = document.getElementById('summaryBuddyLhSold');
-      const bGmv = document.getElementById('summaryBuddyLhGmv');
-      if (bCommi) bCommi.textContent = buddyCommi.toFixed(2);
-      if (bSold) bSold.textContent = buddySold;
-      if (bGmv) bGmv.textContent = buddyGmv.toFixed(2);
+      // Update Primary Row
+      if (document.getElementById('summaryCommi')) document.getElementById('summaryCommi').textContent = splitCommi.toFixed(2);
+      if (document.getElementById('summaryLhSold')) document.getElementById('summaryLhSold').textContent = totalLhSold;
+      if (document.getElementById('summaryLhGmv')) document.getElementById('summaryLhGmv').textContent = totalLhGmv.toFixed(2);
+
+      // Update Buddy 1 Row
+      if (document.getElementById('summaryBuddy1Commi')) document.getElementById('summaryBuddy1Commi').textContent = b1Name ? splitCommi.toFixed(2) : '0.00';
+      if (document.getElementById('summaryBuddy1LhSold')) document.getElementById('summaryBuddy1LhSold').textContent = b1Name ? Math.floor(buddySold) : '0';
+      if (document.getElementById('summaryBuddy1LhGmv')) document.getElementById('summaryBuddy1LhGmv').textContent = b1Name ? buddyGmv.toFixed(2) : '0.00';
+
+      // Update Buddy 2 Row
+      if (document.getElementById('summaryBuddy2Commi')) document.getElementById('summaryBuddy2Commi').textContent = b2Name ? splitCommi.toFixed(2) : '0.00';
+      if (document.getElementById('summaryBuddy2LhSold')) document.getElementById('summaryBuddy2LhSold').textContent = b2Name ? Math.floor(buddySold) : '0';
+      if (document.getElementById('summaryBuddy2LhGmv')) document.getElementById('summaryBuddy2LhGmv').textContent = b2Name ? buddyGmv.toFixed(2) : '0.00';
   }
 
-  /// --- Real-time Name Selector ---
-  const buddyNameInput = document.getElementById('buddyNameInput');
-  if (buddyNameInput) {
-      buddyNameInput.addEventListener('change', (e) => {
-          const display = document.getElementById('summaryBuddyName');
-          if (display) display.textContent = e.target.value || 'Shift Buddy';
+  // --- Real-time Name Selectors ---
+  document.querySelectorAll('.buddy-select').forEach(select => {
+      select.addEventListener('change', () => {
+          const b1 = document.getElementById('buddy1NameInput').value;
+          const b2 = document.getElementById('buddy2NameInput').value;
+          if (document.getElementById('summaryBuddy1Name')) document.getElementById('summaryBuddy1Name').textContent = b1 || 'Shift Buddy 1';
+          if (document.getElementById('summaryBuddy2Name')) document.getElementById('summaryBuddy2Name').textContent = b2 || 'Shift Buddy 2';
+          updateSummaryTally(); // Recalculate if a buddy is added/removed!
       });
-  }
+  });
 
-  // --- Attach listeners to trigger math ---
   function attachSalesListeners(row) {
       row.querySelector('.sales-commi').addEventListener('input', updateSummaryTally);
       row.querySelector('.sales-sold').addEventListener('input', updateSummaryTally);
@@ -3869,12 +3885,13 @@ if (ticketBtn) {
   if (salesReportForm) {
       salesReportForm.addEventListener('submit', async (e) => {
           e.preventDefault();
-          
           const rows = document.querySelectorAll('.sales-upload-row');
           if (rows.length === 0) return;
 
-          // Grab the Buddy's Name so we can send it to Supabase!
-          const shiftBuddyName = document.getElementById('buddyNameInput').value.trim() || null;
+          // Merge both buddy names into a single string for the database (e.g. "Angelica, Jessa")
+          const b1 = document.getElementById('buddy1NameInput').value;
+          const b2 = document.getElementById('buddy2NameInput').value;
+          const shiftBuddyString = [b1, b2].filter(Boolean).join(', ') || null;
 
           const submitBtn = document.getElementById('salesSubmitBtn');
           submitBtn.textContent = 'Uploading... Please wait.';
@@ -3884,7 +3901,6 @@ if (ticketBtn) {
           try {
               for (let i = 0; i < rows.length; i++) {
                   submitBtn.textContent = `Uploading report ${i + 1} of ${rows.length}...`;
-                  
                   const row = rows[i];
                   const sShop = row.querySelector('.sales-shop').value.trim();
                   const sDate = row.querySelector('.sales-date').value;
@@ -3897,20 +3913,15 @@ if (ticketBtn) {
                   const sLhGmv = parseFloat(row.querySelector('.sales-lh-gmv').value) || 0;
                   
                   const file = row.querySelector('.sales-screenshot').files[0];
-                  if (!file) throw new Error("Missing screenshot on one of the shops.");
+                  if (!file) throw new Error("Missing screenshot.");
 
                   const fileExt = file.name.split('.').pop();
                   const fileName = `public/${emp.id}_${Date.now()}_${i}_sales.${fileExt}`;
 
-                  const { error: uploadErr } = await supabaseClient
-                      .storage.from('sales-screenshots')
-                      .upload(fileName, file, { upsert: false });
-
+                  const { error: uploadErr } = await supabaseClient.storage.from('sales-screenshots').upload(fileName, file, { upsert: false });
                   if (uploadErr) throw uploadErr;
 
-                  const { data: publicUrlData } = supabaseClient
-                      .storage.from('sales-screenshots')
-                      .getPublicUrl(fileName);
+                  const { data: publicUrlData } = supabaseClient.storage.from('sales-screenshots').getPublicUrl(fileName);
 
                   const { error: dbErr } = await supabaseClient
                       .from('sales_reports')
@@ -3919,7 +3930,7 @@ if (ticketBtn) {
                           report_date: sDate,
                           shift_time: sTime,
                           shop_name: sShop, 
-                          shift_buddy: shiftBuddyName, // <--- NEW DB FIELD!
+                          shift_buddy: shiftBuddyString, // <--- Saves both names!
                           buyers: sBuyer,
                           actual_sales: sCommi,
                           sold: sSold,
@@ -3935,8 +3946,10 @@ if (ticketBtn) {
 
               alert(`Successfully submitted ${successCount} live commission reports!`);
               salesReportForm.reset();
-              if (document.getElementById('buddyNameInput')) document.getElementById('buddyNameInput').value = '';
-              if (document.getElementById('summaryBuddyName')) document.getElementById('summaryBuddyName').textContent = 'Shift Buddy';
+              document.getElementById('buddy1NameInput').value = '';
+              document.getElementById('buddy2NameInput').value = '';
+              document.getElementById('summaryBuddy1Name').textContent = 'Shift Buddy 1';
+              document.getElementById('summaryBuddy2Name').textContent = 'Shift Buddy 2';
               
               const firstRow = salesRowsContainer.querySelector('.sales-upload-row').cloneNode(true);
               firstRow.querySelector('.remove-sales-row').style.display = 'none';
