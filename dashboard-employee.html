@@ -3764,7 +3764,7 @@ if (ticketBtn) {
           });
 
           salesRowsContainer.appendChild(newRow);
-          attachSalesListeners(newRow);
+          attachSalesListeners(newRow); // <--- Make sure this is here!
       });
   }
 
@@ -3815,22 +3815,33 @@ if (ticketBtn) {
       </div>`;
   }
 
-      container.innerHTML = summaryHTML;
-  }
-
   function attachSalesListeners(row) {
       row.querySelectorAll('input').forEach(inp => {
-          inp.addEventListener('input', updateSummaryTally);
+          inp.addEventListener('input', () => {
+              // 1. Auto-Calculate Delta Engine
+              const startCommi = parseFloat(row.querySelector('.inp-start-commi').value) || 0;
+              const startSold = parseInt(row.querySelector('.inp-start-sold').value) || 0;
+              const startGmv = parseFloat(row.querySelector('.inp-start-gmv').value) || 0;
+
+              const endCommi = parseFloat(row.querySelector('.inp-end-commi').value) || 0;
+              const endSold = parseInt(row.querySelector('.inp-end-sold').value) || 0;
+              const endGmv = parseFloat(row.querySelector('.inp-end-gmv').value) || 0;
+
+              // Math logic: End minus Start (Prevents negative numbers)
+              const meCommiEl = row.querySelector('.inp-me-commi');
+              const meSoldEl = row.querySelector('.inp-me-sold');
+              const meGmvEl = row.querySelector('.inp-me-gmv');
+
+              if (meCommiEl) meCommiEl.value = Math.max(0, endCommi - startCommi).toFixed(2);
+              if (meSoldEl) meSoldEl.value = Math.max(0, endSold - startSold);
+              if (meGmvEl) meGmvEl.value = Math.max(0, endGmv - startGmv).toFixed(2);
+
+              // 2. Update Yellow Summary Table
+              updateSummaryTally();
+          });
       });
   }
-
-  document.querySelectorAll('.buddy-select').forEach(select => {
-      select.addEventListener('change', updateSummaryTally);
-  });
-
-  const initialSalesRow = document.querySelector('.sales-upload-row');
-  if (initialSalesRow) attachSalesListeners(initialSalesRow);
-
+  
   // --- 3. Single-Employee Database Push ---
   if (salesReportForm) {
       salesReportForm.addEventListener('submit', async (e) => {
