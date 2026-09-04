@@ -1104,117 +1104,135 @@ aside.sidebar.collapsed ~ main.main-content {
           
           <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
             
-            <!-- Dynamic Container for Shops -->
+            <!-- GLOBAL BUDDY SELECTORS -->
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 10px;">
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 1</label>
+                <select id="buddy1NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                  <option value="">None (Solo)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 2</label>
+                <select id="buddy2NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                  <option value="">None</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- SHOP BLOCKS CONTAINER -->
             <div id="salesRowsContainer" style="display: flex; flex-direction: column; gap: 15px;">
               
-              <!-- Shop Block 1 (Template) -->
+              <!-- SHOP BLOCK TEMPLATE -->
               <div class="sales-upload-row" style="background: var(--navy-800); padding: 15px; border-radius: 8px; border: 1px solid var(--line); position: relative;">
                 <button type="button" class="remove-sales-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1; z-index: 10; display: none;">&times;</button>
                 
-                <!-- NEW: Shop/Brand Name -->
-                <div style="margin-bottom: 15px;">
-                  <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shop / Brand Name</label>
-                  <input type="text" class="sales-shop" required placeholder="e.g., Momom Food & Seoul Secrets" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                   <div>
+                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shop / Brand Name</label>
+                      <input type="text" class="sales-shop" required placeholder="e.g., Momom Food" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                   </div>
+                   <div>
+                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Total Buyers</label>
+                      <input type="number" class="sales-buyers" required placeholder="Total Shop Buyers" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                   </div>
                 </div>
-
+                
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px;">
                   <div>
                     <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
-                    <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                    <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
                   </div>
                   <div>
                     <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Time</label>
-                    <input type="text" class="sales-time" required placeholder="Shift Time (e.g. 8:00 - 12:00)" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                    <input type="text" class="sales-time" required placeholder="8:00 - 12:00" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
                   </div>
                 </div>
 
-                <!-- Core Metrics Grid -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
-                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Buyer</label><input type="number" class="sales-buyer" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
-                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Commi</label><input type="number" step="0.01" class="sales-commi" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
-                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Sold</label><input type="number" class="sales-sold" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
-                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH Sold</label><input type="number" class="sales-lh-sold" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
-                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">GMV</label><input type="number" step="0.01" class="sales-gmv" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
-                  <div><label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">LH GMV</label><input type="number" step="0.01" class="sales-lh-gmv" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;"></div>
+                <!-- EXPLICIT HOST INPUTS (NO MORE DEDUCTION) -->
+                <div style="border-top: 1px solid var(--line); padding-top: 15px;">
+                  
+                  <!-- ME -->
+                  <div class="host-input-row me-row" style="margin-bottom: 10px;">
+                    <div style="font-size: 11px; color: var(--mint-500); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">My Sales (Submitter)</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                      <input type="number" step="0.01" class="inp-me-commi" required placeholder="Commi" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                      <input type="number" class="inp-me-sold" required placeholder="LH Sold" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                      <input type="number" step="0.01" class="inp-me-gmv" required placeholder="LH GMV" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    </div>
+                  </div>
+                  
+                  <!-- BUDDY 1 -->
+                  <div class="host-input-row b1-row" style="margin-bottom: 10px; display: none;">
+                    <div style="font-size: 11px; color: #7488b6; margin-bottom: 6px; text-transform: uppercase; font-weight: bold;" class="b1-lbl">Buddy 1 Sales</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                      <input type="number" step="0.01" class="inp-b1-commi" placeholder="Commi" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                      <input type="number" class="inp-b1-sold" placeholder="LH Sold" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                      <input type="number" step="0.01" class="inp-b1-gmv" placeholder="LH GMV" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    </div>
+                  </div>
+
+                  <!-- BUDDY 2 -->
+                  <div class="host-input-row b2-row" style="margin-bottom: 10px; display: none;">
+                    <div style="font-size: 11px; color: #7488b6; margin-bottom: 6px; text-transform: uppercase; font-weight: bold;" class="b2-lbl">Buddy 2 Sales</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                      <input type="number" step="0.01" class="inp-b2-commi" placeholder="Commi" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                      <input type="number" class="inp-b2-sold" placeholder="LH Sold" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                      <input type="number" step="0.01" class="inp-b2-gmv" placeholder="LH GMV" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    </div>
+                  </div>
                 </div>
 
-                <div>
+                <div style="margin-top: 15px;">
                   <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
                   <input type="file" class="sales-screenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
                 </div>
               </div>
-
-            </div> <!-- End of salesRowsContainer -->
+            </div>
 
             <button type="button" id="addSalesRowBtn" class="btn2" style="border: 1px dashed var(--mint-500); color: var(--mint-500); background: transparent; padding: 10px; margin-top: 5px;">[+] Add Another Shop Report</button>
-
             <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;">Submit Live Commission</button>
+
+            <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
+            <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
+              <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">Summary: Overall Total</div>
+              <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
+                    <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
+                    <th style="padding: 12px; border-right: 1px solid var(--line);">Total Commi</th>
+                    <th style="padding: 12px; border-right: 1px solid var(--line);">LH Sold</th>
+                    <th style="padding: 12px; border-right: 1px solid var(--line);">LH GMV</th>
+                    <th style="padding: 12px;">Sign</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);" id="summaryName">Employee Name</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryCommi">0.00</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhSold">0</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhGmv">0.00</td>
+                    <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--mint-500);">Auto-Signed</td>
+                  </tr>
+                  <tr style="border-top: 1px solid var(--line);">
+                    <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddy1Name">Shift Buddy 1</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1Commi">0.00</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1LhSold">0</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1LhGmv">0.00</td>
+                    <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
+                  </tr>
+                  <tr style="border-top: 1px solid var(--line);">
+                    <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddy2Name">Shift Buddy 2</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2Commi">0.00</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2LhSold">0</td>
+                    <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2LhGmv">0.00</td>
+                    <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="padding: 8px 15px; font-size: 10px; color: var(--text-muted); background: var(--navy-800); text-align: right; text-transform: uppercase;">*Read-Only. Do not use any other format forms.</div>
+            </div>
           </form>
-
-          
-
-         <!-- NEW: SHIFT BUDDY DROPDOWNS (2 SLOTS) -->
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; margin-bottom: 20px;">
-            <div>
-              <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 1</label>
-              <select id="buddy1NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                <option value="">None (Solo)</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 2</label>
-              <select id="buddy2NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
-                <option value="">None</option>
-              </select>
-            </div>
-          </div>
-          
-          <!-- OVERALL TOTAL SUMMARY (AUTO-LOCKED & REAL-TIME) -->
-          <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
-            <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
-              Summary: Overall Total
-            </div>
-            <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
-              <thead>
-                <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">Total Commi</th>
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">LH Sold</th>
-                  <th style="padding: 12px; border-right: 1px solid var(--line);">LH GMV</th>
-                  <th style="padding: 12px;">Sign</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Primary Employee Row -->
-                <tr>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);" id="summaryName">Employee Name</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryCommi">0.00</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhSold">0</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 14px;" id="summaryLhGmv">0.00</td>
-                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--mint-500);">Auto-Signed</td>
-                </tr>
-                <!-- Shift Buddy 1 Row -->
-                <tr style="border-top: 1px solid var(--line);">
-                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddy1Name">Shift Buddy 1</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1Commi">0.00</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1LhSold">0</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy1LhGmv">0.00</td>
-                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
-                </tr>
-                <!-- Shift Buddy 2 Row -->
-                <tr style="border-top: 1px solid var(--line);">
-                  <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--text-muted);" id="summaryBuddy2Name">Shift Buddy 2</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2Commi">0.00</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2LhSold">0</td>
-                  <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--text-muted); font-family: monospace; font-size: 14px;" id="summaryBuddy2LhGmv">0.00</td>
-                  <td style="padding: 15px; font-family: 'Brush Script MT', cursive; font-size: 20px; color: var(--text-muted);">Auto-Signed</td>
-                </tr>
-              </tbody>
-            </table>
-            <div style="padding: 8px 15px; font-size: 10px; color: var(--text-muted); background: var(--navy-800); text-align: right; text-transform: uppercase;">
-              *Read-Only. Do not use any other format forms.
-            </div>
-          </div>
 
       <!-- 3. MY REQUESTS TAB -->
       <div id="lh-requests" class="lh-tab-content" style="display: none;">
@@ -4627,43 +4645,6 @@ if (ticketBtn) {
       document.querySelectorAll('.sidebar-sub-menu button').forEach(btn => btn.classList.remove('active'));
       clickedBtn.classList.add('active');
   };
-
-  // ==========================================================
-  // REAL-TIME SUMMARY TALLY SYNC
-  // ==========================================================
-  const commiInput = document.getElementById('salesCommi');
-  const lhSoldInput = document.getElementById('salesLhSold');
-  const lhGmvInput = document.getElementById('salesLhGmv');
-
-  const summaryCommi = document.getElementById('summaryCommi');
-  const summaryLhSold = document.getElementById('summaryLhSold');
-  const summaryLhGmv = document.getElementById('summaryLhGmv');
-  
-  // Shift buddy mirror fields
-  const buddyCommi = document.getElementById('summaryBuddyCommi');
-  const buddyLhSold = document.getElementById('summaryBuddyLhSold');
-  const buddyLhGmv = document.getElementById('summaryBuddyLhGmv');
-
-  function updateSummaryTally() {
-      const commiVal = commiInput.value || '0.00';
-      const soldVal = lhSoldInput.value || '0';
-      const gmvVal = lhGmvInput.value || '0.00';
-
-      // Update primary row
-      summaryCommi.textContent = commiVal;
-      summaryLhSold.textContent = soldVal;
-      summaryLhGmv.textContent = gmvVal;
-      
-      // Update shift buddy row automatically
-      buddyCommi.textContent = commiVal;
-      buddyLhSold.textContent = soldVal;
-      buddyLhGmv.textContent = gmvVal;
-  }
-
-  // Listen for typing in the input fields and trigger the sync
-  if (commiInput) commiInput.addEventListener('input', updateSummaryTally);
-  if (lhSoldInput) lhSoldInput.addEventListener('input', updateSummaryTally);
-  if (lhGmvInput) lhGmvInput.addEventListener('input', updateSummaryTally);
 
   // ==========================================================
   // SYNC LOGGED-IN EMPLOYEE NAME TO TABLE (SMART WATCHER)
