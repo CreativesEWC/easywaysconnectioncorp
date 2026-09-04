@@ -3792,6 +3792,10 @@ if (saveScheduleBtn) {
   // PART 4.5 — MASTER FINANCE & COMMISSION ENGINE
   // ==========================================================
 
+  // ==========================================================
+  // PART 4.5 — MASTER FINANCE & COMMISSION ENGINE
+  // ==========================================================
+
   async function initFinanceTab() {
     // 1. Role-Based View Routing
     const superAdminView = document.getElementById('superAdminFinanceView');
@@ -3807,8 +3811,8 @@ if (saveScheduleBtn) {
       // Super Admin View (or Unlocked Creatives View)
       if(superAdminView) superAdminView.style.display = 'block';
       if(videoView) videoView.style.display = 'block';
-      loadMasterTotalsSheet(); // <-- ADD THIS LINE HERE!
-      if(delegationPanel && !isSuperAdmin) delegationPanel.style.display = 'none'; // Hide delegation switch from Creatives
+      loadMasterTotalsSheet(); 
+      if(delegationPanel && !isSuperAdmin) delegationPanel.style.display = 'none';
     }
 
     // 2. Build the Video Matrix (15 Videos = 100 PHP each)
@@ -3829,14 +3833,39 @@ if (saveScheduleBtn) {
       });
     }
 
-    // ---- 1. MASTER TOTALS & PERFECT ATTENDANCE ENGINE (UPGRADED) ----
+    // 3. Delegation Toggle Logic (For Eden/Catherine to unlock Creatives)
+    const toggleFinance = document.getElementById('toggleCreativesFinance');
+    if (toggleFinance && isSuperAdmin) {
+       // Fetch current status of Creatives account
+       const { data: creativesEmp } = await supabaseClient.from('employees').select('finance_unlocked').eq('badge_id', 'CREATIVES-01').single();
+       if (creativesEmp) toggleFinance.checked = creativesEmp.finance_unlocked;
+
+       toggleFinance.addEventListener('change', async (e) => {
+          const isUnlocked = e.target.checked;
+          toggleFinance.disabled = true;
+          
+          const { error } = await supabaseClient.from('employees')
+            .update({ finance_unlocked: isUnlocked })
+            .eq('badge_id', 'CREATIVES-01');
+            
+          toggleFinance.disabled = false;
+          if(error) {
+              alert('Error updating permissions: ' + error.message);
+              e.target.checked = !isUnlocked; // Revert switch if fail
+          } else {
+              alert(`Finance tab is now ${isUnlocked ? 'UNLOCKED' : 'LOCKED'} for the Creatives team.`);
+          }
+       });
+    }
+  }
+
+  // ---- 1. MASTER TOTALS & PERFECT ATTENDANCE ENGINE (UPGRADED) ----
   async function loadMasterTotalsSheet() {
     const tbody = document.getElementById('masterTotalsBody');
     if (!tbody) return;
 
     tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
-    // Safely generate the exact first and last day of the current month
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
@@ -3847,8 +3876,6 @@ if (saveScheduleBtn) {
 
     try {
       const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name)').order('name');
-      
-      // Use .gte() and .lte() instead of .like() to properly search strict DATE columns!
       const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').gte('date_from', firstDay).lte('date_from', lastDay); 
       const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').gte('log_date', firstDay).lte('log_date', lastDay);
       const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').gte('upload_date', firstDay).lte('upload_date', lastDay);
@@ -3870,7 +3897,6 @@ if (saveScheduleBtn) {
           totalOtMins += (log.earned_ot_minutes || 0);
         });
 
-        // Automatically sum up all of their individual submissions!
         empSales.forEach(sale => {
           liveCommission += (parseFloat(sale.actual_sales) || 0);
         });
