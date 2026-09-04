@@ -1253,6 +1253,7 @@ aside.sidebar.collapsed ~ main.main-content {
                       <th>Date</th>
                       <th>Shift Time</th>
                       <th>Employee</th>
+                      <th style="color: var(--amber-400);">Shop / Brand</th>
                       <th>Buyer</th>
                       <th>Commi</th>
                       <th>Sold</th>
@@ -4470,11 +4471,14 @@ if (calcDeltaBtn) {
  // ==========================================================
   // INBOX: LOAD LIVE COMMISSIONS (SALES REPORTS)
   // ==========================================================
+  // ==========================================================
+  // INBOX: LOAD LIVE COMMISSIONS (SALES REPORTS)
+  // ==========================================================
   window.loadAdminLiveCommissions = async function() {
       const tbody = document.getElementById('adminLiveTable');
       if (!tbody) return;
 
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Fetching latest sales reports...</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="11">Fetching latest sales reports...</td></tr>';
 
       try {
           const { data, error } = await supabaseClient
@@ -4486,7 +4490,7 @@ if (calcDeltaBtn) {
           if (error) throw error;
 
           if (!data || data.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No sales reports submitted yet.</td></tr>';
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="11">No sales reports submitted yet.</td></tr>';
               return;
           }
 
@@ -4496,6 +4500,7 @@ if (calcDeltaBtn) {
               
               // Pulling the exact paper metrics
               const shiftTime = report.shift_time ? escapeHtml(report.shift_time) : '—';
+              const shopName = report.shop_name ? escapeHtml(report.shop_name) : '—'; // NEW!
               const buyers = report.buyers || 0;
               const commi = parseFloat(report.actual_sales) || 0; // Commi was saved to actual_sales
               const sold = report.sold || 0;
@@ -4508,6 +4513,7 @@ if (calcDeltaBtn) {
                       <td style="font-family: var(--font-mono); font-size: 11px;">${dateStr}</td>
                       <td style="font-family: var(--font-mono); font-size: 11px; color: #7488b6; white-space: nowrap;">${shiftTime}</td>
                       <td style="font-weight: 600; color: var(--paper); font-size: 12px; white-space: nowrap;">${empName}</td>
+                      <td style="color: var(--amber-400); font-weight: bold; font-size: 12px; white-space: nowrap;">${shopName}</td>
                       <td style="color: #9fb0d6; font-family: var(--font-mono);">${buyers}</td>
                       <td style="color: var(--mint-400); font-weight: bold; font-family: var(--font-mono);">₱${commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td style="color: #9fb0d6; font-family: var(--font-mono);">${sold}</td>
@@ -4524,15 +4530,9 @@ if (calcDeltaBtn) {
           }).join('');
       } catch (err) {
           console.error("Error loading live commissions:", err);
-          tbody.innerHTML = `<tr class="empty-row"><td colspan="10" style="color: var(--coral-500);">Failed to load reports: ${err.message}</td></tr>`;
+          tbody.innerHTML = `<tr class="empty-row"><td colspan="11" style="color: var(--coral-500);">Failed to load reports: ${err.message}</td></tr>`;
       }
   };
-
-  window.openImageViewer = function(url) {
-      document.getElementById('viewerImageSrc').src = url;
-      document.getElementById('imageViewerModal').classList.add('open');
-  };
-
   // ==========================================================
   // INBOX: LOAD VIDEO AUDITS (WITH APPROVAL WORKFLOW)
   // ==========================================================
