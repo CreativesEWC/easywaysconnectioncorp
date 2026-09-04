@@ -4029,13 +4029,12 @@ if (saveScheduleBtn) {
     tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
     try {
-      // SMART CUTOFF DETECTION: Pull exact dates from your Cutoff Manager
+      // SMART CUTOFF DETECTION
       const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
       
       let firstDay = settings?.period_start;
       let lastDay = settings?.period_end;
 
-      // Fallback to current month if Cutoff Manager is empty
       if (!firstDay || !lastDay) {
         const today = new Date();
         const year = today.getFullYear();
@@ -4044,9 +4043,10 @@ if (saveScheduleBtn) {
         lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
       }
 
-      const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name)').order('name');
+      // ADDED 'mon_sat_shift' SO IT CAN CALCULATE CSR SHIFTS CORRECTLY
+      const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name), mon_sat_shift').order('name');
       const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').gte('date_from', firstDay).lte('date_from', lastDay); 
-      const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').gte('log_date', firstDay).lte('log_date', lastDay);
+      const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, time_in, time_out, late_penalty_minutes, earned_ot_minutes').gte('log_date', firstDay).lte('log_date', lastDay);
       const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').gte('upload_date', firstDay).lte('upload_date', lastDay);
       const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').gte('report_date', firstDay).lte('report_date', lastDay);
 
@@ -4060,17 +4060,72 @@ if (saveScheduleBtn) {
         let totalOtMins = 0;
         let liveCommission = 0;
         
-        empLogs.forEach(log => {
-          totalLateMins += (log.late_penalty_minutes || 0);
-          totalOtMins += (log.earned_ot_minutes || 0);
+        const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
+        const posNameUpper = posName.toUpperCase();
+        
+        // -----------------------------------------------------------------
+        // SMART MATH ENGINE (SYNCED WITH EMPLOYEE DASHBOARD)
+        // -----------------------------------------------------------------
+        const isFixed9to6 = posNameUpper.includes('MULTIMEDIA ARTIST') || 
+                            posNameUpper.includes('RTS ADMINISTRATIVE') || 
+                            posNameUpper.includes('EXECUTIVE SECRETARY');
+        const isCSR = posNameUpper.includes('CUSTOMER SERVICE');
+
+        empLogs.forEach(r => {
+          let expectedStartHour = null;
+          let expectedEndHour = null;
+
+          if (isFixed9to6) {
+              expectedStartHour = 9;  // 9 AM
+              expectedEndHour = 18;   // 6 PM
+          } else if (isCSR) {
+              if (emp.mon_sat_shift === 'morning') { expectedStartHour = 6; expectedEndHour = 15; } // 6 AM - 3 PM
+              else if (emp.mon_sat_shift === 'mid') { expectedStartHour = 12; expectedEndHour = 21; } // 12 PM - 9 PM
+              else if (emp.mon_sat_shift === 'night') { expectedStartHour = 15; expectedEndHour = 24; } // 3 PM - 12 AM
+          }
+
+          if (expectedStartHour !== null && expectedEndHour !== null) {
+              // Dynamic calculation based on mapped shift hours
+              if (r.time_in) {
+                  const tIn = new Date(r.time_in);
+                  const shiftStart = new Date(tIn);
+                  shiftStart.setHours(expectedStartHour, 0, 0, 0);
+                  
+                  if (tIn > shiftStart) {
+                      const exactMinsLate = (tIn - shiftStart) / 60000;
+                      totalLateMins += Math.ceil(exactMinsLate / 5) * 5; // 5-min increments
+                  }
+              }
+              if (r.time_out) {
+                  const tOut = new Date(r.time_out);
+                  const shiftEnd = new Date(tOut);
+                  
+                  if (expectedEndHour === 24) {
+                      shiftEnd.setHours(0, 0, 0, 0);
+                      shiftEnd.setDate(shiftEnd.getDate() + 1); // Push to 12:00 AM next day
+                  } else {
+                      shiftEnd.setHours(expectedEndHour, 0, 0, 0);
+                  }
+                  
+                  if (tOut > shiftEnd) {
+                      const exactOtMins = (tOut - shiftEnd) / 60000;
+                      totalOtMins += Math.floor(exactOtMins / 30) * 30; // 30-min blocks
+                  }
+              }
+          } else {
+              // Database fallback for Live Sellers
+              totalLateMins += (r.late_penalty_minutes || 0);
+              totalOtMins += (r.earned_ot_minutes || 0);
+          }
         });
+        // -----------------------------------------------------------------
+
         empSales.forEach(sale => {
           liveCommission += (parseFloat(sale.actual_sales) || 0);
         });
 
         const videoCommission = empVideos.length * 100;
-        const posName = (emp.positions && emp.positions.name) ? emp.positions.name : (emp.position || 'Staff');
-        const isLive = posName.toLowerCase().includes('live seller');
+        const isLive = posNameUpper.includes('LIVE SELLER');
         const totalDaysPresent = empLogs.length;
 
         let commiCell = '';
