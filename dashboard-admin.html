@@ -3788,9 +3788,77 @@ if (saveScheduleBtn) {
   // Turn on the receiver to start listening
   dashboardChannel.subscribe();
 
-  // ==========================================================
-  // PART 4.5 — MASTER FINANCE & COMMISSION ENGINE
-  // ==========================================================
+  // --- ATTENDANCE CORRECTION ENGINE ---
+  function toLocalDatetimeString(isoString) {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  window.openAttendanceEditor = function(recordId) {
+    const record = currentAttendanceRows.find(r => r.id === recordId);
+    if (!record) return;
+
+    document.getElementById('editAttId').value = record.id;
+    document.getElementById('editAttEmpName').textContent = record.employees ? `${record.employees.name} (${record.employees.badge_id})` : 'Unknown Employee';
+    
+    document.getElementById('editAttTimeIn').value = toLocalDatetimeString(record.time_in);
+    document.getElementById('editAttTimeOut').value = toLocalDatetimeString(record.time_out);
+
+    document.getElementById('attendanceModal').classList.add('open');
+  };
+
+  document.getElementById('closeAttBtn')?.addEventListener('click', () => {
+    document.getElementById('attendanceModal').classList.remove('open');
+  });
+
+  document.getElementById('saveAttBtn')?.addEventListener('click', async () => {
+    const id = document.getElementById('editAttId').value;
+    const timeIn = document.getElementById('editAttTimeIn').value;
+    const timeOut = document.getElementById('editAttTimeOut').value;
+
+    const btn = document.getElementById('saveAttBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+
+    const payload = {
+      time_in: timeIn ? new Date(timeIn).toISOString() : null,
+      time_out: timeOut ? new Date(timeOut).toISOString() : null
+    };
+
+    const { error } = await supabaseClient.from('attendance_logs').update(payload).eq('id', id);
+    
+    btn.disabled = false; btn.textContent = 'Save Changes';
+
+    if (error) {
+      alert('Error updating record: ' + error.message);
+      return;
+    }
+
+    document.getElementById('attendanceModal').classList.remove('open');
+    await loadAttendance(); 
+  });
+
+  document.getElementById('deleteAttBtn')?.addEventListener('click', async () => {
+    const id = document.getElementById('editAttId').value;
+    
+    if (!confirm('Are you sure you want to completely delete this attendance record? This cannot be undone.')) return;
+
+    const btn = document.getElementById('deleteAttBtn');
+    btn.disabled = true; btn.textContent = 'Deleting...';
+
+    const { error } = await supabaseClient.from('attendance_logs').delete().eq('id', id);
+
+    btn.disabled = false; btn.textContent = 'Delete Record';
+
+    if (error) {
+      alert('Error deleting record: ' + error.message);
+      return;
+    }
+
+    document.getElementById('attendanceModal').classList.remove('open');
+    await loadAttendance(); 
+  });
 
   // ==========================================================
   // PART 4.5 — MASTER FINANCE & COMMISSION ENGINE
