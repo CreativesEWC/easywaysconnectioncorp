@@ -4028,14 +4028,22 @@ if (saveScheduleBtn) {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDayObj = new Date(year, month + 1, 0); 
-    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
-
     try {
+      // SMART CUTOFF DETECTION: Pull exact dates from your Cutoff Manager
+      const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
+      
+      let firstDay = settings?.period_start;
+      let lastDay = settings?.period_end;
+
+      // Fallback to current month if Cutoff Manager is empty
+      if (!firstDay || !lastDay) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+      }
+
       const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name)').order('name');
       const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').gte('date_from', firstDay).lte('date_from', lastDay); 
       const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, late_penalty_minutes, earned_ot_minutes').gte('log_date', firstDay).lte('log_date', lastDay);
@@ -4065,7 +4073,6 @@ if (saveScheduleBtn) {
         const isLive = posName.toLowerCase().includes('live seller');
         const totalDaysPresent = empLogs.length;
 
-        // SMART CHECK: Change the Commission column based on their specific role!
         let commiCell = '';
         if (isLive) {
             commiCell = `
@@ -4142,12 +4149,17 @@ if (saveScheduleBtn) {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading video matrix...</td></tr>';
     
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDayObj = new Date(year, month + 1, 0);
-    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
+    const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
+    let firstDay = settings?.period_start;
+    let lastDay = settings?.period_end;
+
+    if (!firstDay || !lastDay) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+    }
     
     const { data: emps } = await supabaseClient.from('employees').select('id, name, positions(name)');
     const { data: vids } = await supabaseClient.from('video_submissions').select('*').gte('upload_date', firstDay).lte('upload_date', lastDay);
@@ -4180,16 +4192,21 @@ if (saveScheduleBtn) {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="5" class="loading-note">Loading live commissions...</td></tr>';
     
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDayObj = new Date(year, month + 1, 0);
-    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
+    const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
+    let firstDay = settings?.period_start;
+    let lastDay = settings?.period_end;
+
+    if (!firstDay || !lastDay) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+    }
     
     const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').gte('report_date', firstDay).lte('report_date', lastDay);
     if (!reps || reps.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No sales reported this month.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No sales reported for this cutoff period.</td></tr>';
       return;
     }
     
