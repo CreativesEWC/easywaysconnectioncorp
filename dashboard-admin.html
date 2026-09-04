@@ -3803,19 +3803,17 @@ if (saveScheduleBtn) {
     const delegationPanel = document.getElementById('delegationPanel');
 
     if (isDeveloper && emp.finance_unlocked !== true) {
-      // Creatives default view (Locked)
       if(superAdminView) superAdminView.style.display = 'none';
       if(videoView) videoView.style.display = 'block';
       if(delegationPanel) delegationPanel.style.display = 'none';
     } else {
-      // Super Admin View (or Unlocked Creatives View)
       if(superAdminView) superAdminView.style.display = 'block';
       if(videoView) videoView.style.display = 'block';
       loadMasterTotalsSheet(); 
       if(delegationPanel && !isSuperAdmin) delegationPanel.style.display = 'none';
     }
 
-    // 2. Build the Video Matrix (15 Videos = 100 PHP each)
+    // 2. Build the Video Matrix
     const videoGrid = document.getElementById('videoCheckboxGrid');
     if (videoGrid && videoGrid.innerHTML.trim() === '') {
       let gridHTML = '';
@@ -3823,8 +3821,6 @@ if (saveScheduleBtn) {
          gridHTML += `<label class="wd-check"><input type="checkbox" class="video-matrix-cb" value="100"> Vid ${i}</label>`;
       }
       videoGrid.innerHTML = gridHTML;
-
-      // Add the auto-calculator listener
       document.querySelectorAll('.video-matrix-cb').forEach(cb => {
          cb.addEventListener('change', () => {
             const checkedCount = document.querySelectorAll('.video-matrix-cb:checked').length;
@@ -3833,25 +3829,20 @@ if (saveScheduleBtn) {
       });
     }
 
-    // 3. Delegation Toggle Logic (For Eden/Catherine to unlock Creatives)
+    // 3. Delegation Toggle Logic
     const toggleFinance = document.getElementById('toggleCreativesFinance');
     if (toggleFinance && isSuperAdmin) {
-       // Fetch current status of Creatives account
        const { data: creativesEmp } = await supabaseClient.from('employees').select('finance_unlocked').eq('badge_id', 'CREATIVES-01').single();
        if (creativesEmp) toggleFinance.checked = creativesEmp.finance_unlocked;
 
        toggleFinance.addEventListener('change', async (e) => {
           const isUnlocked = e.target.checked;
           toggleFinance.disabled = true;
-          
-          const { error } = await supabaseClient.from('employees')
-            .update({ finance_unlocked: isUnlocked })
-            .eq('badge_id', 'CREATIVES-01');
-            
+          const { error } = await supabaseClient.from('employees').update({ finance_unlocked: isUnlocked }).eq('badge_id', 'CREATIVES-01');
           toggleFinance.disabled = false;
           if(error) {
               alert('Error updating permissions: ' + error.message);
-              e.target.checked = !isUnlocked; // Revert switch if fail
+              e.target.checked = !isUnlocked; 
           } else {
               alert(`Finance tab is now ${isUnlocked ? 'UNLOCKED' : 'LOCKED'} for the Creatives team.`);
           }
@@ -3863,13 +3854,11 @@ if (saveScheduleBtn) {
   async function loadMasterTotalsSheet() {
     const tbody = document.getElementById('masterTotalsBody');
     if (!tbody) return;
-
     tbody.innerHTML = '<tr><td colspan="6" class="loading-note">Scanning records and calculating final payroll...</td></tr>';
 
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
-    
     const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const lastDayObj = new Date(year, month + 1, 0); 
     const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
@@ -3882,7 +3871,6 @@ if (saveScheduleBtn) {
       const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').gte('report_date', firstDay).lte('report_date', lastDay);
 
       let html = '';
-
       emps.forEach(emp => {
         const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
         const empVideos = videos?.filter(v => v.employee_id === emp.id) || [];
@@ -3896,7 +3884,6 @@ if (saveScheduleBtn) {
           totalLateMins += (log.late_penalty_minutes || 0);
           totalOtMins += (log.earned_ot_minutes || 0);
         });
-
         empSales.forEach(sale => {
           liveCommission += (parseFloat(sale.actual_sales) || 0);
         });
@@ -3931,1194 +3918,121 @@ if (saveScheduleBtn) {
           </tr>
         `;
       });
-
       tbody.innerHTML = html;
-
     } catch (error) {
       console.error("Error loading master totals:", error);
       tbody.innerHTML = `<tr><td colspan="6" class="error-note">Failed to load totals: ${error.message}</td></tr>`;
     }
   }
 
-    // 3. Delegation Toggle Logic (For Eden/Catherine to unlock Creatives)
-    const toggleFinance = document.getElementById('toggleCreativesFinance');
-    if (toggleFinance && isSuperAdmin) {
-       // Fetch current status of Creatives account
-       const { data: creativesEmp } = await supabaseClient.from('employees').select('finance_unlocked').eq('badge_id', 'CREATIVES-01').single();
-       if (creativesEmp) toggleFinance.checked = creativesEmp.finance_unlocked;
-
-       toggleFinance.addEventListener('change', async (e) => {
-          const isUnlocked = e.target.checked;
-          toggleFinance.disabled = true;
-          
-          const { error } = await supabaseClient.from('employees')
-            .update({ finance_unlocked: isUnlocked })
-            .eq('badge_id', 'CREATIVES-01');
-            
-          toggleFinance.disabled = false;
-          if(error) {
-              alert('Error updating permissions: ' + error.message);
-              e.target.checked = !isUnlocked; // Revert switch if fail
-          } else {
-              alert(`Finance tab is now ${isUnlocked ? 'UNLOCKED' : 'LOCKED'} for the Creatives team.`);
-          }
-       });
-    }
-  }
-
-  // --- 1. MASTER SHEET FILTER LOGIC ---
-    const filterDropdown = document.getElementById('masterSheetFilter');
-    if (filterDropdown) {
-      filterDropdown.addEventListener('change', (e) => {
-        const val = e.target.value;
-        document.querySelectorAll('#masterTotalsBody tr').forEach(row => {
-          if (row.classList.contains('empty-row') || row.classList.contains('loading-note')) return;
-          
-          // Grab the position text from the second column
-          const posText = row.children[1]?.textContent.toLowerCase() || '';
-          
-          // Define what counts as Office vs Live
-          // Define what counts as Office vs Live
-          const isOffice = posText.includes('csr') || 
-                           posText.includes('customer service') || 
-                           posText.includes('artist') || 
-                           posText.includes('rts') || 
-                           posText.includes('administrative') || 
-                           posText.includes('house keeper') || 
-                           posText.includes('housekeeper');
-          
-          const isLive = posText.includes('live seller');
-          
-          if (val === 'all') row.style.display = '';
-          else if (val === 'office' && isOffice) row.style.display = '';
-          else if (val === 'live' && isLive) row.style.display = '';
-          else row.style.display = 'none';
-        });
+  const filterDropdown = document.getElementById('masterSheetFilter');
+  if (filterDropdown) {
+    filterDropdown.addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.querySelectorAll('#masterTotalsBody tr').forEach(row => {
+        if (row.classList.contains('empty-row') || row.classList.contains('loading-note')) return;
+        const posText = row.children[1]?.textContent.toLowerCase() || '';
+        const isOffice = posText.includes('csr') || posText.includes('customer service') || posText.includes('artist') || posText.includes('rts') || posText.includes('administrative') || posText.includes('house keeper') || posText.includes('housekeeper');
+        const isLive = posText.includes('live seller');
+        if (val === 'all') row.style.display = '';
+        else if (val === 'office' && isOffice) row.style.display = '';
+        else if (val === 'live' && isLive) row.style.display = '';
+        else row.style.display = 'none';
       });
-    }
-
-    // --- 2. VIDEO COMMISSION TRACKER POPULATION ---
-    async function loadFinanceVideoTracker() {
-      const tbody = document.getElementById('videoCommiTable');
-      if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading video matrix...</td></tr>';
-      
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-      const lastDayObj = new Date(year, month + 1, 0);
-      const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
-      
-      const { data: emps } = await supabaseClient.from('employees').select('id, name, positions(name)');
-      const { data: vids } = await supabaseClient.from('video_submissions').select('*').gte('upload_date', firstDay).lte('upload_date', lastDay);
-      
-      if (!emps) { tbody.innerHTML = '<tr class="empty-row"><td colspan="18">No data found.</td></tr>'; return; }
-      
-      const sellers = emps.filter(e => e.positions && e.positions.name.includes('Live Seller'));
-      
-      tbody.innerHTML = sellers.map(seller => {
-        const myVids = vids?.filter(v => v.employee_id === seller.id) || [];
-        const approvedCount = myVids.filter(v => v.status === 'approved').length;
-        const failedCount = myVids.filter(v => v.status === 'rejected').length;
-        
-        let checkmarks = '';
-        for(let i=1; i<=15; i++) {
-          checkmarks += `<td style="padding: 10px; border-bottom: 1px solid var(--line);">${i <= approvedCount ? '✅' : '—'}</td>`;
-        }
-        
-        return `
-          <tr>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line); text-align: left; font-weight: bold;">${escapeHtml(seller.name)}</td>
-            ${checkmarks}
-            <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--coral-500); font-weight: bold;">${failedCount}</td>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-500); font-weight: bold;">${approvedCount}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-    
-    // --- 3. LIVE COMMISSION TRACKER POPULATION ---
-    async function loadFinanceLiveTracker() {
-      const tbody = document.getElementById('liveCommiTable');
-      if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="5" class="loading-note">Loading live commissions...</td></tr>';
-      
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-      const lastDayObj = new Date(year, month + 1, 0);
-      const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
-      
-      const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').gte('report_date', firstDay).lte('report_date', lastDay);
-      
-      if (!reps || reps.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No sales reported this month.</td></tr>';
-        return;
-      }
-      
-      const aggregated = {};
-      reps.forEach(r => {
-        const name = r.employees ? r.employees.name : 'Unknown';
-        if (!aggregated[name]) aggregated[name] = { buyers: 0, sold: 0, gmv: 0, commi: 0 };
-        aggregated[name].buyers += (r.buyers || 0);
-        aggregated[name].sold += (r.sold || 0);
-        aggregated[name].gmv += (parseFloat(r.gmv) || 0);
-        aggregated[name].commi += (parseFloat(r.actual_sales) || 0);
-      });
-      
-      tbody.innerHTML = Object.keys(aggregated).map(name => {
-        const a = aggregated[name];
-        return `
-          <tr>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line); font-weight: bold;">${escapeHtml(name)}</td>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line);">${a.buyers}</td>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line);">${a.sold}</td>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line);">₱${a.gmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-            <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-400); font-weight: bold;">₱${a.commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // Fire them up
-    loadFinanceVideoTracker();
-    loadFinanceLiveTracker();
-
-  // ---- 3. VIDEO MATRIX AUDIT (LIVE SELLERS ONLY) ----
- async function populateVideoAuditSellers() {
-    const auditSelect = document.getElementById('auditEmployee');
-    if (!auditSelect) return;
-
-    // 1. Dynamically find the exact UUID for 'Live Seller'
-    const { data: posData } = await supabaseClient
-      .from('positions')
-      .select('id')
-      .eq('name', 'Live Seller')
-      .single();
-
-    if (!posData) return;
-
-    // 2. Fetch only employees with that specific position ID
-    const { data: sellers } = await supabaseClient
-      .from('employees')
-      .select('id, name')
-      .eq('position_id', posData.id)
-      .order('name');
-
-    if (sellers) {
-      auditSelect.innerHTML = '<option value="">Select Live Seller...</option>' + 
-        sellers.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
-    }
-  }
-
-  
-  // ---- CSR SUNDAY ROTATION LOADER ----
-  async function loadCSRRoster() {
-    // Check your HTML to make sure these IDs match your code!
-    const loadingText = document.getElementById('csrLoading'); 
-    const rosterContainer = document.getElementById('csrRosterContainer');
-    
-    if (!loadingText || !rosterContainer) return;
-
-    try {
-      // 1. Ask Supabase for all CSRs using their exact position_id
-      const { data: csrs, error } = await supabaseClient
-        .from('employees')
-        .select('id, badge_id, name, avatar_url, position') // <-- Added badge_id here!
-        .eq('position_id', '5f2ba83f-0773-42a0-b436-1834bd28e680') // <-- Using the exact UUID
-        .order('name'); 
-
-      if (error) throw error;
-
-      // 2. Hide the loading text
-      loadingText.style.display = 'none';
-
-      // 3. Build the Master Schedule UI
-      if (!csrs || csrs.length === 0) {
-        rosterContainer.innerHTML = '<p style="color: var(--amber-400);">No active CSRs found in the database.</p>';
-        return;
-      }
-
-      rosterContainer.innerHTML = csrs.map(csr => `
-        <div style="background: var(--navy-800); border: 1px solid var(--navy-600); padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-          
-          <!-- Employee Info with Badge ID -->
-          <div style="display: flex; align-items: center; gap: 12px; min-width: 200px;">
-            <img src="${csr.avatar_url || 'easyway_icon.svg/40x40'}" alt="${csr.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.onerror=null; this.src='easyway_icon.svg/40x40';">
-            <div>
-              <strong style="color: var(--paper); text-transform: uppercase;">${escapeHtml(csr.name)}</strong><br>
-              <span style="color: #7488b6; font-size: 11px;">ID NUMBER: ${escapeHtml(csr.badge_id || 'N/A')}</span><br>
-              <span style="color: var(--amber-400); font-size: 11px;">${escapeHtml(csr.position)}</span>
-            </div>
-          </div>
-
-          <!-- Scheduling Controls -->
-          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            
-            <!-- Mon-Sat Team Assignment -->
-            <div>
-              <label style="font-size: 11px; color: #7488b6; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Mon-Sat Team</label>
-              <select class="shift-select" data-employee-id="${csr.id}" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--navy-600); background: var(--navy-900); color: var(--amber-400); font-weight: bold; cursor: pointer;">
-                <option value="unassigned" ${!csr.mon_sat_shift || csr.mon_sat_shift === 'unassigned' ? 'selected' : ''}>Select Team...</option>
-                <option value="morning" ${csr.mon_sat_shift === 'morning' ? 'selected' : ''}>Morning (6:00 AM - 3:00 PM)</option>
-                <option value="mid" ${csr.mon_sat_shift === 'mid' ? 'selected' : ''}>Mid Shift (12:00 PM - 9:00 PM)</option>
-                <option value="night" ${csr.mon_sat_shift === 'night' ? 'selected' : ''}>Night Shift (3:00 PM - 12:00 AM)</option>
-              </select>
-            </div>
-            
-            <!-- Sunday Rotation Checkbox -->
-            <div>
-              <label style="font-size: 11px; color: #7488b6; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Weekend Shift</label>
-              <div style="background: var(--navy-900); border: 1px solid var(--navy-600); padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 8px; height: 33px;">
-                <input type="checkbox" id="sun_${csr.id}" class="sunday-toggle" data-employee-id="${csr.id}" style="cursor: pointer; width: 16px; height: 16px;" ${csr.sunday_duty ? 'checked' : ''}>
-                <label for="sun_${csr.id}" style="color: var(--amber-400); font-size: 13px; cursor: pointer; font-weight: bold; margin: 0;">Sunday (9:00 AM - 6:00 PM)</label>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      `).join('');
-
-      // --- AUTO-SAVE SCHEDULE ENGINE (UPGRADED) ---
-
-    // 1. Listen for changes on any Mon-Sat dropdown
-    document.querySelectorAll('.shift-select').forEach(select => {
-        select.addEventListener('change', async (e) => {
-            const employeeId = e.target.getAttribute('data-employee-id');
-            const newShift = e.target.value;
-            
-            e.target.style.opacity = '0.5';
-            const { error } = await supabaseClient
-                .from('employees')
-                .update({ mon_sat_shift: newShift })
-                .eq('id', employeeId);
-                
-            if (error) alert("Error saving shift: " + error.message);
-            e.target.style.opacity = '1';
-        });
     });
+  }
 
-    // 2. Calculate the exact date for the Upcoming Sunday
+  async function loadFinanceVideoTracker() {
+    const tbody = document.getElementById('videoCommiTable');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading video matrix...</td></tr>';
+    
     const today = new Date();
-    const diffToSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
-    const nextSun = new Date(today);
-    nextSun.setDate(today.getDate() + diffToSunday);
-    const sunLabel = nextSun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-    // 3. Listen for Sunday changes with Auto-Switching Logic
-    document.querySelectorAll('.sunday-toggle').forEach(checkbox => {
-        
-        // Dynamically update Ming's label to show the exact date
-        const labelEl = document.querySelector(`label[for="${checkbox.id}"]`);
-        if (labelEl) labelEl.textContent = `Active Duty (${sunLabel})`;
-
-        checkbox.addEventListener('change', async (e) => {
-            const employeeId = e.target.getAttribute('data-employee-id');
-            const isAssigned = e.target.checked;
-            
-            // SMART LOGIC: If Ming turns this person ON, instantly turn everyone else OFF
-            if (isAssigned) {
-                document.querySelectorAll('.sunday-toggle').forEach(async (otherBox) => {
-                    if (otherBox !== e.target && otherBox.checked) {
-                        otherBox.checked = false; // Turn off visually on Ming's screen
-                        const otherId = otherBox.getAttribute('data-employee-id');
-                        
-                        // Wipe their Sunday duty from the database instantly
-                        await supabaseClient.from('employees').update({ sunday_duty: false }).eq('id', otherId);
-                    }
-                });
-            }
-            
-            // Save Ming's actual click to the database
-            const { error } = await supabaseClient
-                .from('employees')
-                .update({ sunday_duty: isAssigned })
-                .eq('id', employeeId);
-                
-            if (error) alert("Error saving Sunday duty: " + error.message);
-        });
-    });
-    } catch (err) {
-      console.error("Failed to load CSRs:", err);
-      loadingText.textContent = "Error loading roster. Check console for details.";
-      loadingText.style.color = "#d9614f"; 
-    }
-  }
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDayObj = new Date(year, month + 1, 0);
+    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
     
-// --- ATTENDANCE CORRECTION ENGINE ---
-  
-  // 1. Helper to format Supabase dates for the <input type="datetime-local">
-  function toLocalDatetimeString(isoString) {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  // 2. Open the Modal and fill it with data
-  window.openAttendanceEditor = function(recordId) {
-    const record = currentAttendanceRows.find(r => r.id === recordId);
-    if (!record) return;
-
-    document.getElementById('editAttId').value = record.id;
-    document.getElementById('editAttEmpName').textContent = record.employees ? `${record.employees.name} (${record.employees.badge_id})` : 'Unknown Employee';
+    const { data: emps } = await supabaseClient.from('employees').select('id, name, positions(name)');
+    const { data: vids } = await supabaseClient.from('video_submissions').select('*').gte('upload_date', firstDay).lte('upload_date', lastDay);
     
-    document.getElementById('editAttTimeIn').value = toLocalDatetimeString(record.time_in);
-    document.getElementById('editAttTimeOut').value = toLocalDatetimeString(record.time_out);
-
-    document.getElementById('attendanceModal').classList.add('open');
-  };
-
-  // 3. Close Modal
-  document.getElementById('closeAttBtn')?.addEventListener('click', () => {
-    document.getElementById('attendanceModal').classList.remove('open');
-  });
-
-  // 4. Save Changes
-  document.getElementById('saveAttBtn')?.addEventListener('click', async () => {
-    const id = document.getElementById('editAttId').value;
-    const timeIn = document.getElementById('editAttTimeIn').value;
-    const timeOut = document.getElementById('editAttTimeOut').value;
-
-    const btn = document.getElementById('saveAttBtn');
-    btn.disabled = true; btn.textContent = 'Saving...';
-
-    // Convert local datetime back to ISO format, or set to null if cleared out
-    const payload = {
-      time_in: timeIn ? new Date(timeIn).toISOString() : null,
-      time_out: timeOut ? new Date(timeOut).toISOString() : null
-    };
-
-    const { error } = await supabaseClient.from('attendance_logs').update(payload).eq('id', id);
+    if (!emps) { tbody.innerHTML = '<tr class="empty-row"><td colspan="18">No data found.</td></tr>'; return; }
+    const sellers = emps.filter(e => e.positions && e.positions.name.includes('Live Seller'));
     
-    btn.disabled = false; btn.textContent = 'Save Changes';
-
-    if (error) {
-      alert('Error updating record: ' + error.message);
-      return;
-    }
-
-    document.getElementById('attendanceModal').classList.remove('open');
-    await loadAttendance(); // Refresh table
-  });
-
-  // 5. Delete Ghost Record
-  document.getElementById('deleteAttBtn')?.addEventListener('click', async () => {
-    const id = document.getElementById('editAttId').value;
-    
-    if (!confirm('Are you sure you want to completely delete this attendance record? This cannot be undone.')) return;
-
-    const btn = document.getElementById('deleteAttBtn');
-    btn.disabled = true; btn.textContent = 'Deleting...';
-
-    const { error } = await supabaseClient.from('attendance_logs').delete().eq('id', id);
-
-    btn.disabled = false; btn.textContent = 'Delete Record';
-
-    if (error) {
-      alert('Error deleting record: ' + error.message);
-      return;
-    }
-
-    document.getElementById('attendanceModal').classList.remove('open');
-    await loadAttendance(); // Refresh table
-  });
-
-  // --- ATTENDANCE CORRECTION ENGINE ---
-  function toLocalDatetimeString(isoString) {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  window.openAttendanceEditor = function(recordId) {
-    const record = currentAttendanceRows.find(r => r.id === recordId);
-    if (!record) return;
-
-    document.getElementById('editAttId').value = record.id;
-    document.getElementById('editAttEmpName').textContent = record.employees ? `${record.employees.name} (${record.employees.badge_id})` : 'Unknown Employee';
-    
-    document.getElementById('editAttTimeIn').value = toLocalDatetimeString(record.time_in);
-    document.getElementById('editAttTimeOut').value = toLocalDatetimeString(record.time_out);
-
-    document.getElementById('attendanceModal').classList.add('open');
-  };
-
-  // ---- 4. SAVE VIDEO AUDIT TO PAYROLL ----
-  const saveVideoBtn = document.getElementById('saveVideoAuditBtn');
-  if (saveVideoBtn) {
-    saveVideoBtn.addEventListener('click', () => {
-      const empSelect = document.getElementById('auditEmployee');
-      const empId = empSelect.value;
-      const empName = empSelect.options[empSelect.selectedIndex]?.text;
+    tbody.innerHTML = sellers.map(seller => {
+      const myVids = vids?.filter(v => v.employee_id === seller.id) || [];
+      const approvedCount = myVids.filter(v => v.status === 'approved').length;
+      const failedCount = myVids.filter(v => v.status === 'rejected').length;
       
-      // Grab the calculated total from the text span
-      const totalStr = document.getElementById('videoTotalCalc').textContent;
-
-      if (!empId) {
-        alert("Please select a Live Seller from the dropdown first.");
-        return;
+      let checkmarks = '';
+      for(let i=1; i<=15; i++) {
+        checkmarks += `<td style="padding: 10px; border-bottom: 1px solid var(--line);">${i <= approvedCount ? '✅' : '—'}</td>`;
       }
-
-      if (totalStr === '0') {
-        if(!confirm("No videos are checked. Save an audit of ₱0?")) return;
-      }
-
-      // FUTURE UPGRADE: This is where we will write the Supabase insert 
-      // to push this number directly into a 'payroll_bonuses' database table.
-      
-      // For now, trigger the success confirmation:
-      alert(`✅ AUDIT SAVED SUCCESSFULLY!\n\nLive Seller: ${empName}\nTotal Video Bonus: ₱${totalStr}\n\n(This amount is now queued for their next payslip.)`);
-
-      // Automatically reset the matrix for the next audit
-      document.querySelectorAll('.video-matrix-cb').forEach(cb => cb.checked = false);
-      document.getElementById('videoTotalCalc').textContent = '0';
-      empSelect.value = '';
-    });
-  }
-
-  // Run the init engine
-  initFinanceTab();
-  populateVideoAuditSellers(); // <-- ADD THIS ONE!
-
-  // ==========================================================
-  // INBOX: LOAD LIVE COMMISSIONS (SALES REPORTS)
-  // ==========================================================
-  window.loadAdminLiveCommissions = async function() {
-      const tbody = document.getElementById('adminLiveTable');
-      if (!tbody) return;
-
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Fetching latest sales reports...</td></tr>';
-
-      try {
-          const { data, error } = await supabaseClient
-              .from('sales_reports')
-              .select('*, employees(name)')
-              .order('created_at', { ascending: false })
-              .limit(50);
-
-          if (error) throw error;
-
-          if (!data || data.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No sales reports submitted yet.</td></tr>';
-              return;
-          }
-
-          tbody.innerHTML = data.map(report => {
-              const empName = report.employees ? report.employees.name : 'Unknown Seller';
-              const dateStr = new Date(report.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              
-              const shiftTime = report.shift_time ? escapeHtml(report.shift_time) : '—';
-              const shopName = report.shop_name ? escapeHtml(report.shop_name) : '—'; 
-              const buddies = report.shift_buddy ? escapeHtml(report.shift_buddy) : 'Solo'; 
-              
-              const buyers = report.buyers || 0;
-              const commi = parseFloat(report.actual_sales) || 0; 
-              const lhSold = report.lh_sold || 0;
-              const lhGmv = parseFloat(report.lh_gmv) || 0;
-
-              return `
-                  <tr>
-                      <td style="font-family: var(--font-mono); font-size: 11px;">${dateStr}</td>
-                      <td style="font-family: var(--font-mono); font-size: 11px; color: #7488b6; white-space: nowrap;">${shiftTime}</td>
-                      <td style="font-weight: 600; color: var(--paper); font-size: 12px; white-space: nowrap;">${empName}</td>
-                      <td style="color: var(--amber-400); font-weight: bold; font-size: 12px; white-space: nowrap;">${shopName}</td>
-                      <td style="color: #7488b6; font-size: 11px; white-space: nowrap;">${buddies}</td>
-                      <td style="color: #9fb0d6; font-family: var(--font-mono);">${buyers}</td>
-                      <td style="color: var(--mint-400); font-weight: bold; font-family: var(--font-mono);">₱${commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td style="color: #7488b6; font-family: var(--font-mono);">${lhSold}</td>
-                      <td style="color: #7488b6; font-family: var(--font-mono);">₱${lhGmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td>
-                          <button type="button" class="btn" onclick="openImageViewer('${report.screenshot_url}')" style="display: inline-block; padding: 4px 8px; font-size: 10px; border-color: var(--mint-500); color: var(--mint-400); background: transparent; cursor: pointer; white-space: nowrap;">
-                              🖼️ View
-                          </button>
-                      </td>
-                  </tr>
-              `;
-          }).join('');
-      } catch (err) {
-          console.error("Error loading live commissions:", err);
-          tbody.innerHTML = `<tr class="empty-row"><td colspan="10" style="color: var(--coral-500);">Failed to load reports: ${err.message}</td></tr>`;
-      }
-  };
-  
-  // ==========================================================
-  // INBOX: LOAD VIDEO AUDITS (WITH APPROVAL WORKFLOW)
-  // ==========================================================
-  window.loadAdminVideoAudits = async function() {
-      const tbody = document.getElementById('adminVideoTable');
-      if (!tbody) return;
-
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Fetching latest videos...</td></tr>';
-
-      try {
-          const { data, error } = await supabaseClient
-              .from('video_submissions')
-              .select('*, employees(name)')
-              .order('created_at', { ascending: false })
-              .limit(50);
-
-          if (error) throw error;
-
-          if (!data || data.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No videos submitted yet.</td></tr>';
-              return;
-          }
-
-          tbody.innerHTML = data.map(vid => {
-              const empName = vid.employees ? vid.employees.name : 'Unknown Seller';
-              const dateStr = new Date(vid.upload_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              
-              // Determine the current status badge
-              const statusBadge = vid.status === 'approved' ? '<span class="pill approved">Approved</span>' :
-                                  vid.status === 'rejected' ? '<span class="pill rejected">Rejected</span>' :
-                                  '<span class="pill pending">Pending</span>';
-
-              // Only show the Approve/Reject buttons if it hasn't been processed yet
-              const actionButtons = (!vid.status || vid.status === 'pending') ? `
-                  <button class="btn2 success" onclick="updateVideoStatus('${vid.id}', 'approved', this)" style="padding: 4px 8px; font-size: 11px;">✔️ Approve</button>
-                  <button class="btn2 danger" onclick="updateVideoStatus('${vid.id}', 'rejected', this)" style="padding: 4px 8px; font-size: 11px;">✖️ Reject</button>
-              ` : `<span style="font-size: 11px; color: #7488b6; font-family: var(--font-mono);">Audited</span>`;
-
-              return `
-                  <tr>
-                      <td style="font-family: var(--font-mono); font-size: 12px; color: var(--amber-400);">${dateStr}</td>
-                      <td style="font-weight: 600;">${empName}<br><div style="margin-top: 4px;">${statusBadge}</div></td>
-                      <td>
-                          <a href="${vid.video_link}" target="_blank" style="color: #7488b6; text-decoration: underline; font-size: 12px;">
-                              View Post &nearr;
-                          </a>
-                      </td>
-                      <td>
-                          <button type="button" class="btn" onclick="openVideoViewer('${vid.video_file_url}')" style="display: inline-block; padding: 4px 8px; font-size: 11px; border-color: var(--amber-500); color: var(--amber-400); background: transparent; cursor: pointer;">
-                              ▶ Play Video
-                          </button>
-                      </td>
-                      <td style="display: flex; gap: 6px; align-items: center;">
-                          ${actionButtons}
-                      </td>
-                  </tr>
-              `;
-          }).join('');
-      } catch (err) {
-          console.error("Error loading video audits:", err);
-          tbody.innerHTML = `<tr class="empty-row"><td colspan="5" style="color: var(--coral-500);">Failed to load videos: ${err.message}</td></tr>`;
-      }
-  };
-
-  // ---- VIDEO VIEWER CONTROLS ----
-  window.openVideoViewer = function(url) {
-      const vid = document.getElementById('viewerVideoSrc');
-      vid.src = url;
-      document.getElementById('videoViewerModal').classList.add('open');
-  };
-
-  window.closeVideoViewer = function() {
-      const vid = document.getElementById('viewerVideoSrc');
-      vid.pause(); // Stop playing when closed!
-      vid.src = '';
-      document.getElementById('videoViewerModal').classList.remove('open');
-  };
-
-  // ---- VIDEO APPROVAL DATABASE LOGIC ----
-  window.updateVideoStatus = async function(id, newStatus, btnElement) {
-      btnElement.textContent = '...';
-      btnElement.disabled = true;
-
-      try {
-          const { error } = await supabaseClient
-              .from('video_submissions')
-              .update({ status: newStatus })
-              .eq('id', id);
-
-          if (error) throw error;
-          
-          // Instantly refresh the table to show the new badge
-          loadAdminVideoAudits(); 
-      } catch (err) {
-          console.error("Error updating status:", err);
-          alert("Failed to update status: " + err.message);
-          btnElement.disabled = false;
-      }
-  };
-
-  // ==========================================================
-  // 7. EMOJI TRAY ENGINE
-  // ==========================================================
-  const emojiTray = document.getElementById('emojiTray');
-  const chatEmojiBtn = document.getElementById('chatEmojiBtn');
-  const mainChatInput = document.getElementById('chatInput');
-
-  if (chatEmojiBtn && emojiTray && mainChatInput) {
-      // Toggle tray open/closed
-      chatEmojiBtn.addEventListener('click', () => {
-          emojiTray.style.display = emojiTray.style.display === 'flex' ? 'none' : 'flex';
-      });
-
-      // Insert emoji and close tray
-      document.querySelectorAll('.quick-emoji').forEach(emoji => {
-          emoji.addEventListener('click', (e) => {
-              // Securely grab the text character from the data attribute
-              const emojiChar = e.currentTarget.getAttribute('data-emoji');
-              
-              mainChatInput.value += emojiChar;
-              emojiTray.style.display = 'none';
-              
-              // Enable the send button since we just added text
-              const sendBtn = document.getElementById('chatSendBtn');
-              if (sendBtn) sendBtn.disabled = false;
-              
-              mainChatInput.focus();
-          });
-      });
-      
-      // Close tray if they click anywhere else on the screen
-      document.addEventListener('click', (e) => {
-          if (!chatEmojiBtn.contains(e.target) && !emojiTray.contains(e.target)) {
-              emojiTray.style.display = 'none';
-          }
-      });
-  }
-
-  // Wire up the Back button for mobile users
-  const igBackBtn = document.getElementById('igBackBtn');
-  if (igBackBtn) {
-      igBackBtn.addEventListener('click', () => {
-          document.getElementById('igChatWrapper').classList.remove('mobile-chat-open');
-      });
-  }
-
-  // Boot the channels, DMs, and Notes when the page loads
-  setTimeout(() => {
-      if (typeof loadChatChannels === 'function') loadChatChannels();
-      if (typeof loadDirectMessageSidebar === 'function') loadDirectMessageSidebar();
-      if (typeof loadNotesTray === 'function') loadNotesTray();
-  }, 1500);
-
-  // Auto-load both inboxes shortly after the dashboard boots up
-  setTimeout(() => {
-      loadAdminLiveCommissions();
-      loadAdminVideoAudits();
-  }, 1500);
-
-    // ==========================================================
-  // REAL-TIME MESSAGING ENGINE
-  // ==========================================================
-  let activeChatId = null;
-
-  window.loadChatChannels = async function() {
-      const channelList = document.getElementById('chatChannelList');
-      if (!channelList) return;
-
-      const { data: channels, error } = await supabaseClient
-          .from('chat_channels')
-          .select('*')
-          .in('type', ['global', 'department'])
-          .order('created_at', { ascending: true });
-
-      if (error) return;
-
-      const myRole = emp.role || 'employee';
-      const myPos = (emp.positions && emp.positions.name) ? emp.positions.name.toLowerCase() : '';
-
-      const allowedChannels = channels.filter(c => {
-          if (c.type === 'global') return true;
-          if (myRole === 'admin' || myRole === 'president') return true;
-          if (c.name === 'Live Sellers HQ' && myPos.includes('live seller')) return true;
-          if (c.name === 'Office & CSR' && (myPos.includes('customer service') || myPos.includes('multimedia') || myPos.includes('rts'))) return true;
-          return false;
-      });
-
-      channelList.innerHTML = allowedChannels.map(c => `
-          <div class="ig-chat-row chat-sidebar-item" data-id="${c.id}" data-name="${escapeHtml(c.name)}" data-type="channel">
-              <img src="easyway_icon.svg" class="ig-chat-row-avatar">
-              <div class="ig-chat-row-info">
-                  <div class="ig-chat-row-name"># ${escapeHtml(c.name)}</div>
-                  <div class="ig-chat-row-preview">Company Channel</div>
-              </div>
-          </div>
-      `).join('');
-      
-      attachChatRowListeners();
-  };
-
-  window.loadChatMessages = async function(channelId) {
-      const feed = document.getElementById('chatMessageFeed');
-      if(feed.querySelector('.ig-empty-chat')) feed.innerHTML = ''; // Clear placeholder
-      
-      const { data: messages, error } = await supabaseClient
-          .from('chat_messages')
-          .select('*, employees(name, avatar_url)')
-          .eq('channel_id', channelId)
-          .order('created_at', { ascending: true })
-          .limit(100);
-
-      if (error || !messages) return;
-
-      feed.innerHTML = messages.map(m => {
-          const isMe = m.sender_id === emp.id;
-          const senderName = m.employees ? m.employees.name.split(' ')[0] : 'Unknown';
-          const avatar = (m.employees && m.employees.avatar_url) ? m.employees.avatar_url : 'easyway_icon.svg';
-          const timeStr = new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-          
-          let messageContent = escapeHtml(m.content);
-          let quotedNoteHtml = '';
-          
-          // Detect if the message is a Note Reply
-          const noteReplyMatch = m.content.match(/^Replying to your note \("(.*?)"\):\s*([\s\S]*)$/);
-
-          if (noteReplyMatch) {
-              const originalNote = escapeHtml(noteReplyMatch[1]);
-              messageContent = escapeHtml(noteReplyMatch[2]);
-
-              if (isMe) {
-                  // I am replying to THEIR note
-                  const otherAvatar = document.getElementById('activeChatAvatar').src;
-                  quotedNoteHtml = `
-                  <div style="display: flex; flex-direction: column; align-items: flex-end; margin-bottom: -5px; padding-right: 15px; position: relative; width: 100%;">
-                      <div style="position: absolute; right: 0; top: 15px; bottom: 25px; width: 2px; background: #363636; border-radius: 2px;"></div>
-                      <div style="background: #262626; color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 14px; margin-bottom: -12px; z-index: 2;">${originalNote}</div>
-                      <img src="${otherAvatar}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; z-index: 1; border: 3px solid #000; margin-right: 5px;">
-                  </div>`;
-              } else {
-                  // THEY are replying to MY note
-                  const myAvatar = emp.avatar_url || 'easyway_icon.svg';
-                  quotedNoteHtml = `
-                  <div style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: -5px; padding-left: 15px; position: relative; width: 100%;">
-                      <div style="position: absolute; left: 0; top: 15px; bottom: 25px; width: 2px; background: #363636; border-radius: 2px;"></div>
-                      <div style="background: #262626; color: #fff; font-size: 12px; padding: 8px 12px; border-radius: 14px; margin-bottom: -12px; z-index: 2;">${originalNote}</div>
-                      <img src="${myAvatar}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; z-index: 1; border: 3px solid #000; margin-left: 5px;">
-                  </div>`;
-              }
-          }
-
-          if (isMe) {
-              return `
-              <div class="ig-msg-wrapper me">
-                  <div style="display: flex; flex-direction: column; align-items: flex-end; width: 100%;">
-                    ${quotedNoteHtml}
-                    <div class="ig-msg-bubble" style="z-index: 3;">${messageContent}</div>
-                    <div class="ig-msg-time">${timeStr}</div>
-                  </div>
-              </div>`;
-          } else {
-              return `
-              <div class="ig-msg-wrapper them" style="${noteReplyMatch ? 'align-items: flex-end;' : ''}">
-                  <img src="${avatar}" class="ig-msg-avatar" title="${escapeHtml(senderName)}" style="${noteReplyMatch ? 'margin-bottom: 20px;' : ''}">
-                  <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%;">
-                    ${quotedNoteHtml}
-                    <div class="ig-msg-bubble" style="z-index: 3;">${messageContent}</div>
-                    <div class="ig-msg-time" style="text-align: left;">${escapeHtml(senderName)} &bull; ${timeStr}</div>
-                  </div>
-              </div>`;
-          }
-      }).join('');
-
-      feed.scrollTop = feed.scrollHeight;
-  };
-  
- // ==========================================================
-  // 5. SEND MESSAGE & REAL-TIME LISTENER (DIAGNOSTIC MODE)
-  // ==========================================================
-  window.sendChatMessage = async function() {
-      if (!activeChatId) return;
-      const input = document.getElementById('chatInput');
-      const content = input.value.trim();
-      if (!content) return;
-
-      input.value = '';
-      input.focus();
-
-      console.log("Attempting to send message to channel:", activeChatId);
-
-      const { error } = await supabaseClient
-          .from('chat_messages')
-          .insert({
-              channel_id: activeChatId,
-              sender_id: emp.id,
-              content: content
-          });
-
-      if (error) {
-          console.error("Failed to send:", error);
-      } else {
-          console.log("Message saved to database! Forcing local screen refresh...");
-          loadChatMessages(activeChatId);
-      }
-  };
-
-  // Wire up the new Instagram Input and Send Button
-  const sendBtn = document.getElementById('chatSendBtn');
-  const chatInp = document.getElementById('chatInput');
-  
-  if (sendBtn) {
-      sendBtn.replaceWith(sendBtn.cloneNode(true)); // Clears any ghost listeners
-      document.getElementById('chatSendBtn').addEventListener('click', window.sendChatMessage);
-  }
-  
-  if (chatInp) {
-      chatInp.replaceWith(chatInp.cloneNode(true)); // Clears any ghost listeners
-      document.getElementById('chatInput').addEventListener('keypress', function (e) {
-          if (e.key === 'Enter') window.sendChatMessage();
-      });
-  }
-
-  // Wipe any old stuck connections and restart the listener
-  if (window.igLiveChat) supabaseClient.removeChannel(window.igLiveChat);
-  
-  window.igLiveChat = supabaseClient.channel('ig-live-chat');
-  window.igLiveChat
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-          console.log("REALTIME PING RECEIVED! Payload:", payload);
-          // Using == instead of === just in case of formatting mismatch
-          if (payload.new.channel_id == activeChatId) {
-              console.log("Ping matches active room! Refreshing UI...");
-              loadChatMessages(activeChatId);
-          } else {
-              console.log("Ping is for a different room. Ignoring.");
-          }
-      })
-      .subscribe((status) => {
-          console.log("Supabase Realtime Status:", status);
-      });
-
-  // ==========================================================
-  // 6. INSTAGRAM NOTES ENGINE
-  // ==========================================================
-  window.loadNotesTray = async function() {
-      const tray = document.getElementById('igNotesTray');
-      if (!tray) return;
-
-      // Only fetch notes from the last 24 hours
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      const { data: notes, error } = await supabaseClient
-          .from('employee_notes')
-          .select('content, created_at, employee_id, employees(name, avatar_url)')
-          .gte('created_at', twentyFourHoursAgo)
-          .order('created_at', { ascending: false });
-
-      if (error) return console.error("Error loading notes:", error);
-
-      // Deduplicate: Only show the LATEST note per person
-      const uniqueNotes = [];
-      const seenUsers = new Set();
-      if (notes) {
-          for (const n of notes) {
-              if (!seenUsers.has(n.employee_id)) {
-                  seenUsers.add(n.employee_id);
-                  uniqueNotes.push(n);
-              }
-          }
-      }
-
-      // Find MY active note
-      const myNote = uniqueNotes.find(n => n.employee_id === emp.id);
-      const myAvatar = emp.avatar_url || 'easyway_icon.svg';
-      const myNoteText = myNote ? myNote.content : 'Note...';
-      const myNoteClass = myNote ? '' : 'add-note';
-
-      // Separate everyone else's notes
-      const otherNotes = uniqueNotes.filter(n => n.employee_id !== emp.id);
-
-      // Draw MY note card first
-      let html = `
-          <div class="ig-note-card" id="myNoteCard">
-              <div class="ig-note-bubble ${myNoteClass}">${escapeHtml(myNoteText)}</div>
-              <div class="ig-note-avatar-wrapper">
-                  <img src="${myAvatar}" class="ig-note-avatar">
-              </div>
-              <div class="ig-note-name">Your note</div>
-          </div>
+      return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); text-align: left; font-weight: bold;">${escapeHtml(seller.name)}</td>
+          ${checkmarks}
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--coral-500); font-weight: bold;">${failedCount}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-500); font-weight: bold;">${approvedCount}</td>
+        </tr>
       `;
-
-      // Draw everyone else's note cards
-      html += otherNotes.map(n => {
-          const avatar = n.employees?.avatar_url || 'easyway_icon.svg';
-          const firstName = n.employees ? n.employees.name.split(' ')[0] : 'User';
-          const fullName = n.employees ? n.employees.name : 'Unknown User';
-          const timeStr = new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-          
-          return `
-          <div class="ig-note-card other-note-card" data-uid="${n.employee_id}" data-name="${escapeHtml(fullName)}" data-avatar="${avatar}" data-content="${escapeHtml(n.content)}" data-time="${timeStr}">
-              <div class="ig-note-bubble">${escapeHtml(n.content)}</div>
-              <div class="ig-note-avatar-wrapper"><img src="${avatar}" class="ig-note-avatar"></div>
-              <div class="ig-note-name">${escapeHtml(firstName)}</div>
-          </div>
-          `;
-      }).join('');
-
-      tray.innerHTML = html;
-
-      // Wire up the click to open MY modal
-      const myCard = document.getElementById('myNoteCard');
-      if (myCard) {
-          myCard.addEventListener('click', () => {
-              document.getElementById('addNoteModal').classList.add('open');
-              document.getElementById('noteInput').focus();
-          });
-      }
-
-      // Wire up clicks on OTHER people's notes to view them
-      document.querySelectorAll('.other-note-card').forEach(card => {
-          card.addEventListener('click', () => {
-              document.getElementById('viewNoteUserId').value = card.dataset.uid;
-              document.getElementById('viewNoteAvatar').src = card.dataset.avatar;
-              document.getElementById('viewNoteName').textContent = card.dataset.name;
-              document.getElementById('viewNoteTime').textContent = card.dataset.time;
-              document.getElementById('viewNoteContent').textContent = card.dataset.content;
-              document.getElementById('viewNoteModal').classList.add('open');
-              
-              // Clear previous reply text and focus
-            document.getElementById('replyNoteInput').value = '';
-            setTimeout(() => document.getElementById('replyNoteInput').focus(), 100);
-        });
+    }).join('');
+  }
+  
+  async function loadFinanceLiveTracker() {
+    const tbody = document.getElementById('liveCommiTable');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" class="loading-note">Loading live commissions...</td></tr>';
+    
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDayObj = new Date(year, month + 1, 0);
+    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
+    
+    const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').gte('report_date', firstDay).lte('report_date', lastDay);
+    if (!reps || reps.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No sales reported this month.</td></tr>';
+      return;
+    }
+    
+    const aggregated = {};
+    reps.forEach(r => {
+      const name = r.employees ? r.employees.name : 'Unknown';
+      if (!aggregated[name]) aggregated[name] = { buyers: 0, sold: 0, gmv: 0, commi: 0 };
+      aggregated[name].buyers += (r.buyers || 0);
+      aggregated[name].sold += (r.sold || 0);
+      aggregated[name].gmv += (parseFloat(r.gmv) || 0);
+      aggregated[name].commi += (parseFloat(r.actual_sales) || 0);
     });
-}; // <--- ADD THIS BRACKET! THIS SAVES THE SCRIPT!
-
-// Wire up Modal buttons
-  const cancelNoteBtn = document.getElementById('cancelNoteBtn');
-  const saveNoteBtn = document.getElementById('saveNoteBtn');
-
-  if (cancelNoteBtn) {
-      cancelNoteBtn.addEventListener('click', () => {
-          document.getElementById('addNoteModal').classList.remove('open');
-          document.getElementById('noteInput').value = '';
-      });
-  }
-
-  if (saveNoteBtn) {
-      saveNoteBtn.addEventListener('click', async () => {
-          const content = document.getElementById('noteInput').value.trim();
-          if (!content) return;
-
-          saveNoteBtn.disabled = true;
-          saveNoteBtn.textContent = 'Sharing...';
-
-          const { error } = await supabaseClient
-              .from('employee_notes')
-              .insert({ employee_id: emp.id, content: content });
-
-          saveNoteBtn.disabled = false;
-          saveNoteBtn.textContent = 'Share';
-
-          if (!error) {
-              document.getElementById('addNoteModal').classList.remove('open');
-              document.getElementById('noteInput').value = '';
-              loadNotesTray(); // Instantly refresh the tray
-          } else {
-              alert("Failed to post note.");
-          }
-      });
-  }
-
-  // Boot the channels, DMs, and Notes when the page loads
-  setTimeout(() => {
-      if (typeof loadChatChannels === 'function') loadChatChannels();
-      if (typeof loadDirectMessageSidebar === 'function') loadDirectMessageSidebar();
-      if (typeof loadNotesTray === 'function') loadNotesTray();
-  }, 1500);
-
-  // ==========================================================
-  // DIRECT MESSAGING (DM) ENGINE
-  // ==========================================================
-  
-  const newDmBtn = document.getElementById('newDmBtn');
-  if (newDmBtn) {
-      newDmBtn.addEventListener('click', async () => {
-          document.getElementById('newDmModal').classList.add('open');
-          const list = document.getElementById('dmUserList');
-          list.innerHTML = '<div class="loading-note">Loading directory...</div>';
-          
-          // Fetch all other employees
-          const { data: users } = await supabaseClient.from('employees').select('id, name, avatar_url, positions(name)').neq('id', emp.id).order('name');
-          
-          if (users) {
-              list.innerHTML = users.map(u => {
-                  const pos = u.positions ? u.positions.name : 'Staff';
-                  return `
-                  <div class="dm-user-row" data-uid="${u.id}" data-uname="${escapeHtml(u.name)}" style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--navy-800); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--navy-700)'" onmouseout="this.style.background='var(--navy-800)'">
-                      <img src="${u.avatar_url || 'easyway_icon.svg'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #fff;">
-                      <div>
-                          <div style="font-size: 13px; color: var(--paper); font-weight: 600;">${escapeHtml(u.name)}</div>
-                          <div style="font-size: 10px; color: #7488b6; font-family: var(--font-mono);">${escapeHtml(pos)}</div>
-                      </div>
-                  </div>`;
-              }).join('');
-              
-              document.querySelectorAll('.dm-user-row').forEach(row => {
-                  row.addEventListener('click', () => startDirectMessage(row.dataset.uid, row.dataset.uname));
-              });
-          }
-      });
-  }
-  
-  const closeDmModalBtn = document.getElementById('closeDmModalBtn');
-  if (closeDmModalBtn) {
-      closeDmModalBtn.addEventListener('click', () => {
-          document.getElementById('newDmModal').classList.remove('open');
-      });
-  }
-
-  window.startDirectMessage = async function(otherUserId, otherUserName) {
-      document.getElementById('newDmModal').classList.remove('open');
-      
-      // We sort the two IDs alphabetically so the system always generates the exact same unique channel name for these two people
-      const uniqueName = [emp.id, otherUserId].sort().join('_');
-      
-      let { data: existingChannel } = await supabaseClient
-          .from('chat_channels')
-          .select('id')
-          .eq('name', uniqueName)
-          .single();
-          
-      let channelId;
-      
-      if (existingChannel) {
-          channelId = existingChannel.id;
-      } else {
-          // If they've never chatted before, generate a new private room
-          const { data: newChannel, error } = await supabaseClient
-              .from('chat_channels')
-              .insert({ name: uniqueName, type: 'direct' })
-              .select()
-              .single();
-              
-          if (error) return alert("Error creating DM.");
-          channelId = newChannel.id;
-          
-          // Lock both users into the private room
-          await supabaseClient.from('chat_members').insert([
-              { channel_id: channelId, employee_id: emp.id },
-              { channel_id: channelId, employee_id: otherUserId }
-          ]);
-      }
-      
-      // Update the UI to switch to this chat
-      activeChatId = channelId;
-      
-      document.querySelectorAll('.chat-channel-item, .chat-dm-item').forEach(i => {
-          i.style.background = 'transparent'; i.style.color = '#9fb0d6'; i.style.fontWeight = 'normal';
-      });
-      
-      document.getElementById('activeChatTitle').textContent = '💬 ' + otherUserName;
-      document.getElementById('activeChatDesc').textContent = 'Direct Message';
-      document.getElementById('chatInput').disabled = false;
-      document.getElementById('chatSendBtn').disabled = false;
-      
-      loadChatMessages(channelId);
-      loadDirectMessageSidebar(); // Refresh the sidebar so their name appears
-  };
-  
-  window.loadDirectMessageSidebar = async function() {
-      const dmList = document.getElementById('chatDmList');
-      if (!dmList) return;
-      
-      const { data: myDMs } = await supabaseClient.from('chat_members').select('channel_id').eq('employee_id', emp.id);
-      if (!myDMs || myDMs.length === 0) return;
-      
-      const channelIds = myDMs.map(m => m.channel_id);
-      
-      const { data: otherMembers } = await supabaseClient
-          .from('chat_members')
-          .select('channel_id, employees(name, avatar_url, positions(name))')
-          .in('channel_id', channelIds)
-          .neq('employee_id', emp.id);
-          
-      if (otherMembers) {
-          dmList.innerHTML = otherMembers.map(m => {
-              const otherName = m.employees ? m.employees.name : 'Unknown User';
-              const avatar = m.employees && m.employees.avatar_url ? m.employees.avatar_url : 'easyway_icon.svg';
-              return `
-              <div class="ig-chat-row chat-sidebar-item" data-id="${m.channel_id}" data-name="${escapeHtml(otherName)}" data-avatar="${avatar}" data-type="dm">
-                  <img src="${avatar}" class="ig-chat-row-avatar">
-                  <div class="ig-chat-row-info">
-                      <div class="ig-chat-row-name">${escapeHtml(otherName)}</div>
-                      <div class="ig-chat-row-preview">Direct Message</div>
-                  </div>
-              </div>`;
-          }).join('');
-          
-          attachChatRowListeners();
-      }
-  };
-         // Centralized click handler for Mobile UI toggling
-  function attachChatRowListeners() {
-      document.querySelectorAll('.chat-sidebar-item').forEach(item => {
-          item.addEventListener('click', () => {
-              // Highlight active
-              document.querySelectorAll('.chat-sidebar-item').forEach(i => i.classList.remove('active'));
-              item.classList.add('active');
-              
-              activeChatId = item.dataset.id;
-              
-              // Update Header
-              document.getElementById('activeChatTitle').textContent = item.dataset.type === 'channel' ? '# ' + item.dataset.name : item.dataset.name;
-              document.getElementById('activeChatDesc').textContent = item.dataset.type === 'channel' ? 'Company Channel' : 'Direct Message';
-              document.getElementById('activeChatAvatar').src = item.dataset.avatar || 'easyway_icon.svg';
-              
-              document.getElementById('chatInput').disabled = false;
-              document.getElementById('chatSendBtn').disabled = false;
-              
-              // **MOBILE UX MAGIC:** Hide sidebar and show chat
-              document.getElementById('igChatWrapper').classList.add('mobile-chat-open');
-              
-              loadChatMessages(activeChatId);
-          });
-      });
-  }
-
-    // Wire up the Quick Reply "Enter" key in the Note View
-  const replyNoteInput = document.getElementById('replyNoteInput');
-  if (replyNoteInput) {
-      replyNoteInput.addEventListener('keypress', function(e) {
-          if (e.key === 'Enter') {
-              const msg = this.value.trim();
-              if (!msg) return;
-
-              const uid = document.getElementById('viewNoteUserId').value;
-              const uname = document.getElementById('viewNoteName').textContent;
-              const originalNote = document.getElementById('viewNoteContent').textContent;
-              
-              // 1. Close the modal
-              document.getElementById('viewNoteModal').classList.remove('open');
-              this.value = '';
-              
-              // 2. Open their Direct Message channel
-              window.startDirectMessage(uid, uname);
-              
-              // 3. Auto-send the reply context after a tiny delay to ensure the channel switched
-              setTimeout(() => {
-                  const chatInp = document.getElementById('chatInput');
-                  chatInp.value = `Replying to your note ("${originalNote}"): ${msg}`;
-                  window.sendChatMessage();
-              }, 400); 
-          }
-      });
+    
+    tbody.innerHTML = Object.keys(aggregated).map(name => {
+      const a = aggregated[name];
+      return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); font-weight: bold;">${escapeHtml(name)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line);">${a.buyers}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line);">${a.sold}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line);">₱${a.gmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-400); font-weight: bold;">₱${a.commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        </tr>
+      `;
+    }).join('');
   }
 
   // ==========================================================
   // ADMIN PAYROLL CUT-OFF MANAGER
   // ==========================================================
-  
-  // Helper to format the big calendar text
   function updateBigCalendarDisplay(startStr, endStr) {
       if (!startStr || !endStr) return;
-      
       const sDate = new Date(startStr);
       const eDate = new Date(endStr);
-      
-      // Update the "13 - 27" text
       document.getElementById('bigCalendarDates').textContent = `${sDate.getDate()} - ${eDate.getDate()}`;
-      
-      // Update the "AUGUST 2026" or "AUG - SEPT 2026" text
       const sMonth = sDate.toLocaleString('default', { month: 'long' });
       const eMonth = eDate.toLocaleString('default', { month: 'long' });
       const year = eDate.getFullYear();
-      
       if (sMonth === eMonth) {
           document.getElementById('bigCalendarMonth').textContent = `${sMonth} ${year}`;
       } else {
@@ -5127,17 +4041,10 @@ if (saveScheduleBtn) {
   }
 
   async function loadPayrollSettings() {
-      const { data: settings, error } = await supabaseClient
-          .from('payroll_settings')
-          .select('period_start, period_end')
-          .limit(1)
-          .maybeSingle();
-          
+      const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
       if (settings) {
           document.getElementById('adminPeriodStart').value = settings.period_start || '';
           document.getElementById('adminPeriodEnd').value = settings.period_end || '';
-          
-          // Force the big text to match the database on load
           updateBigCalendarDisplay(settings.period_start, settings.period_end);
       }
   }
@@ -5147,43 +4054,27 @@ if (saveScheduleBtn) {
       savePayrollDatesBtn.addEventListener('click', async () => {
           const start = document.getElementById('adminPeriodStart').value;
           const end = document.getElementById('adminPeriodEnd').value;
-          
-          if (!start || !end) {
-              alert("Please select both a start and end date.");
-              return;
-          }
-
+          if (!start || !end) { alert("Please select both a start and end date."); return; }
           savePayrollDatesBtn.disabled = true;
           savePayrollDatesBtn.textContent = 'Saving...';
-
-          // Update Row ID 1 in the payroll_settings table
-          const { error } = await supabaseClient
-              .from('payroll_settings')
-              .update({ period_start: start, period_end: end })
-              .eq('id', 1);
-
+          const { error } = await supabaseClient.from('payroll_settings').update({ period_start: start, period_end: end }).eq('id', 1);
           savePayrollDatesBtn.disabled = false;
           savePayrollDatesBtn.textContent = 'Save Active Cutoff';
-
           if (error) {
               alert('Failed to save dates: ' + error.message);
           } else {
-              // Instantly update the big text without refreshing the page
               updateBigCalendarDisplay(start, end);
               alert('Payroll cut-off dates updated successfully! Employee dashboards will now reflect this period.');
-              
-              // Trigger a recalculation of the Master Total Sheet with the new dates
               if(typeof loadMasterTotalsSheet === 'function') loadMasterTotalsSheet();
           }
       });
   }
 
-  // Run on load
   setTimeout(() => {
       loadPayrollSettings();
   }, 1500);
-  
-})(); /* <--- REPLACED THE } WITH THIS */
+
+})();
 </script>
 </body>
 </html>
