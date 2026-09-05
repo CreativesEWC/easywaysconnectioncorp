@@ -3698,10 +3698,10 @@ window.loadTodayOverallTotal = async function() {
     const isTestAccount = (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || 
                           (emp.name && emp.name.includes('[DEV]'));
 
-    // Fetch today's shift submissions including row id for deletion
+    // Fetch today's shift submissions
     const { data: todayReports, error } = await supabaseClient
         .from('sales_reports')
-        .select('id, shop_name, time, actual_sales, lh_sold, sold, lh_gmv, gmv')
+        .select('id, shop_name, actual_sales, lh_sold, sold, lh_gmv, gmv')
         .eq('employee_id', emp.id)
         .eq('report_date', todayDateStr);
 
@@ -3762,7 +3762,7 @@ window.loadTodayOverallTotal = async function() {
             <tr style="border-bottom: 1px solid var(--line); font-size: 13px;">
               <td style="padding: 10px; border-right: 1px solid var(--line); font-weight: 600; color: var(--paper);">${escapeHtml(myName)}</td>
               <td style="padding: 10px; border-right: 1px solid var(--line); color: #94a3b8;">
-                Shift ${index + 1} (${escapeHtml(shift.time)})
+                Shift ${index + 1}
                 ${deleteBtnHtml}
               </td>
               <td style="padding: 10px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace;">₱${shift.commi.toFixed(2)}</td>
@@ -3945,6 +3945,11 @@ window.loadTodayOverallTotal = async function() {
           grandSold += parseInt(row.querySelector('.inp-me-sold').value) || 0;
           grandGmv += parseFloat(row.querySelector('.inp-me-gmv').value) || 0;
       });
+
+    if (grandCommi === 0 && grandSold === 0 && grandGmv === 0) {
+        container.innerHTML = '';
+        return;
+    }
 
       // Output exactly ONE table that acts as the global overall total
       container.innerHTML = `
