@@ -1183,6 +1183,9 @@ aside.sidebar.collapsed ~ main.main-content {
             <button type="button" id="addSalesRowBtn" class="btn2" style="border: 1px dashed var(--mint-500); color: var(--mint-500); background: transparent; padding: 10px; margin-top: 5px;">[+] Add Another Shop Report</button>
             <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;">Submit My Live Commission</button>
 
+            <!-- PERSISTENT DAILY SUMMARY (STAYS ALL DAY) -->
+            <div id="persistentDailySummaryContainer"></div>
+            
             <!-- DYNAMIC SUMMARY CONTAINER -->
             <div id="dynamicSummaryContainer"></div>
           </form>
@@ -3679,6 +3682,73 @@ if (ticketBtn) {
       });
   }
 
+  // --- Load & Display Today's Total All Day ---
+window.loadTodayOverallTotal = async function() {
+    const container = document.getElementById('persistentDailySummaryContainer');
+    if (!container || !emp || !emp.id) return;
+
+    const today = new Date();
+    const todayDateStr = today.getFullYear() + '-' + 
+                         String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(today.getDate()).padStart(2, '0');
+
+    const myName = document.getElementById('empName').textContent || emp.name || 'Submitter';
+
+    const { data: todayReports, error } = await supabaseClient
+        .from('sales_reports')
+        .select('actual_sales, lh_sold, sold, lh_gmv, gmv')
+        .eq('employee_id', emp.id)
+        .eq('report_date', todayDateStr);
+
+    if (error) {
+        console.error("Error loading today's daily total:", error);
+        return;
+    }
+
+    if (!todayReports || todayReports.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let dayCommi = 0;
+    let daySold = 0;
+    let dayGmv = 0;
+
+    todayReports.forEach(r => {
+        dayCommi += parseFloat(r.actual_sales) || 0;
+        daySold += parseInt(r.lh_sold || r.sold) || 0;
+        dayGmv += parseFloat(r.lh_gmv || r.gmv) || 0;
+    });
+
+    container.innerHTML = `
+    <div style="margin-top: 25px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+      <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
+        <span>SUMMARY: TODAY'S OVERALL TOTAL (${todayReports.length} SHIFT${todayReports.length > 1 ? 'S' : ''} LOGGED)</span>
+        <span style="font-size: 11px; background: rgba(0,0,0,0.15); padding: 2px 8px; border-radius: 4px;">ACTIVE FOR TODAY</span>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
+            <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
+            <th style="padding: 12px; border-right: 1px solid var(--line);">Total Commi</th>
+            <th style="padding: 12px; border-right: 1px solid var(--line);">LH Sold</th>
+            <th style="padding: 12px; border-right: 1px solid var(--line);">LH GMV</th>
+            <th style="padding: 12px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);">${escapeHtml(myName)}</td>
+            <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">₱${dayCommi.toFixed(2)}</td>
+            <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">${daySold}</td>
+            <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">₱${dayGmv.toFixed(2)}</td>
+            <td style="padding: 15px; font-family: var(--font-mono); font-size: 12px; color: var(--mint-500); font-weight: bold;">VERIFIED IN DATABASE</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+};
+
   // 2. Function to process and upload the batch
   const videoSubmitForm = document.getElementById('videoSubmitForm');
   if (videoSubmitForm) {
@@ -3920,6 +3990,7 @@ if (ticketBtn) {
 
               alert(`Successfully submitted ${successCount} shop reports to Finance!`);
               salesReportForm.reset();
+              await loadTodayOverallTotal();
               if(b1Select) b1Select.value = '';
               if(b2Select) b2Select.value = '';
               
@@ -4558,6 +4629,10 @@ if (ticketBtn) {
   };
 
   setTimeout(() => { if (typeof loadOnlineRoster === 'function') loadOnlineRoster(); }, 2000);
+
+  setTimeout(() => {
+    if (typeof loadTodayOverallTotal === 'function') loadTodayOverallTotal();
+}, 1200);
 
   // ==========================================================
   // IG FLOATING CHAT WIDGET LOGIC
