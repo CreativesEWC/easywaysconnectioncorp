@@ -1820,14 +1820,14 @@ aside.sidebar.collapsed ~ main.main-content {
                   <td style="padding: 10px 8px; font-family: var(--font-mono);">₱${lhGmv.toLocaleString()}</td>
                   <td style="padding: 10px 8px;">${proofLink}</td>
               </tr>`;
-          });
+        });
 
-          tableBody.innerHTML = rowsHtml;
-      } catch (err) {
+        tableBody.innerHTML = rowsHtml;
+    } catch (err) {
           console.error("Error loading admin live commissions:", err);
           tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load sales reports: ${err.message}</td></tr>`;
       }
-  };
+  }; // <-- loadAdminLiveCommissions MUST close here
 
   supabaseClient
     .channel('admin_live_sales_feed')
@@ -1927,11 +1927,12 @@ aside.sidebar.collapsed ~ main.main-content {
                   </td>
               </tr>`;
           }).join('');
+          tbody.innerHTML = rowsHtml;
       } catch (err) {
           console.error("Error loading video audits:", err);
           tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load video audits: ${err.message}</td></tr>`;
       }
-  };
+  }; // <--- MAKE SURE THIS CLOSING BRACE & SEMICOLON IS PRESENT
 
   supabaseClient
       .channel('admin_video_audits_feed')
