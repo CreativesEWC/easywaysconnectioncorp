@@ -3905,6 +3905,23 @@ window.loadTodayOverallTotal = async function() {
     await loadTodayOverallTotal();
 };
 
+  // Automatically update table across all seller screens whenever anyone submits or deletes
+  supabaseClient
+    .channel('realtime_sales_reports')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'sales_reports' },
+      (payload) => {
+        console.log('Realtime change detected in sales_reports:', payload);
+        if (typeof window.loadTodayOverallTotal === 'function') {
+          window.loadTodayOverallTotal();
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log('Sales reports realtime subscription:', status);
+    });
+
   // 2. Function to process and upload the batch
   const videoSubmitForm = document.getElementById('videoSubmitForm');
   if (videoSubmitForm) {
