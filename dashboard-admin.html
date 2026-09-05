@@ -1242,9 +1242,18 @@ aside.sidebar.collapsed ~ main.main-content {
         <p style="margin: 4px 0 0 0; font-size: 12px; color: #7488b6;">Review daily dashboard screenshots before calculating final payout.</p>
     </div>
     <section class="panel">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
           <h2 style="margin: 0; font-size: 14px; color: var(--mint-400);">Daily Sales Reports</h2>
-          <button class="btn2" onclick="loadAdminLiveCommissions()" style="font-size: 11px; padding: 6px 10px;">🔄 Refresh Feed</button>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button class="btn2" onclick="setSalesFilter('today')" style="font-size: 11px; padding: 5px 8px;">Today</button>
+              <button class="btn2" onclick="setSalesFilter('month')" style="font-size: 11px; padding: 5px 8px;">This Month</button>
+              <input type="date" id="salesFilterFrom" style="background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 4px; padding: 4px 8px; font-size: 11px;">
+              <span style="font-size: 11px; color: #7488b6;">to</span>
+              <input type="date" id="salesFilterTo" style="background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 4px; padding: 4px 8px; font-size: 11px;">
+              <button class="btn2" onclick="loadAdminLiveCommissions()" style="font-size: 11px; padding: 5px 10px;">Filter</button>
+              <button class="btn2 primary" onclick="exportLiveSalesCSV()" style="font-size: 11px; padding: 5px 10px; background: var(--mint-500); color: #fff; border: none; font-weight: bold;">📥 Export CSV</button>
+              <button class="btn2" onclick="loadAdminLiveCommissions()" style="font-size: 11px; padding: 5px 8px;">🔄 Refresh</button>
+          </div>
       </div>
       <div style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; min-width: 800px;">
@@ -1690,66 +1699,134 @@ aside.sidebar.collapsed ~ main.main-content {
     }
   };
 
+  // Store reports globally for CSV export
+  window.cachedSalesReports = [];
+
+  // Quick Date Range Filter Helpers
+  window.setSalesFilter = function(rangeType) {
+      const today = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+      if (rangeType === 'today') {
+          document.getElementById('salesFilterFrom').value = todayStr;
+          document.getElementById('salesFilterTo').value = todayStr;
+      } else if (rangeType === 'month') {
+          const firstDay = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
+          const lastDay = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate())}`;
+          document.getElementById('salesFilterFrom').value = firstDay;
+          document.getElementById('salesFilterTo').value = lastDay;
+      }
+      loadAdminLiveCommissions();
+  };
+
+  // CSV Export Engine
+  window.exportLiveSalesCSV = function() {
+      if (!window.cachedSalesReports || window.cachedSalesReports.length === 0) {
+          alert("No sales reports available to export for the selected date range.");
+          return;
+      }
+
+      const headers = ["Date", "Shift Time", "Employee Submitter", "Shop / Brand", "Shift Buddies", "Buyers", "Commission", "LH Sold", "LH GMV", "Proof Screenshot"];
+      
+      const rows = window.cachedSalesReports.map(r => [
+          r.report_date || '',
+          r.shift_time || '',
+          `"${(r.employees?.name || 'Staff').replace(/"/g, '""')}"`,
+          `"${(r.shop_name || '').replace(/"/g, '""')}"`,
+          `"${(r.shift_buddy || 'Solo').replace(/"/g, '""')}"`,
+          r.buyers || 0,
+          (parseFloat(r.actual_sales) || 0).toFixed(2),
+          r.lh_sold || 0,
+          (parseFloat(r.lh_gmv) || 0).toFixed(2),
+          `"${(r.screenshot_url || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      const fromVal = document.getElementById('salesFilterFrom')?.value || 'all';
+      const toVal = document.getElementById('salesFilterTo')?.value || 'all';
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `live_sales_reports_${fromVal}_to_${toVal}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+  // Upgraded Live Commission Loader with Date Filtering
   window.loadAdminLiveCommissions = async function() {
-    const tableBody = document.getElementById('adminLiveTable');
-    if (!tableBody) return;
+      const tableBody = document.getElementById('adminLiveTable');
+      if (!tableBody) return;
 
-    try {
-        const { data: reports, error } = await supabaseClient
-            .from('sales_reports')
-            .select(`
-                id,
-                report_date,
-                shift_time,
-                shop_name,
-                shift_buddy,
-                buyers,
-                actual_sales,
-                lh_sold,
-                lh_gmv,
-                screenshot_url,
-                created_at,
-                employees ( name )
-            `)
-            .order('created_at', { ascending: false });
+      const fromDate = document.getElementById('salesFilterFrom')?.value;
+      const toDate = document.getElementById('salesFilterTo')?.value;
 
-        if (error) throw error;
+      try {
+          let query = supabaseClient
+              .from('sales_reports')
+              .select(`
+                  id,
+                  report_date,
+                  shift_time,
+                  shop_name,
+                  shift_buddy,
+                  buyers,
+                  actual_sales,
+                  lh_sold,
+                  lh_gmv,
+                  screenshot_url,
+                  created_at,
+                  employees ( name )
+              `)
+              .order('created_at', { ascending: false });
 
-        if (!reports || reports.length === 0) {
-            tableBody.innerHTML = `<tr class="empty-row"><td colspan="10" style="text-align: center; padding: 20px; color: #7488b6;">No sales reports found.</td></tr>`;
-            return;
-        }
+          if (fromDate) query = query.gte('report_date', fromDate);
+          if (toDate) query = query.lte('report_date', toDate);
 
-        let rowsHtml = '';
-        reports.forEach(r => {
-            const submitter = r.employees?.name || 'Staff';
-            const commi = parseFloat(r.actual_sales) || 0;
-            const lhSold = parseInt(r.lh_sold) || 0;
-            const lhGmv = parseFloat(r.lh_gmv) || 0;
-            const proofLink = r.screenshot_url 
-                ? `<a href="javascript:void(0)" onclick="viewAdminProof('${r.screenshot_url}')" style="color: var(--mint-500); font-weight: bold; text-decoration: underline;">View</a>` 
-                : '—';
+          const { data: reports, error } = await query;
+          if (error) throw error;
 
-            rowsHtml += `
-            <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
-                <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtmlGlobal(r.report_date || '—')}</td>
-                <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtmlGlobal(r.shift_time || '—')}</td>
-                <td style="padding: 10px 8px; font-weight: bold; color: var(--paper);">${escapeHtmlGlobal(submitter)}</td>
-                <td style="padding: 10px 8px; color: var(--amber-400); font-weight: bold;">${escapeHtmlGlobal(r.shop_name || '—')}</td>
-                <td style="padding: 10px 8px; color: #7488b6;">${escapeHtmlGlobal(r.shift_buddy || 'Solo')}</td>
-                <td style="padding: 10px 8px; font-family: var(--font-mono);">${r.buyers || 0}</td>
-                <td style="padding: 10px 8px; font-family: var(--font-mono); color: var(--mint-500); font-weight: bold;">${commi.toFixed(0)}</td>
-                <td style="padding: 10px 8px; font-family: var(--font-mono);">${lhSold}</td>
-                <td style="padding: 10px 8px; font-family: var(--font-mono);">₱${lhGmv.toLocaleString()}</td>
-                <td style="padding: 10px 8px;">${proofLink}</td>
-            </tr>`;
-        });
+          window.cachedSalesReports = reports || [];
 
-        tableBody.innerHTML = rowsHtml;
-    } catch (err) {
-        console.error("Error loading admin live commissions:", err);
-        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load sales reports: ${err.message}</td></tr>`;
-    }
+          if (!reports || reports.length === 0) {
+              tableBody.innerHTML = `<tr class="empty-row"><td colspan="10" style="text-align: center; padding: 20px; color: #7488b6;">No sales reports found for the selected range.</td></tr>`;
+              return;
+          }
+
+          let rowsHtml = '';
+          reports.forEach(r => {
+              const submitter = r.employees?.name || 'Staff';
+              const commi = parseFloat(r.actual_sales) || 0;
+              const lhSold = parseInt(r.lh_sold) || 0;
+              const lhGmv = parseFloat(r.lh_gmv) || 0;
+              const proofLink = r.screenshot_url 
+                  ? `<a href="javascript:void(0)" onclick="viewAdminProof('${r.screenshot_url}')" style="color: var(--mint-500); font-weight: bold; text-decoration: underline;">View</a>` 
+                  : '—';
+
+              rowsHtml += `
+              <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtmlGlobal(r.report_date || '—')}</td>
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtmlGlobal(r.shift_time || '—')}</td>
+                  <td style="padding: 10px 8px; font-weight: bold; color: var(--paper);">${escapeHtmlGlobal(submitter)}</td>
+                  <td style="padding: 10px 8px; color: var(--amber-400); font-weight: bold;">${escapeHtmlGlobal(r.shop_name || '—')}</td>
+                  <td style="padding: 10px 8px; color: #7488b6;">${escapeHtmlGlobal(r.shift_buddy || 'Solo')}</td>
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${r.buyers || 0}</td>
+                  <td style="padding: 10px 8px; font-family: var(--font-mono); color: var(--mint-500); font-weight: bold;">${commi.toFixed(0)}</td>
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${lhSold}</td>
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">₱${lhGmv.toLocaleString()}</td>
+                  <td style="padding: 10px 8px;">${proofLink}</td>
+              </tr>`;
+          });
+
+          tableBody.innerHTML = rowsHtml;
+      } catch (err) {
+          console.error("Error loading admin live commissions:", err);
+          tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load sales reports: ${err.message}</td></tr>`;
+      }
   };
 
   supabaseClient
@@ -1761,8 +1838,112 @@ aside.sidebar.collapsed ~ main.main-content {
     })
     .subscribe();
 
+  // ==========================================
+  // VIDEO AUDITS INBOX ENGINE
+  // ==========================================
+  window.openVideoViewer = function(videoUrl) {
+      const modal = document.getElementById('videoViewerModal');
+      const videoEl = document.getElementById('viewerVideoSrc');
+      if (modal && videoEl) {
+          videoEl.src = videoUrl;
+          modal.classList.add('open');
+      } else {
+          window.open(videoUrl, '_blank');
+      }
+  };
+
+  window.closeVideoViewer = function() {
+      const modal = document.getElementById('videoViewerModal');
+      const videoEl = document.getElementById('viewerVideoSrc');
+      if (videoEl) {
+          videoEl.pause();
+          videoEl.src = '';
+      }
+      if (modal) modal.classList.remove('open');
+  };
+
+  window.reviewVideoStatus = async function(videoId, status) {
+      const actionText = status === 'approved' ? 'Approve' : 'Reject';
+      if (!confirm(`Are you sure you want to ${actionText} this video submission?`)) return;
+
+      const { error } = await supabaseClient
+          .from('video_submissions')
+          .update({ status: status })
+          .eq('id', videoId);
+
+      if (error) {
+          alert("Error updating status: " + error.message);
+      } else {
+          loadAdminVideoAudits();
+      }
+  };
+
+  window.loadAdminVideoAudits = async function() {
+      const tbody = document.getElementById('adminVideoTable');
+      if (!tbody) return;
+
+      try {
+          const { data: vids, error } = await supabaseClient
+              .from('video_submissions')
+              .select('id, upload_date, video_url, tiktok_link, status, created_at, employees(name, badge_id)')
+              .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          if (!vids || vids.length === 0) {
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: #7488b6;">No video submissions found.</td></tr>';
+              return;
+          }
+
+          tbody.innerHTML = vids.map(v => {
+              const empName = v.employees?.name || 'Staff';
+              const rawLink = v.video_url 
+                  ? `<button class="btn2" onclick="openVideoViewer('${v.video_url}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
+                  : '—';
+              const platformLink = v.tiktok_link 
+                  ? `<a href="${v.tiktok_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Platform Link</a>` 
+                  : '—';
+
+              let statusBadge = `<span class="pill pending">Pending</span>`;
+              if (v.status === 'approved') statusBadge = `<span class="pill approved">Approved</span>`;
+              if (v.status === 'rejected') statusBadge = `<span class="pill rejected">Rejected</span>`;
+
+              return `
+              <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${v.upload_date || '—'}</td>
+                  <td style="padding: 10px 8px; font-weight: bold;">${escapeHtmlGlobal(empName)}</td>
+                  <td style="padding: 10px 8px;">${platformLink}</td>
+                  <td style="padding: 10px 8px;">${rawLink}</td>
+                  <td style="padding: 10px 8px;">
+                      <div style="display: flex; gap: 6px; align-items: center;">
+                          ${statusBadge}
+                          <button class="btn2 success" onclick="reviewVideoStatus('${v.id}', 'approved')" style="padding: 3px 6px; font-size: 10px;">✔️</button>
+                          <button class="btn2 danger" onclick="reviewVideoStatus('${v.id}', 'rejected')" style="padding: 3px 6px; font-size: 10px;">✖️</button>
+                      </div>
+                  </td>
+              </tr>`;
+          }).join('');
+      } catch (err) {
+          console.error("Error loading video audits:", err);
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load video audits: ${err.message}</td></tr>`;
+      }
+  };
+
+  supabaseClient
+      .channel('admin_video_audits_feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'video_submissions' }, () => {
+          if (typeof window.loadAdminVideoAudits === 'function') {
+              window.loadAdminVideoAudits();
+          }
+      })
+      .subscribe();
+
   if (typeof window.loadAdminLiveCommissions === 'function') {
       window.loadAdminLiveCommissions();
+  }
+
+  if (typeof window.loadAdminVideoAudits === 'function') {
+      window.loadAdminVideoAudits();
   }
 
   window.openFinanceTab = function(tabId, clickedBtn) {
