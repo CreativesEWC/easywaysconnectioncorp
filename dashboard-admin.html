@@ -1675,6 +1675,80 @@ aside.sidebar.collapsed ~ main.main-content {
 
 <script>
 
+  window.loadAdminLiveCommissions = async function() {
+    const tableBody = document.querySelector('#liveCommissionTable tbody') || 
+                      document.querySelector('table tbody'); // targets the table container in your Live Sales Inbox
+    const loadingRow = document.querySelector('.live-sales-loading') || document.querySelector('td[colspan]');
+
+    try {
+        const { data: reports, error } = await supabaseClient
+            .from('sales_reports')
+            .select(`
+                id,
+                report_date,
+                shift_time,
+                shop_name,
+                shift_buddy,
+                buyers,
+                actual_sales,
+                lh_sold,
+                lh_gmv,
+                screenshot_url,
+                created_at,
+                employees ( name )
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!reports || reports.length === 0) {
+            if (tableBody) {
+                tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #7488b6;">No sales reports found.</td></tr>`;
+            }
+            return;
+        }
+
+        let rowsHtml = '';
+        reports.forEach(r => {
+            const submitter = r.employees?.name || 'Staff';
+            const commi = parseFloat(r.actual_sales) || 0;
+            const lhSold = parseInt(r.lh_sold) || 0;
+            const lhGmv = parseFloat(r.lh_gmv) || 0;
+            const proofLink = r.screenshot_url 
+                ? `<a href="${r.screenshot_url}" target="_blank" style="color: var(--mint-500); text-decoration: underline;">View</a>` 
+                : '—';
+
+            rowsHtml += `
+            <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+                <td style="padding: 10px 8px;">${escapeHtml(r.report_date || '—')}</td>
+                <td style="padding: 10px 8px; font-family: monospace;">${escapeHtml(r.shift_time || '—')}</td>
+                <td style="padding: 10px 8px; font-weight: bold;">${escapeHtml(submitter)}</td>
+                <td style="padding: 10px 8px; color: #eab308;">${escapeHtml(r.shop_name || '—')}</td>
+                <td style="padding: 10px 8px; color: #7488b6;">${escapeHtml(r.shift_buddy || 'Solo')}</td>
+                <td style="padding: 10px 8px; font-family: monospace;">${r.buyers || 0}</td>
+                <td style="padding: 10px 8px; font-family: monospace;">${commi.toFixed(0)}</td>
+                <td style="padding: 10px 8px; font-family: monospace;">${lhSold}</td>
+                <td style="padding: 10px 8px; font-family: monospace;">₱${lhGmv.toLocaleString()}</td>
+                <td style="padding: 10px 8px;">${proofLink}</td>
+            </tr>`;
+        });
+
+        if (tableBody) {
+            tableBody.innerHTML = rowsHtml;
+        }
+    } catch (err) {
+        console.error("Error loading admin live commissions:", err);
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 20px; color: #ef4444;">Failed to load sales reports: ${err.message}</td></tr>`;
+        }
+    }
+};
+
+// Auto-load on page start
+if (typeof window.loadAdminLiveCommissions === 'function') {
+    window.loadAdminLiveCommissions();
+}
+
   window.openFinanceTab = function(tabId, clickedBtn) {
       // 1. Hide ALL main dashboard tabs (This removes Employee Monitoring from the screen)
       document.querySelectorAll('.tab-panel').forEach(panel => panel.style.display = 'none');
