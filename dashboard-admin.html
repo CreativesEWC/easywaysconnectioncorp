@@ -1882,10 +1882,6 @@ aside.sidebar.collapsed ~ main.main-content {
       const tbody = document.getElementById('adminVideoTable');
       if (!tbody) return;
 
-      window.loadAdminVideoAudits = async function() {
-      const tbody = document.getElementById('adminVideoTable');
-      if (!tbody) return;
-
       try {
           const { data: vids, error } = await supabaseClient
               .from('video_submissions')
@@ -1927,7 +1923,6 @@ aside.sidebar.collapsed ~ main.main-content {
                   </td>
               </tr>`;
           }).join('');
-          tbody.innerHTML = rowsHtml;
       } catch (err) {
           console.error("Error loading video audits:", err);
           tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load video audits: ${err.message}</td></tr>`;
