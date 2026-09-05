@@ -3693,16 +3693,13 @@ window.loadTodayOverallTotal = async function() {
                          String(today.getDate()).padStart(2, '0');
 
     const myName = document.getElementById('empName').textContent || emp.name || 'Submitter';
-    
-    // Check if the currently logged-in account is the dev/test account
     const isTestAccount = (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || 
                           (emp.name && emp.name.includes('[DEV]'));
 
-    // Fetch today's shift submissions
+    // 1. Fetch today's reports for this date
     const { data: todayReports, error } = await supabaseClient
         .from('sales_reports')
-        .select('id, shop_name, actual_sales, lh_sold, sold, lh_gmv, gmv')
-        .eq('employee_id', emp.id)
+        .select('id, shop_name, employee_id, actual_sales, sold, lh_sold, gmv, lh_gmv, created_at')
         .eq('report_date', todayDateStr);
 
     if (error) {
@@ -3715,97 +3712,138 @@ window.loadTodayOverallTotal = async function() {
         return;
     }
 
-    // Group shift submissions dynamically by shop
+    // 2. Group records by shop
     const shops = {};
     todayReports.forEach(r => {
         const sName = (r.shop_name || 'UNASSIGNED SHOP').trim().toUpperCase();
         if (!shops[sName]) {
-            shops[sName] = {
-                rows: [],
-                totalCommi: 0,
-                totalSold: 0,
-                totalGmv: 0
-            };
+            shops[sName] = { logs: [], hosts: {} };
         }
-
+        
         const commi = parseFloat(r.actual_sales) || 0;
-        const sold = parseInt(r.lh_sold || r.sold) || 0;
-        const gmv = parseFloat(r.lh_gmv || r.gmv) || 0;
+        const sold = parseInt(r.sold) || 0;
+        const lhSold = parseInt(r.lh_sold) || 0;
+        const gmv = parseFloat(r.gmv) || 0;
+        const lhGmv = parseFloat(r.lh_gmv) || 0;
 
-        shops[sName].rows.push({
+        // Add to upper shift log table
+        shops[sName].logs.push({
             id: r.id,
-            time: r.time || 'N/A',
+            name: myName,
+            time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            buyer: sold, 
             commi: commi,
             sold: sold,
-            gmv: gmv
+            lhSold: lhSold,
+            gmv: gmv,
+            lhGmv: lhGmv
         });
 
-        shops[sName].totalCommi += commi;
-        shops[sName].totalSold += sold;
-        shops[sName].totalGmv += gmv;
+        // Accumulate in lower overall total table
+        if (!shops[sName].hosts[myName]) {
+            shops[sName].hosts[myName] = { commi: 0, lhSold: 0, lhGmv: 0 };
+        }
+        shops[sName].hosts[myName].commi += commi;
+        shops[sName].hosts[myName].lhSold += lhSold;
+        shops[sName].hosts[myName].lhGmv += lhGmv;
     });
 
-    let cardsHtml = '';
+    // 3. Render HTML matching the physical sheet
+    let finalHtml = '';
     Object.keys(shops).forEach(shopTitle => {
-        const shop = shops[shopTitle];
+        const data = shops[shopTitle];
 
-        let shiftRowsHtml = '';
-        shop.rows.forEach((shift, index) => {
-            // Render delete button exclusively for the dev/test account
-            const deleteBtnHtml = isTestAccount ? `
-              <button onclick="window.deleteTestShiftReport('${shift.id}')" 
-                      style="background: #ef4444; color: #fff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; margin-left: 8px;">
-                DELETE
+        // Build Upper Logs Rows
+        let logRows = '';
+        data.logs.forEach(log => {
+            const deleteBtn = isTestAccount ? `
+              <button onclick="window.deleteTestShiftReport('${log.id}')" 
+                      style="background:#ef4444; color:#fff; border:none; padding:2px 6px; border-radius:3px; font-size:9px; cursor:pointer; margin-left:4px;">
+                DEL
               </button>` : '';
 
-            shiftRowsHtml += `
-            <tr style="border-bottom: 1px solid var(--line); font-size: 13px;">
-              <td style="padding: 10px; border-right: 1px solid var(--line); font-weight: 600; color: var(--paper);">${escapeHtml(myName)}</td>
-              <td style="padding: 10px; border-right: 1px solid var(--line); color: #94a3b8;">
-                Shift ${index + 1}
-                ${deleteBtnHtml}
-              </td>
-              <td style="padding: 10px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace;">₱${shift.commi.toFixed(2)}</td>
-              <td style="padding: 10px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace;">${shift.sold}</td>
-              <td style="padding: 10px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace;">₱${shift.gmv.toFixed(2)}</td>
-              <td style="padding: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--mint-500);">LOGGED</td>
+            logRows += `
+            <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+              <td style="padding: 8px; border-right: 1px solid var(--line); text-align: left; font-weight: 600;">${escapeHtml(log.name)} ${deleteBtn}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace;">${escapeHtml(log.time)}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace;">${log.buyer}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace;">${log.commi.toFixed(0)}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace;">${log.sold}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace;">${log.lhSold}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace;">${log.gmv.toLocaleString()}</td>
+              <td style="padding: 8px; font-family: monospace;">${log.lhGmv.toLocaleString()}</td>
             </tr>`;
         });
 
-        cardsHtml += `
-        <div style="margin-top: 25px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-          <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
-            <span>[${escapeHtml(shopTitle)}] COMMISSION (SOLO TABLE)</span>
-            <span style="font-size: 11px; background: rgba(0,0,0,0.15); padding: 2px 8px; border-radius: 4px;">READ ONLY</span>
+        // Build Lower Overall Summary Rows
+        let hostRows = '';
+        let rowIdx = 1;
+        Object.keys(data.hosts).forEach(hName => {
+            const host = data.hosts[hName];
+            hostRows += `
+            <tr style="border-bottom: 1px solid var(--line); font-size: 13px;">
+              <td style="padding: 8px; border-right: 1px solid var(--line); width: 30px;">${rowIdx++}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); text-align: left; font-weight: bold;">${escapeHtml(hName)}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace; font-weight: bold;">${host.commi.toFixed(0)}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace; font-weight: bold;">${host.lhSold}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); font-family: monospace; font-weight: bold;">${host.lhGmv.toLocaleString()}</td>
+              <td style="padding: 8px; font-family: 'Brush Script MT', cursive, sans-serif; font-size: 18px; color: var(--mint-500);">Verified</td>
+            </tr>`;
+        });
+
+        finalHtml += `
+        <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--navy-900); box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+          
+          <!-- SHEET TOP HEADER -->
+          <div style="background: var(--navy-800); border-bottom: 1px solid var(--line); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #fff; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">SHOP: ${escapeHtml(shopTitle)}</span>
+            <span style="color: #7488b6; font-size: 12px; font-family: monospace;">DATE: ${todayDateStr}</span>
           </div>
 
-          <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
+          <!-- UPPER SHIFT LOGS TABLE -->
+          <table style="width: 100%; border-collapse: collapse; text-align: center;">
             <thead>
-              <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
-                <th style="padding: 10px; border-right: 1px solid var(--line);">Host Name</th>
-                <th style="padding: 10px; border-right: 1px solid var(--line);">Shift Session</th>
-                <th style="padding: 10px; border-right: 1px solid var(--line);">Commi</th>
-                <th style="padding: 10px; border-right: 1px solid var(--line);">LH Sold</th>
-                <th style="padding: 10px; border-right: 1px solid var(--line);">LH GMV</th>
-                <th style="padding: 10px;">Status</th>
+              <tr style="border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.02); color: #7488b6; font-size: 11px; text-transform: uppercase;">
+                <th style="padding: 8px; border-right: 1px solid var(--line); text-align: left;">FULL NAME</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">TIME</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">BUYER</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">COMMI</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">SOLD</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">LH SOLD</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">GMV</th>
+                <th style="padding: 8px;">LH GMV</th>
               </tr>
             </thead>
             <tbody>
-              ${shiftRowsHtml}
-              <tr style="background: rgba(234, 179, 8, 0.1); border-top: 2px solid #eab308; font-weight: bold;">
-                <td style="padding: 12px; border-right: 1px solid var(--line); color: #eab308; text-transform: uppercase;">TOTAL [${escapeHtml(shopTitle)}]</td>
-                <td style="padding: 12px; border-right: 1px solid var(--line); color: #eab308;">${shop.rows.length} Shift${shop.rows.length > 1 ? 's' : ''}</td>
-                <td style="padding: 12px; border-right: 1px solid var(--line); color: #eab308; font-family: monospace; font-size: 15px;">₱${shop.totalCommi.toFixed(2)}</td>
-                <td style="padding: 12px; border-right: 1px solid var(--line); color: #eab308; font-family: monospace; font-size: 15px;">${shop.totalSold}</td>
-                <td style="padding: 12px; border-right: 1px solid var(--line); color: #eab308; font-family: monospace; font-size: 15px;">₱${shop.totalGmv.toFixed(2)}</td>
-                <td style="padding: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--mint-500); font-weight: 800;">VERIFIED</td>
+              ${logRows}
+            </tbody>
+          </table>
+
+          <!-- LOWER SUMMARY: OVERALL TOTAL BAR -->
+          <div style="background: #eab308; color: #000; font-weight: 900; padding: 6px 15px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+            SUMMARY: OVERALL TOTAL
+          </div>
+
+          <!-- LOWER SUMMARY TABLE -->
+          <table style="width: 100%; border-collapse: collapse; text-align: center;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.02); color: #7488b6; font-size: 11px; text-transform: uppercase;">
+                <th style="padding: 8px; border-right: 1px solid var(--line); width: 30px;">#</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line); text-align: left;">NAME</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">TOTAL COMMI</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">LH SOLD</th>
+                <th style="padding: 8px; border-right: 1px solid var(--line);">LH GMV</th>
+                <th style="padding: 8px;">SIGN</th>
               </tr>
+            </thead>
+            <tbody>
+              ${hostRows}
             </tbody>
           </table>
         </div>`;
     });
 
-    container.innerHTML = cardsHtml;
+    container.innerHTML = finalHtml;
 };
 
   window.deleteTestShiftReport = async function(reportId) {
