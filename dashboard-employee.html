@@ -3694,9 +3694,10 @@ window.loadTodayOverallTotal = async function() {
 
     const myName = document.getElementById('empName').textContent || emp.name || 'Submitter';
 
+    // Fetch today's reports including shop identifier
     const { data: todayReports, error } = await supabaseClient
         .from('sales_reports')
-        .select('actual_sales, lh_sold, sold, lh_gmv, gmv')
+        .select('shop_name, actual_sales, lh_sold, sold, lh_gmv, gmv')
         .eq('employee_id', emp.id)
         .eq('report_date', todayDateStr);
 
@@ -3710,40 +3711,59 @@ window.loadTodayOverallTotal = async function() {
         return;
     }
 
-    let dayCommi = 0;
-    let daySold = 0;
-    let dayGmv = 0;
+    // Group submissions by platform
+    const platforms = {
+        'TikTok': { commi: 0, sold: 0, gmv: 0, count: 0 },
+        'Shopee': { commi: 0, sold: 0, gmv: 0, count: 0 }
+    };
 
     todayReports.forEach(r => {
-        dayCommi += parseFloat(r.actual_sales) || 0;
-        daySold += parseInt(r.lh_sold || r.sold) || 0;
-        dayGmv += parseFloat(r.lh_gmv || r.gmv) || 0;
+        const rawShop = (r.shop_name || '').toUpperCase();
+        // Determine platform based on keywords in shop_name
+        const target = (rawShop.includes('SP') || rawShop.includes('SHOPEE')) ? 'Shopee' : 'TikTok';
+
+        platforms[target].commi += parseFloat(r.actual_sales) || 0;
+        platforms[target].sold += parseInt(r.lh_sold || r.sold) || 0;
+        platforms[target].gmv += parseFloat(r.lh_gmv || r.gmv) || 0;
+        platforms[target].count += 1;
+    });
+
+    // Build platform table rows dynamically
+    let tableRows = '';
+    Object.keys(platforms).forEach(plat => {
+        const data = platforms[plat];
+        if (data.count > 0) {
+            tableRows += `
+            <tr style="border-bottom: 1px solid var(--line);">
+              <td style="padding: 12px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);">${escapeHtml(myName)}</td>
+              <td style="padding: 12px; border-right: 1px solid var(--line); color: #38bdf8; font-weight: bold;">${plat} (${data.count} shift${data.count > 1 ? 's' : ''})</td>
+              <td style="padding: 12px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 15px; font-weight: bold;">₱${data.commi.toFixed(2)}</td>
+              <td style="padding: 12px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 15px; font-weight: bold;">${data.sold}</td>
+              <td style="padding: 12px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 15px; font-weight: bold;">₱${data.gmv.toFixed(2)}</td>
+              <td style="padding: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--mint-500); font-weight: bold;">VERIFIED</td>
+            </tr>`;
+        }
     });
 
     container.innerHTML = `
     <div style="margin-top: 25px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
       <div style="background: #eab308; color: #000; font-weight: 800; padding: 10px 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
-        <span>SUMMARY: TODAY'S OVERALL TOTAL (${todayReports.length} SHIFT${todayReports.length > 1 ? 'S' : ''} LOGGED)</span>
+        <span>SUMMARY: TODAY'S PLATFORM TOTALS (${todayReports.length} TOTAL LOGS)</span>
         <span style="font-size: 11px; background: rgba(0,0,0,0.15); padding: 2px 8px; border-radius: 4px;">ACTIVE FOR TODAY</span>
       </div>
       <table style="width: 100%; border-collapse: collapse; text-align: center; background: var(--navy-900);">
         <thead>
           <tr style="border-bottom: 1px solid var(--line); background: var(--navy-800); color: #7488b6; font-size: 11px; text-transform: uppercase;">
-            <th style="padding: 12px; border-right: 1px solid var(--line);">Name</th>
-            <th style="padding: 12px; border-right: 1px solid var(--line);">Total Commi</th>
-            <th style="padding: 12px; border-right: 1px solid var(--line);">LH Sold</th>
-            <th style="padding: 12px; border-right: 1px solid var(--line);">LH GMV</th>
-            <th style="padding: 12px;">Status</th>
+            <th style="padding: 10px; border-right: 1px solid var(--line);">Name</th>
+            <th style="padding: 10px; border-right: 1px solid var(--line);">Platform</th>
+            <th style="padding: 10px; border-right: 1px solid var(--line);">Total Commi</th>
+            <th style="padding: 10px; border-right: 1px solid var(--line);">LH Sold</th>
+            <th style="padding: 10px; border-right: 1px solid var(--line);">LH GMV</th>
+            <th style="padding: 10px;">Status</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td style="padding: 15px; border-right: 1px solid var(--line); font-weight: bold; color: var(--paper);">${escapeHtml(myName)}</td>
-            <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">₱${dayCommi.toFixed(2)}</td>
-            <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">${daySold}</td>
-            <td style="padding: 15px; border-right: 1px solid var(--line); color: var(--paper); font-family: monospace; font-size: 16px; font-weight: bold;">₱${dayGmv.toFixed(2)}</td>
-            <td style="padding: 15px; font-family: var(--font-mono); font-size: 12px; color: var(--mint-500); font-weight: bold;">VERIFIED IN DATABASE</td>
-          </tr>
+          ${tableRows}
         </tbody>
       </table>
     </div>`;
