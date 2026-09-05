@@ -1141,44 +1141,64 @@ aside.sidebar.collapsed ~ main.main-content {
               <div class="sales-upload-row" style="background: var(--navy-800); padding: 15px; border-radius: 8px; border: 1px solid var(--line); position: relative;">
                 <button type="button" class="remove-sales-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1; z-index: 10; display: none;">&times;</button>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                    <div>
                       <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shop / Brand Name</label>
                       <input type="text" class="sales-shop" required placeholder="e.g., Momom Food" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
                    </div>
                    <div>
-                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Total Buyers</label>
-                      <input type="number" class="sales-buyers" required placeholder="Total Shop Buyers" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
+                      <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                   </div>
+                   <div>
+                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Time</label>
+                      <input type="text" class="sales-time" required placeholder="8:00 - 12:00" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
                    </div>
                 </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px;">
-                  <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
-                    <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
-                  </div>
-                  <div>
-                    <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Time</label>
-                    <input type="text" class="sales-time" required placeholder="8:00 - 12:00" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+
+                <!-- DASHBOARD TOTAL SCREENSHOT (CUMULATIVE) -->
+                <div style="margin-bottom: 12px;">
+                  <span style="font-size: 11px; font-weight: bold; color: #38bdf8; text-transform: uppercase;">Dashboard Total Screenshot (Cumulative)</span>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px;">
+                    <div>
+                      <label style="font-size: 10px; color: #7488b6;">BUYER</label>
+                      <input type="number" class="sales-buyers" required placeholder="e.g., 468" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                    </div>
+                    <div>
+                      <label style="font-size: 10px; color: #7488b6;">SOLD</label>
+                      <input type="number" class="sales-total-sold" required placeholder="e.g., 517" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                    </div>
+                    <div>
+                      <label style="font-size: 10px; color: #7488b6;">GMV</label>
+                      <input type="number" step="0.01" class="sales-total-gmv" required placeholder="e.g., 67843.00" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                    </div>
                   </div>
                 </div>
 
-                <!-- EXPLICIT HOST INPUTS (MY SALES ONLY) -->
-                <div style="border-top: 1px solid var(--line); padding-top: 15px; margin-bottom: 10px;">
-                  <div style="font-size: 11px; color: var(--mint-500); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">My Personal Sales</div>
+                <!-- PERSONAL LIVE HOST SALES (DELTA) -->
+                <div style="border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 12px;">
+                  <div style="font-size: 11px; color: var(--mint-500); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">My Personal Sales (Delta)</div>
                   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                    <input type="number" step="0.01" class="inp-me-commi" required placeholder="Commi" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
-                    <input type="number" class="inp-me-sold" required placeholder="LH Sold" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
-                    <input type="number" step="0.01" class="inp-me-gmv" required placeholder="LH GMV" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    <div>
+                      <label style="font-size: 10px; color: #7488b6;">COMMI</label>
+                      <input type="number" step="0.01" class="inp-me-commi" required placeholder="Commi" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    </div>
+                    <div>
+                      <label style="font-size: 10px; color: #7488b6;">LH SOLD</label>
+                      <input type="number" class="inp-me-sold" required placeholder="LH Sold" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    </div>
+                    <div>
+                      <label style="font-size: 10px; color: #7488b6;">LH GMV</label>
+                      <input type="number" step="0.01" class="inp-me-gmv" required placeholder="LH GMV" style="width: 100%; background: var(--navy-950); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px; font-size: 12px;">
+                    </div>
                   </div>
                 </div>
 
-                <div style="margin-top: 15px;">
+                <div>
                   <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
                   <input type="file" class="sales-screenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
                 </div>
               </div>
-            </div>
 
             <button type="button" id="addSalesRowBtn" class="btn2" style="border: 1px dashed var(--mint-500); color: var(--mint-500); background: transparent; padding: 10px; margin-top: 5px;">[+] Add Another Shop Report</button>
             <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;">Submit My Live Commission</button>
@@ -3692,14 +3712,13 @@ window.loadTodayOverallTotal = async function() {
                          String(today.getMonth() + 1).padStart(2, '0') + '-' + 
                          String(today.getDate()).padStart(2, '0');
 
-    const myName = document.getElementById('empName').textContent || emp.name || 'Submitter';
     const isTestAccount = (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || 
                           (emp.name && emp.name.includes('[DEV]'));
 
-    // 1. Fetch today's reports for this date
+    // 1. Fetch today's reports joined with employee info so all shift buddies render
     const { data: todayReports, error } = await supabaseClient
         .from('sales_reports')
-        .select('id, shop_name, employee_id, actual_sales, sold, lh_sold, gmv, lh_gmv, created_at')
+        .select('id, shop_name, employee_id, shift_time, buyers, actual_sales, sold, lh_sold, gmv, lh_gmv, created_at, employees(name)')
         .eq('report_date', todayDateStr);
 
     if (error) {
@@ -3720,32 +3739,35 @@ window.loadTodayOverallTotal = async function() {
             shops[sName] = { logs: [], hosts: {} };
         }
         
+        const hostName = r.employees?.name || 'Staff';
+        const shiftTimeStr = r.shift_time || new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const buyers = parseInt(r.buyers) || 0;
         const commi = parseFloat(r.actual_sales) || 0;
-        const sold = parseInt(r.sold) || 0;
+        const totalSold = parseInt(r.sold) || 0;
         const lhSold = parseInt(r.lh_sold) || 0;
-        const gmv = parseFloat(r.gmv) || 0;
+        const totalGmv = parseFloat(r.gmv) || 0;
         const lhGmv = parseFloat(r.lh_gmv) || 0;
 
         // Add to upper shift log table
         shops[sName].logs.push({
             id: r.id,
-            name: myName,
-            time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            buyer: sold, 
+            name: hostName,
+            time: shiftTimeStr,
+            buyer: buyers, 
             commi: commi,
-            sold: sold,
+            sold: totalSold,
             lhSold: lhSold,
-            gmv: gmv,
+            gmv: totalGmv,
             lhGmv: lhGmv
         });
 
-        // Accumulate in lower overall total table
-        if (!shops[sName].hosts[myName]) {
-            shops[sName].hosts[myName] = { commi: 0, lhSold: 0, lhGmv: 0 };
+        // Accumulate in lower overall total table per host
+        if (!shops[sName].hosts[hostName]) {
+            shops[sName].hosts[hostName] = { commi: 0, lhSold: 0, lhGmv: 0 };
         }
-        shops[sName].hosts[myName].commi += commi;
-        shops[sName].hosts[myName].lhSold += lhSold;
-        shops[sName].hosts[myName].lhGmv += lhGmv;
+        shops[sName].hosts[hostName].commi += commi;
+        shops[sName].hosts[hostName].lhSold += lhSold;
+        shops[sName].hosts[hostName].lhGmv += lhGmv;
     });
 
     // 3. Render HTML matching the physical sheet
@@ -3778,7 +3800,8 @@ window.loadTodayOverallTotal = async function() {
         // Build Lower Overall Summary Rows
         let hostRows = '';
         let rowIdx = 1;
-        Object.keys(data.hosts).forEach(hName => {
+        const hostNames = Object.keys(data.hosts);
+        hostNames.forEach(hName => {
             const host = data.hosts[hName];
             hostRows += `
             <tr style="border-bottom: 1px solid var(--line); font-size: 13px;">
@@ -3790,6 +3813,19 @@ window.loadTodayOverallTotal = async function() {
               <td style="padding: 8px; font-family: 'Brush Script MT', cursive, sans-serif; font-size: 18px; color: var(--mint-500);">Verified</td>
             </tr>`;
         });
+
+        // Fill remaining rows up to 6 to match paper form
+        for (let i = rowIdx; i <= 6; i++) {
+            hostRows += `
+            <tr style="border-bottom: 1px solid var(--line); font-size: 13px; color: #5c6d99;">
+              <td style="padding: 8px; border-right: 1px solid var(--line); width: 30px;">${i}</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line); text-align: left;">—</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line);">—</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line);">—</td>
+              <td style="padding: 8px; border-right: 1px solid var(--line);">—</td>
+              <td style="padding: 8px;">—</td>
+            </tr>`;
+        }
 
         finalHtml += `
         <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--navy-900); box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
@@ -3845,7 +3881,7 @@ window.loadTodayOverallTotal = async function() {
 
     container.innerHTML = finalHtml;
 };
-
+  
   window.deleteTestShiftReport = async function(reportId) {
     if (!confirm("Are you sure you want to delete this test shift submission?")) return;
 
@@ -4073,6 +4109,9 @@ window.loadTodayOverallTotal = async function() {
                   const sDate = row.querySelector('.sales-date').value;
                   const sTime = row.querySelector('.sales-time').value.trim();
                   const sBuyers = parseInt(row.querySelector('.sales-buyers').value) || 0;
+                  const sTotalSold = parseInt(row.querySelector('.sales-total-sold').value) || 0;
+                const sTotalGmv = parseFloat(row.querySelector('.sales-total-gmv').value) || 0;
+          
                   
                   const file = row.querySelector('.sales-screenshot').files[0];
                   if (!file) throw new Error("Missing screenshot.");
@@ -4098,8 +4137,8 @@ window.loadTodayOverallTotal = async function() {
                           actual_sales: parseFloat(row.querySelector('.inp-me-commi').value) || 0,
                           lh_sold: parseInt(row.querySelector('.inp-me-sold').value) || 0,
                           lh_gmv: parseFloat(row.querySelector('.inp-me-gmv').value) || 0,
-                          sold: parseInt(row.querySelector('.inp-me-sold').value) || 0,
-                          gmv: parseFloat(row.querySelector('.inp-me-gmv').value) || 0,
+                          sold: sTotalSold,
+                          gmv: sTotalGmv,
                           screenshot_url: publicUrlData.publicUrl
                       });
 
