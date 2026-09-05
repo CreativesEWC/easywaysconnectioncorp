@@ -4052,6 +4052,13 @@ if (saveScheduleBtn) {
 
       let html = '';
       emps.forEach(emp => {
+        // Exclude dummy test account from master sheet and finance payouts
+        if (
+            (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || 
+            (emp.name && emp.name.includes('[DEV]'))
+        ) {
+            return; // Skip this employee
+        }
         const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
         const empVideos = videos?.filter(v => v.employee_id === emp.id) || [];
         const empSales = sales?.filter(s => s.employee_id === emp.id) || [];
