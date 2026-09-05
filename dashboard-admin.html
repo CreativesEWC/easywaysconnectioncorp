@@ -1882,10 +1882,14 @@ aside.sidebar.collapsed ~ main.main-content {
       const tbody = document.getElementById('adminVideoTable');
       if (!tbody) return;
 
+      window.loadAdminVideoAudits = async function() {
+      const tbody = document.getElementById('adminVideoTable');
+      if (!tbody) return;
+
       try {
           const { data: vids, error } = await supabaseClient
               .from('video_submissions')
-              .select('id, upload_date, video_url, tiktok_link, status, created_at, employees(name, badge_id)')
+              .select('id, upload_date, video_file_url, video_link, status, created_at, employees(name, badge_id)')
               .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -1897,11 +1901,11 @@ aside.sidebar.collapsed ~ main.main-content {
 
           tbody.innerHTML = vids.map(v => {
               const empName = v.employees?.name || 'Staff';
-              const rawLink = v.video_url 
-                  ? `<button class="btn2" onclick="openVideoViewer('${v.video_url}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
-                  : '—';
-              const platformLink = v.tiktok_link 
-                  ? `<a href="${v.tiktok_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Platform Link</a>` 
+              const rawLink = v.video_file_url 
+                  ? `<button class="btn2" onclick="openVideoViewer('${v.video_file_url}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
+                  : '<span style="color: #7488b6;">No File</span>';
+              const platformLink = v.video_link 
+                  ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Platform Link</a>` 
                   : '—';
 
               let statusBadge = `<span class="pill pending">Pending</span>`;
@@ -1910,7 +1914,7 @@ aside.sidebar.collapsed ~ main.main-content {
 
               return `
               <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
-                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${v.upload_date || '—'}</td>
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${v.upload_date || (v.created_at ? v.created_at.split('T')[0] : '—')}</td>
                   <td style="padding: 10px 8px; font-weight: bold;">${escapeHtmlGlobal(empName)}</td>
                   <td style="padding: 10px 8px;">${platformLink}</td>
                   <td style="padding: 10px 8px;">${rawLink}</td>
