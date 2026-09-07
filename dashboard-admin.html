@@ -1946,6 +1946,109 @@ aside.sidebar.collapsed ~ main.main-content {
       window.loadAdminVideoAudits();
   }
 
+  window.openVideoViewer = function(videoUrl) {
+      const modal = document.getElementById('videoViewerModal');
+      const videoEl = document.getElementById('viewerVideoSrc');
+      if (modal && videoEl) {
+          videoEl.src = videoUrl;
+          modal.classList.add('open');
+      } else {
+          window.open(videoUrl, '_blank');
+      }
+  };
+
+  window.closeVideoViewer = function() {
+      const modal = document.getElementById('videoViewerModal');
+      const videoEl = document.getElementById('viewerVideoSrc');
+      if (videoEl) {
+          videoEl.pause();
+          videoEl.src = '';
+      }
+      if (modal) modal.classList.remove('open');
+  };
+
+  window.reviewVideoStatus = async function(videoId, status) {
+      const actionText = status === 'approved' ? 'Approve' : 'Reject';
+      if (!confirm(`Are you sure you want to ${actionText} this video submission?`)) return;
+
+      const { error } = await supabaseClient
+          .from('video_submissions')
+          .update({ status: status })
+          .eq('id', videoId);
+
+      if (error) {
+          alert("Error updating status: " + error.message);
+      } else {
+          window.loadAdminVideoAudits();
+      }
+  };
+
+  window.loadAdminVideoAudits = async function() {
+      const tbody = document.getElementById('adminVideoTable');
+      if (!tbody) return;
+
+      try {
+          const { data: vids, error } = await supabaseClient
+              .from('video_submissions')
+              .select('id, upload_date, video_file_url, video_link, status, created_at, employees(name, badge_id)')
+              .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          if (!vids || vids.length === 0) {
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: #7488b6;">No video submissions found.</td></tr>';
+              return;
+          }
+
+          tbody.innerHTML = vids.map(v => {
+              const empName = v.employees?.name || 'Staff';
+              const rawLink = v.video_file_url 
+                  ? `<button class="btn2" onclick="openVideoViewer('${v.video_file_url}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
+                  : '<span style="color: #7488b6;">No File</span>';
+              const platformLink = v.video_link 
+                  ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Platform Link</a>` 
+                  : '—';
+
+              let statusBadge = `<span class="pill pending">Pending</span>`;
+              if (v.status === 'approved') statusBadge = `<span class="pill approved">Approved</span>`;
+              if (v.status === 'rejected') statusBadge = `<span class="pill rejected">Rejected</span>`;
+
+              return `
+              <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${v.upload_date || (v.created_at ? v.created_at.split('T')[0] : '—')}</td>
+                  <td style="padding: 10px 8px; font-weight: bold;">${escapeHtmlGlobal(empName)}</td>
+                  <td style="padding: 10px 8px;">${platformLink}</td>
+                  <td style="padding: 10px 8px;">${rawLink}</td>
+                  <td style="padding: 10px 8px;">
+                      <div style="display: flex; gap: 6px; align-items: center;">
+                          ${statusBadge}
+                          <button class="btn2 success" onclick="reviewVideoStatus('${v.id}', 'approved')" style="padding: 3px 6px; font-size: 10px;">✔️</button>
+                          <button class="btn2 danger" onclick="reviewVideoStatus('${v.id}', 'rejected')" style="padding: 3px 6px; font-size: 10px;">✖️</button>
+                      </div>
+                  </td>
+              </tr>`;
+          }).join('');
+      } catch (err) {
+          console.error("Error loading video audits:", err);
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load video audits: ${err.message}</td></tr>`;
+      }
+  };
+
+  // Realtime subscription
+  supabaseClient
+      .channel('admin_video_audits_feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'video_submissions' }, () => {
+          if (typeof window.loadAdminVideoAudits === 'function') {
+              window.loadAdminVideoAudits();
+          }
+      })
+      .subscribe();
+
+  // Initial call
+  if (typeof window.loadAdminVideoAudits === 'function') {
+      window.loadAdminVideoAudits();
+  }
+
   window.openFinanceTab = function(tabId, clickedBtn) {
       // 1. Hide ALL main dashboard tabs (This removes Employee Monitoring from the screen)
       document.querySelectorAll('.tab-panel').forEach(panel => panel.style.display = 'none');
