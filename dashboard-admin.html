@@ -4404,7 +4404,18 @@ if (saveScheduleBtn) {
       const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id, position, positions(name), mon_sat_shift').order('name');
       const { data: tickets } = await supabaseClient.from('tickets').select('*').eq('status', 'approved').gte('date_from', firstDay).lte('date_from', lastDay); 
       const { data: logs } = await supabaseClient.from('attendance_logs').select('employee_id, time_in, time_out, late_penalty_minutes, earned_ot_minutes').gte('log_date', firstDay).lte('log_date', lastDay);
-      const { data: videos } = await supabaseClient.from('video_submissions').select('employee_id').eq('status', 'approved').gte('upload_date', firstDay).lte('upload_date', lastDay);
+      
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+
+      const { data: videos } = await supabaseClient
+        .from('video_submissions')
+        .select('employee_id')
+        .eq('status', 'approved')
+        .gte('upload_date', monthStart)
+        .lte('upload_date', monthEnd);
+      
       const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').gte('report_date', firstDay).lte('report_date', lastDay);
 
       let html = '';
@@ -4563,44 +4574,116 @@ if (saveScheduleBtn) {
     });
   }
 
+  // Helper to open the preview modal directly when clicking a matrix cell
+  window.auditMatrixVideo = function(submissionId) {
+    const targetVid = window.cachedAllSubmissions?.find(v => v.id === submissionId);
+    if (!targetVid) return;
+    
+    if (targetVid.video_file_url) {
+      openVideoViewer(targetVid.video_file_url);
+    } else if (targetVid.video_link) {
+      window.open(targetVid.video_link, '_blank');
+    }
+  };
+
   async function loadFinanceVideoTracker() {
     const tbody = document.getElementById('videoCommiTable');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading video matrix...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading monthly video matrix...</td></tr>';
     
-    const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
-    let firstDay = settings?.period_start;
-    let lastDay = settings?.period_end;
+    // FULL MONTH CALCULATION (1st to last day of current calendar month)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const pad = n => String(n).padStart(2, '0');
 
-    if (!firstDay || !lastDay) {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-      lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+    const firstDay = `${year}-${pad(month + 1)}-01`;
+    const lastDay = `${year}-${pad(month + 1)}-${pad(new Date(year, month + 1, 0).getDate())}`;
+    
+    // Fetch live sellers and all monthly submissions
+    const { data: emps, error: empErr } = await supabaseClient
+      .from('employees')
+      .select('id, name, badge_id, positions(name)')
+      .order('name');
+
+    const { data: vids, error: vidErr } = await supabaseClient
+      .from('video_submissions')
+      .select('id, employee_id, status, upload_date, created_at, video_file_url, video_link')
+      .gte('upload_date', firstDay)
+      .lte('upload_date', lastDay)
+      .order('created_at', { ascending: true });
+
+    if (empErr || vidErr) {
+      tbody.innerHTML = `<tr><td colspan="18" class="error-note">Failed to load video matrix: ${(empErr || vidErr).message}</td></tr>`;
+      return;
+    }
+
+    window.cachedAllSubmissions = vids || [];
+
+    const sellers = (emps || []).filter(e => {
+      const pos = (e.positions && e.positions.name) || '';
+      return pos.toLowerCase().includes('live seller') && !String(e.badge_id).startsWith('TEST-');
+    });
+
+    if (sellers.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="18">No active live sellers registered.</td></tr>';
+      return;
     }
     
-    const { data: emps } = await supabaseClient.from('employees').select('id, name, positions(name)');
-    const { data: vids } = await supabaseClient.from('video_submissions').select('*').gte('upload_date', firstDay).lte('upload_date', lastDay);
-    
-    if (!emps) { tbody.innerHTML = '<tr class="empty-row"><td colspan="18">No data found.</td></tr>'; return; }
-    const sellers = emps.filter(e => e.positions && e.positions.name.includes('Live Seller'));
-    
     tbody.innerHTML = sellers.map(seller => {
-      const myVids = vids?.filter(v => v.employee_id === seller.id) || [];
-      const approvedCount = myVids.filter(v => v.status === 'approved').length;
-      const failedCount = myVids.filter(v => v.status === 'rejected').length;
+      const mySubmissions = (vids || []).filter(v => v.employee_id === seller.id);
       
-      let checkmarks = '';
-      for(let i=1; i<=15; i++) {
-        checkmarks += `<td style="padding: 10px; border-bottom: 1px solid var(--line);">${i <= approvedCount ? '✅' : '—'}</td>`;
+      const approvedVids = mySubmissions.filter(v => v.status === 'approved');
+      const rejectedCount = mySubmissions.filter(v => v.status === 'rejected').length;
+      const pendingVids = mySubmissions.filter(v => v.status === 'pending');
+      
+      let matrixCells = '';
+      
+      for (let i = 1; i <= 15; i++) {
+        const approvedItem = approvedVids[i - 1];
+        
+        if (approvedItem) {
+          matrixCells += `
+            <td style="padding: 6px 2px; border-bottom: 1px solid var(--line);">
+              <span onclick="auditMatrixVideo('${approvedItem.id}')" 
+                    title="Approved (${approvedItem.upload_date}). Click to inspect" 
+                    style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(5,150,105,0.15); color: var(--mint-500); font-weight: bold;">
+                ✅
+              </span>
+            </td>`;
+        } else {
+          const pendingIndex = i - 1 - approvedVids.length;
+          const pendingItem = pendingVids[pendingIndex];
+          
+          if (pendingItem) {
+            matrixCells += `
+              <td style="padding: 6px 2px; border-bottom: 1px solid var(--line);">
+                <span onclick="auditMatrixVideo('${pendingItem.id}')" 
+                      title="Pending Review. Click to audit" 
+                      style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(217,119,6,0.15); color: var(--amber-400);">
+                  ⏳
+                </span>
+              </td>`;
+          } else {
+            matrixCells += `<td style="padding: 6px 2px; border-bottom: 1px solid var(--line); color: #52525b;">—</td>`;
+          }
+        }
       }
+
+      const totalBonus = approvedVids.length * 100;
+
       return `
-        <tr>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line); text-align: left; font-weight: bold;">${escapeHtml(seller.name)}</td>
-          ${checkmarks}
-          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--coral-500); font-weight: bold;">${failedCount}</td>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-500); font-weight: bold;">${approvedCount}</td>
+        <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); text-align: left; font-weight: bold; color: var(--paper);">
+            ${escapeHtmlGlobal(seller.name)}
+          </td>
+          ${matrixCells}
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--coral-500); font-weight: bold; font-family: var(--font-mono);">
+            ${rejectedCount}
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-500); font-weight: bold; font-family: var(--font-mono);">
+            ${approvedVids.length} <span style="font-size: 10px; color: #7488b6; font-weight: normal;">(₱${totalBonus.toLocaleString()})</span>
+          </td>
         </tr>
       `;
     }).join('');
