@@ -4982,14 +4982,26 @@ if (saveScheduleBtn) {
 
         if (dbError) throw dbError;
 
-        // Push notification directly to employee
-        await supabaseClient.from('notifications').insert({
+        // Push notification directly to employee (supports employee_id or user_id)
+        const notifPayload = {
+          employee_id: recipientId,
           user_id: recipientId,
           title: '📦 Package Arrived at Guardhouse!',
           message: `A parcel has arrived for you. Notes: "${notes || 'Ready for claim'}".`,
           link: photoUrl,
           read: false
-        });
+        };
+
+        const { error: notifError } = await supabaseClient
+          .from('notifications')
+          .insert(notifPayload);
+
+        if (notifError) {
+          console.warn("Notification insert attempt 1 failed, retrying without employee_id:", notifError);
+          // Fallback if schema only accepts one of them
+          delete notifPayload.employee_id;
+          await supabaseClient.from('notifications').insert(notifPayload);
+        }
 
         alert("Parcel logged successfully! The recipient employee has been notified.");
 
