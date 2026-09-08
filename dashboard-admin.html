@@ -4982,28 +4982,21 @@ if (saveScheduleBtn) {
 
         if (dbError) throw dbError;
 
-        // Push notification directly to employee (supports employee_id or user_id)
-        const notifPayload = {
+        // Insert notification matching dashboard-employee schema (employee_id, is_read)
+        const { error: notifError } = await supabaseClient.from('notifications').insert({
           employee_id: recipientId,
-          user_id: recipientId,
-          title: '📦 Package Arrived at Guardhouse!',
-          message: `A parcel has arrived for you. Notes: "${notes || 'Ready for claim'}".`,
+          title: '📦 Parcel Arrival',
+          message: `Your package has arrived at the front desk/guardhouse. Notes: "${notes || 'Ready for claim'}".`,
           link: photoUrl,
-          read: false
-        };
-
-        const { error: notifError } = await supabaseClient
-          .from('notifications')
-          .insert(notifPayload);
+          is_read: false
+        });
 
         if (notifError) {
-          console.warn("Notification insert attempt 1 failed, retrying without employee_id:", notifError);
-          // Fallback if schema only accepts one of them
-          delete notifPayload.employee_id;
-          await supabaseClient.from('notifications').insert(notifPayload);
+          console.error("Notification insert error:", notifError);
+          alert("Parcel was saved, but notification failed: " + notifError.message);
+        } else {
+          alert("Parcel logged successfully! Notification sent to the employee.");
         }
-
-        alert("Parcel logged successfully! The recipient employee has been notified.");
 
         // Reset inputs
         document.getElementById('parcelRecipient').value = '';
