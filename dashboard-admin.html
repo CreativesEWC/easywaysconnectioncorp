@@ -1073,54 +1073,82 @@ aside.sidebar.collapsed ~ main.main-content {
   </div>
 
         <!-- PARCEL HUB TAB -->
+ <!-- PARCEL HUB TAB -->
   <div id="tab-parcels" class="tab-panel" style="display:none;">
-    <section class="panel" style="border-color: var(--amber-500);">
-      <h2 style="color: var(--amber-400); margin: 0 0 16px;">📦 Log Incoming Parcel</h2>
-      
-      <div class="form-row">
-        <select id="parcelRecipient" style="flex: 1; min-width: 220px;">
-          <option value="">Select recipient employee...</option>
-        </select>
-        <input type="text" id="parcelNotes" placeholder="Notes (e.g. Shopee, J&T, Rider Name, Box Color)" style="flex: 1; min-width: 220px;">
-      </div>
-
-      <!-- Camera & File Selector Input -->
-      <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <label class="btn2 primary" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 18px;">
-          📸 Take Photo or Upload
-          <input type="file" id="parcelPhotoInput" accept="image/*" capture="environment" style="display:none;">
-        </label>
-        <span id="parcelFileSelectedName" style="font-size: 12px; color: #7488b6; font-family: var(--font-mono);">No photo taken</span>
-      </div>
-
-      <!-- Live Photo Preview -->
-      <div id="parcelPreviewContainer" style="display: none; margin-bottom: 16px;">
-        <img id="parcelPreviewImg" src="" style="max-width: 280px; max-height: 200px; border-radius: 8px; border: 2px solid var(--amber-500); object-fit: cover;">
-      </div>
-
-      <button class="btn success" id="submitParcelBtn" style="padding: 10px 20px; font-size: 13px;">Log & Notify Employee</button>
+    
+    <!-- Sub-Tab Navigation -->
+    <section class="panel" style="padding-bottom: 0;">
+      <nav class="sub-tabs" id="parcelSubNav">
+        <button class="sub-tab-btn active" data-target="view-log-parcel">Log Incoming Parcel</button>
+        <button class="sub-tab-btn" data-target="view-parcel-history">Parcel History</button>
+      </nav>
     </section>
 
-    <section class="panel">
-      <h2>Recent Deliveries <span class="count" id="parcelCount">—</span></h2>
-      <div id="parcelLoading" class="loading-note">Loading deliveries...</div>
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; min-width: 600px;" id="parcelTable">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Recipient</th>
-              <th>Notes</th>
-              <th>Photo</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="parcelTableBody"></tbody>
-        </table>
-      </div>
-    </section>
-  </div>
+    <!-- 1. LOG PARCEL VIEW -->
+    <div id="view-log-parcel" class="parcel-sub-panel">
+      <section class="panel" style="border-color: var(--amber-500);">
+        <h2 style="color: var(--amber-400); margin: 0 0 16px;">📦 Log Incoming Parcel</h2>
+        
+        <div class="form-row">
+          <label style="width: 100%; font-size: 10px; color: #7488b6; text-transform: uppercase;">Scan Barcode / Tracking No.</label>
+          <input type="text" id="parcelBarcode" placeholder="Scan or type barcode..." style="flex: 1; border-color: var(--amber-500); font-family: var(--font-mono);">
+        </div>
+
+        <div class="form-row">
+          <select id="parcelRecipient" style="flex: 1; min-width: 220px;">
+            <option value="">Select recipient employee...</option>
+          </select>
+          <input type="text" id="parcelNotes" placeholder="Notes (e.g. Shopee, J&T, Rider Name)" style="flex: 1; min-width: 220px;">
+        </div>
+
+        <!-- Camera & File Selector Input -->
+        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <label class="btn2 primary" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 18px;">
+            📸 Take Photo or Upload
+            <input type="file" id="parcelPhotoInput" accept="image/*" capture="environment" style="display:none;">
+          </label>
+          <span id="parcelFileSelectedName" style="font-size: 12px; color: #7488b6; font-family: var(--font-mono);">No photo taken</span>
+        </div>
+
+        <!-- Live Photo Preview -->
+        <div id="parcelPreviewContainer" style="display: none; margin-bottom: 16px;">
+          <img id="parcelPreviewImg" src="" style="max-width: 280px; max-height: 200px; border-radius: 8px; border: 2px solid var(--amber-500); object-fit: cover;">
+        </div>
+
+        <button class="btn success" id="submitParcelBtn" style="padding: 10px 20px; font-size: 13px;">Log & Notify Employee</button>
+      </section>
+    </div>
+
+    <!-- 2. PARCEL HISTORY VIEW -->
+    <div id="view-parcel-history" class="parcel-sub-panel" style="display:none;">
+      <section class="panel">
+        <h2>Parcel History <span class="count" id="parcelCount">—</span></h2>
+        
+        <div class="form-row" style="margin-bottom: 20px;">
+          <input type="text" id="parcelSearchBarcode" placeholder="🔍 Scan or type barcode to search history..." style="flex: 1; font-family: var(--font-mono); font-size: 14px; padding: 12px;">
+        </div>
+
+        <div id="parcelLoading" class="loading-note">Loading deliveries...</div>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; min-width: 800px;" id="parcelTable">
+            <thead>
+              <tr>
+                <th>Time & Date</th>
+                <th>Barcode</th>
+                <th>Recipient</th>
+                <th>Notes</th>
+                <th>Photo</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="parcelTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+  </div> <!-- END OF PARCEL HUB TAB -->
         
         <!-- FINANCE TAB -->
        <div id="tab-finance" class="tab-panel" style="display:none;">
@@ -2325,7 +2353,7 @@ function toggleSubNav(containerId, btnElement) {
 
   // Handle Switch View functionality for Admin/President
   const switchBtn = document.getElementById('switchViewBtn');
-  if (switchBtn) {
+  if (switchBtn && (emp.role === 'admin' || emp.role === 'president')) {
     switchBtn.style.display = 'inline-block';
     
     // We are on the Admin Dashboard, so this always goes to the Employee View
@@ -4906,9 +4934,21 @@ if (saveScheduleBtn) {
   }, 1500);
 
   // ==========================================
-  // PARCEL HUB ENGINE (CAMERA CAPTURE & NOTIFICATIONS)
+  // PARCEL HUB ENGINE (BARCODE, CAMERA & NOTIFICATIONS)
   // ==========================================
   let selectedParcelFile = null;
+  window.allParcelsData = []; // Holds data for fast barcode searching
+
+  // 0. Sub-Tab Routing
+  const parcelSubBtns = document.querySelectorAll('#parcelSubNav .sub-tab-btn');
+  parcelSubBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      parcelSubBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.parcel-sub-panel').forEach(p => p.style.display = 'none');
+      document.getElementById(btn.getAttribute('data-target')).style.display = 'block';
+    });
+  });
 
   // 1. Camera / File Selection Handler
   const parcelInput = document.getElementById('parcelPhotoInput');
@@ -4929,32 +4969,23 @@ if (saveScheduleBtn) {
   async function populateParcelRecipients() {
     const sel = document.getElementById('parcelRecipient');
     if (!sel) return;
-    const { data: emps } = await supabaseClient
-      .from('employees')
-      .select('id, name, badge_id')
-      .order('name');
-
+    const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id').order('name');
     if (emps) {
       sel.innerHTML = '<option value="">Select recipient employee...</option>' +
         emps.map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${e.badge_id})</option>`).join('');
     }
   }
 
-  // 3. Submit Parcel & Dispatch Immediate In-App Notification
+  // 3. Submit Parcel
   const submitParcelBtn = document.getElementById('submitParcelBtn');
   if (submitParcelBtn) {
     submitParcelBtn.addEventListener('click', async () => {
       const recipientId = document.getElementById('parcelRecipient').value;
       const notes = document.getElementById('parcelNotes').value.trim();
+      const barcode = document.getElementById('parcelBarcode').value.trim();
 
-      if (!recipientId) {
-        alert("Please select the recipient employee.");
-        return;
-      }
-      if (!selectedParcelFile) {
-        alert("Please capture or select a photo of the parcel first.");
-        return;
-      }
+      if (!recipientId) { alert("Please select the recipient employee."); return; }
+      if (!selectedParcelFile) { alert("Please capture or select a photo of the parcel first."); return; }
 
       submitParcelBtn.disabled = true;
       submitParcelBtn.textContent = 'Uploading photo & notifying...';
@@ -4963,32 +4994,24 @@ if (saveScheduleBtn) {
         const fileExt = selectedParcelFile.name.split('.').pop();
         const fileName = `parcel_${recipientId}_${Date.now()}.${fileExt}`;
 
-        // Upload photo to Supabase storage bucket 'parcels'
-        const { error: uploadError } = await supabaseClient.storage
-          .from('parcels')
-          .upload(fileName, selectedParcelFile, { upsert: true });
-
+        const { error: uploadError } = await supabaseClient.storage.from('parcels').upload(fileName, selectedParcelFile, { upsert: true });
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabaseClient.storage
-          .from('parcels')
-          .getPublicUrl(fileName);
-
+        const { data: publicUrlData } = supabaseClient.storage.from('parcels').getPublicUrl(fileName);
         const photoUrl = publicUrlData.publicUrl;
 
-        // Insert parcel record
         const { error: dbError } = await supabaseClient.from('parcels').insert({
           recipient_id: recipientId,
           photo_url: photoUrl,
           notes: notes || 'Front desk package arrival',
+          barcode: barcode || null,
           logged_by: emp.id,
           status: 'pending_pickup'
         });
-
         if (dbError) throw dbError;
 
-        // Insert notification matching dashboard-employee schema (employee_id, is_read)
-        const { error: notifError } = await supabaseClient.from('notifications').insert({
+        // Notify Employee
+        await supabaseClient.from('notifications').insert({
           employee_id: recipientId,
           title: '📦 Parcel Arrival',
           message: `Your package has arrived at the front desk/guardhouse. Notes: "${notes || 'Ready for claim'}".`,
@@ -4996,14 +5019,10 @@ if (saveScheduleBtn) {
           is_read: false
         });
 
-        if (notifError) {
-          console.error("Notification insert error:", notifError);
-          alert("Parcel was saved, but notification failed: " + notifError.message);
-        } else {
-          alert("Parcel logged successfully! Notification sent to the employee.");
-        }
-
+        alert("Parcel logged successfully!");
+        
         // Reset inputs
+        document.getElementById('parcelBarcode').value = '';
         document.getElementById('parcelRecipient').value = '';
         document.getElementById('parcelNotes').value = '';
         document.getElementById('parcelPhotoInput').value = '';
@@ -5022,30 +5041,51 @@ if (saveScheduleBtn) {
     });
   }
 
-  // 4. Render Logged Deliveries Table
+  // 4. Fetch History Data
   async function loadParcelsList() {
-    const tbody = document.getElementById('parcelTableBody');
     const loading = document.getElementById('parcelLoading');
-    if (!tbody) return;
-
+    
     const { data: parcels, error } = await supabaseClient
       .from('parcels')
-      .select('id, photo_url, notes, status, created_at, employees!recipient_id(name, badge_id)')
+      .select('id, photo_url, notes, barcode, status, created_at, employees!recipient_id(name, badge_id)')
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(100);
 
     if (loading) loading.style.display = 'none';
+    if (error) { console.error(error); return; }
 
-    if (error || !parcels || parcels.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6" style="text-align:center; padding: 20px; color: #7488b6;">No parcels logged yet.</td></tr>';
+    window.allParcelsData = parcels || [];
+    document.getElementById('parcelCount').textContent = `${window.allParcelsData.length} deliveries`;
+    renderParcelsList();
+  }
+
+  // 5. Render History Table (With Live Search)
+  function renderParcelsList() {
+    const tbody = document.getElementById('parcelTableBody');
+    if (!tbody) return;
+
+    const query = document.getElementById('parcelSearchBarcode').value.trim().toLowerCase();
+    
+    const filteredParcels = window.allParcelsData.filter(p => {
+      if (!query) return true;
+      const barcodeMatch = p.barcode && p.barcode.toLowerCase().includes(query);
+      const nameMatch = p.employees && p.employees.name.toLowerCase().includes(query);
+      const notesMatch = p.notes && p.notes.toLowerCase().includes(query);
+      return barcodeMatch || nameMatch || notesMatch;
+    });
+
+    if (filteredParcels.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7" style="text-align:center; padding: 20px; color: #7488b6;">No parcels found.</td></tr>';
       return;
     }
 
-    document.getElementById('parcelCount').textContent = `${parcels.length} deliveries`;
-
-    tbody.innerHTML = parcels.map(p => {
+    tbody.innerHTML = filteredParcels.map(p => {
       const recipientName = p.employees ? p.employees.name : 'Unknown';
-      const timeStr = new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const dateObj = new Date(p.created_at);
+      const dateStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
       const statusBadge = p.status === 'claimed'
         ? '<span class="pill approved">Claimed</span>'
         : '<span class="pill pending">Pending Pickup</span>';
@@ -5056,11 +5096,15 @@ if (saveScheduleBtn) {
 
       return `
         <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
-          <td style="padding: 10px 8px; font-family: var(--font-mono);">${timeStr}</td>
+          <td style="padding: 10px 8px; font-family: var(--font-mono);">
+            <strong style="color:var(--paper);">${dateStr}</strong><br>
+            <span style="color:#7488b6; font-size:10px;">${timeStr}</span>
+          </td>
+          <td style="padding: 10px 8px; font-family: var(--font-mono); font-weight: bold; color: var(--amber-400);">${escapeHtml(p.barcode || '—')}</td>
           <td style="padding: 10px 8px; font-weight: bold; color: var(--paper);">${escapeHtml(recipientName)}</td>
           <td style="padding: 10px 8px; color: #7488b6;">${escapeHtml(p.notes || '—')}</td>
           <td style="padding: 10px 8px;">
-            <a href="javascript:void(0)" onclick="viewAdminProof('${p.photo_url}')" style="color: var(--amber-400); font-weight: bold; text-decoration: underline;">View Photo</a>
+            <a href="javascript:void(0)" onclick="viewAdminProof('${p.photo_url}')" style="color: var(--mint-500); font-weight: bold; text-decoration: underline;">View Photo</a>
           </td>
           <td style="padding: 10px 8px;">${statusBadge}</td>
           <td style="padding: 10px 8px;">${actionBtn}</td>
@@ -5069,12 +5113,11 @@ if (saveScheduleBtn) {
     }).join('');
   }
 
-  window.markParcelClaimed = async function(parcelId) {
-    const { error } = await supabaseClient
-      .from('parcels')
-      .update({ status: 'claimed' })
-      .eq('id', parcelId);
+  // Trigger search on input
+  document.getElementById('parcelSearchBarcode')?.addEventListener('input', renderParcelsList);
 
+  window.markParcelClaimed = async function(parcelId) {
+    const { error } = await supabaseClient.from('parcels').update({ status: 'claimed' }).eq('id', parcelId);
     if (error) alert("Could not update: " + error.message);
     else loadParcelsList();
   };
