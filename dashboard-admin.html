@@ -5015,18 +5015,23 @@ if (saveScheduleBtn) {
   let selectedParcelFile = null;
   window.allParcelsData = []; // Holds data for fast barcode searching
 
-  // 0. Parcel Sub-Tab Routing
-  const parcelSubBtns = document.querySelectorAll('#parcelSubNav .sub-tab-btn');
-  parcelSubBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      parcelSubBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  // 1. Parcel Photo Selection & Preview Handler
+  const parcelPhotoInput = document.getElementById('parcelPhotoInput');
+  if (parcelPhotoInput) {
+    parcelPhotoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
       
-      document.querySelectorAll('.parcel-sub-panel').forEach(p => p.style.display = 'none');
-      const targetId = btn.getAttribute('data-target');
-      document.getElementById(targetId).style.display = 'block';
+      // Save to memory for submission
+      selectedParcelFile = file;
+
+      // Update the UI with the file name and image preview
+      document.getElementById('parcelFileSelectedName').textContent = file.name;
+      const previewImg = document.getElementById('parcelPreviewImg');
+      previewImg.src = URL.createObjectURL(file);
+      document.getElementById('parcelPreviewContainer').style.display = 'block';
     });
-  });
+  }
 
   
   // -----------------------------------------
