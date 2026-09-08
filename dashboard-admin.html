@@ -2289,7 +2289,7 @@ function toggleSubNav(containerId, btnElement) {
     if (webdevContainer) webdevContainer.style.display = 'none';
   }
   // ==========================================
-
+  
   // ==== GUARD RESTRICTION LOGIC ====
   if (emp.role === 'guard') {
     // 1. Keep ONLY Attendance and Parcels tabs visible in sidebar
@@ -2300,8 +2300,8 @@ function toggleSubNav(containerId, btnElement) {
       }
     });
 
-    // 2. Hide accordion folders and other tools
-    document.querySelectorAll('.nav-accordion, .nav-group-btn, .sub-nav-group').forEach(el => {
+    // 2. Hide accordion folders, tools, and the Export CSV button
+    document.querySelectorAll('.nav-accordion, .nav-group-btn, .sub-nav-group, #exportCsvBtn').forEach(el => {
       el.style.display = 'none';
     });
 
@@ -2321,7 +2321,7 @@ function toggleSubNav(containerId, btnElement) {
     }
 
     document.getElementById('whoLine').textContent = 'Signed in as ' + emp.name.split(' ')[0] + ' · Company Guard';
-  }
+  } // ===== END GUARD RESTRICTION LOGIC =====
 
   // Handle Switch View functionality for Admin/President
   const switchBtn = document.getElementById('switchViewBtn');
@@ -2653,9 +2653,12 @@ function toggleSubNav(containerId, btnElement) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No attendance logged for this date</td></tr>';
       return;
     }
+    
     const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+    const isGuard = emp.role === 'guard';
+
     tbody.innerHTML = currentAttendanceRows.map(r => `
-      <tr class="editable-att-row" data-attid="${r.id}" style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--navy-800)'" onmouseout="this.style.background='transparent'">
+      <tr class="${isGuard ? '' : 'editable-att-row'}" data-attid="${r.id}" style="${isGuard ? '' : 'cursor: pointer; transition: background 0.2s;'}" ${isGuard ? '' : 'onmouseover="this.style.background=\'var(--navy-800)\'" onmouseout="this.style.background=\'transparent\'"'}>
         <td class="mono">${r.employees ? escapeHtml(r.employees.badge_id) : '—'}</td>
         <td>${r.employees ? escapeHtml(r.employees.name) : '(removed employee)'}</td>
         <td>${r.employees && r.employees.positions ? escapeHtml(r.employees.positions.name) : '<span style="color:#5c6d99;">—</span>'}</td>
@@ -2664,12 +2667,14 @@ function toggleSubNav(containerId, btnElement) {
       </tr>
     `).join('');
 
-    // Make rows clickable to open the editor
-    tbody.querySelectorAll('.editable-att-row').forEach(row => {
-      row.addEventListener('click', () => openAttendanceEditor(row.dataset.attid));
-    });
+    // Only attach the edit modal listener if the user is NOT a guard
+    if (!isGuard) {
+      tbody.querySelectorAll('.editable-att-row').forEach(row => {
+        row.addEventListener('click', () => openAttendanceEditor(row.dataset.attid));
+      });
+    }
 
-  } // <--- ADD THIS SINGLE CLOSING BRACKET HERE!
+  } // <--- END OF loadAttendance // <--- ADD THIS SINGLE CLOSING BRACKET HERE!
 
   document.getElementById('attendanceDate').addEventListener('change', loadAttendance);
   document.getElementById('attendanceTodayBtn').addEventListener('click', ()=>{
