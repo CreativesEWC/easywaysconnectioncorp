@@ -1101,10 +1101,10 @@ aside.sidebar.collapsed ~ main.main-content {
         <!-- Barcode Row with Camera Button -->
         <div class="form-row" style="align-items: flex-end;">
           <div style="flex: 1;">
-            <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Scan Barcode / Tracking No.</label>
-            <input type="text" id="parcelBarcode" placeholder="Scan or type barcode..." style="width: 100%; border-color: var(--amber-500); font-family: var(--font-mono);">
+            <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Scan Barcodes (One per line)</label>
+            <textarea id="parcelBarcode" placeholder="Scan or type barcodes here...&#10;Barcode 1&#10;Barcode 2" style="width: 100%; border-color: var(--amber-500); font-family: var(--font-mono); font-size: 13px; padding: 10px; border-radius: 8px; min-height: 80px;"></textarea>
           </div>
-          <button type="button" class="btn2 primary" id="startScannerBtn" style="height: 38px; display: flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn2 primary" id="startScannerBtn" style="height: 38px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M9 12h6"></path>
             </svg>
@@ -1168,6 +1168,7 @@ aside.sidebar.collapsed ~ main.main-content {
                 <th>Time & Date</th>
                 <th>Barcode</th>
                 <th>Recipient</th>
+                <th>Logged By</th>
                 <th>Notes</th>
                 <th>Photo</th>
                 <th>Status</th>
@@ -5004,9 +5005,10 @@ if (saveScheduleBtn) {
   window.allParcelsData = []; // Holds data for fast barcode searching
 
   // -----------------------------------------
-  // SMARTPHONE CAMERA BARCODE SCANNER
+  // SMARTPHONE CAMERA BARCODE SCANNER (CONTINUOUS MODE)
   // -----------------------------------------
   let html5QrcodeScannerObj = null;
+  let lastScannedBarcode = '';
 
   document.getElementById('startScannerBtn')?.addEventListener('click', () => {
     const scannerContainer = document.getElementById('scannerContainer');
@@ -5014,26 +5016,30 @@ if (saveScheduleBtn) {
     
     const html5QrCode = new Html5Qrcode("reader");
     html5QrcodeScannerObj = html5QrCode;
+    lastScannedBarcode = ''; // Reset memory on open
+
+    // Update instruction text
+    scannerContainer.querySelector('span').textContent = 'Align barcode. Scan multiple in a row.';
 
     html5QrCode.start(
-      { facingMode: "environment" }, // Forces rear camera
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 100 } // Rectangle shape optimized for standard barcodes
-      },
+      { facingMode: "environment" }, 
+      { fps: 10, qrbox: { width: 250, height: 100 } },
       (decodedText) => {
-        // ON SUCCESS: Fill the input box, beep, and stop the camera
-        document.getElementById('parcelBarcode').value = decodedText;
-        html5QrCode.stop().then(() => {
-          scannerContainer.style.display = 'none';
-          html5QrcodeScannerObj = null;
-        });
+        // Continuous scan mode: Append new barcodes to the text area
+        if (decodedText !== lastScannedBarcode) {
+            lastScannedBarcode = decodedText;
+            const barcodeBox = document.getElementById('parcelBarcode');
+            const currentVal = barcodeBox.value.trim();
+            barcodeBox.value = currentVal ? currentVal + '\n' + decodedText : decodedText;
+            
+            // Visual flash feedback so guard knows it scanned successfully
+            scannerContainer.style.border = '2px solid var(--mint-500)';
+            setTimeout(() => scannerContainer.style.border = '1px solid var(--amber-500)', 500);
+        }
       },
-      (errorMessage) => {
-        // Ignores continuous scanning errors when looking for a code
-      }
+      (errorMessage) => {}
     ).catch((err) => {
-      alert("Could not start camera. Please ensure camera permissions are allowed in your browser.");
+      alert("Could not start camera. Please ensure permissions are allowed.");
       scannerContainer.style.display = 'none';
     });
   });
@@ -5049,87 +5055,59 @@ if (saveScheduleBtn) {
     }
   });
 
-  // 0. Sub-Tab Routing
-  const parcelSubBtns = document.querySelectorAll('#parcelSubNav .sub-tab-btn');
-  parcelSubBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      parcelSubBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.parcel-sub-panel').forEach(p => p.style.display = 'none');
-      document.getElementById(btn.getAttribute('data-target')).style.display = 'block';
-    });
-  });
-
-  // 1. Camera / File Selection Handler
-  const parcelInput = document.getElementById('parcelPhotoInput');
-  if (parcelInput) {
-    parcelInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      selectedParcelFile = file;
-
-      document.getElementById('parcelFileSelectedName').textContent = file.name;
-      const previewImg = document.getElementById('parcelPreviewImg');
-      previewImg.src = URL.createObjectURL(file);
-      document.getElementById('parcelPreviewContainer').style.display = 'block';
-    });
-  }
-
-  // 2. Populate Recipient Dropdown
-  async function populateParcelRecipients() {
-    const sel = document.getElementById('parcelRecipient');
-    if (!sel) return;
-    const { data: emps } = await supabaseClient.from('employees').select('id, name, badge_id').order('name');
-    if (emps) {
-      sel.innerHTML = '<option value="">Select recipient employee...</option>' +
-        emps.map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${e.badge_id})</option>`).join('');
-    }
-  }
-
-  // 3. Submit Parcel
+  // 3. Submit Parcel (Batch Logic)
   const submitParcelBtn = document.getElementById('submitParcelBtn');
   if (submitParcelBtn) {
     submitParcelBtn.addEventListener('click', async () => {
       const recipientId = document.getElementById('parcelRecipient').value;
       const notes = document.getElementById('parcelNotes').value.trim();
-      const barcode = document.getElementById('parcelBarcode').value.trim();
+      const barcodeRaw = document.getElementById('parcelBarcode').value.trim();
 
       if (!recipientId) { alert("Please select the recipient employee."); return; }
-      if (!selectedParcelFile) { alert("Please capture or select a photo of the parcel first."); return; }
+      if (!selectedParcelFile) { alert("Please capture a photo of the parcel(s) first."); return; }
+
+      // Process multiple barcodes
+      let barcodes = barcodeRaw.split('\n').map(b => b.trim()).filter(b => b);
+      if (barcodes.length === 0) barcodes = [null]; // Allow 1 entry without a barcode
 
       submitParcelBtn.disabled = true;
-      submitParcelBtn.textContent = 'Uploading photo & notifying...';
+      submitParcelBtn.textContent = 'Uploading photo & logging...';
 
       try {
         const fileExt = selectedParcelFile.name.split('.').pop();
         const fileName = `parcel_${recipientId}_${Date.now()}.${fileExt}`;
 
+        // Upload single photo representing the entire pile of parcels
         const { error: uploadError } = await supabaseClient.storage.from('parcels').upload(fileName, selectedParcelFile, { upsert: true });
         if (uploadError) throw uploadError;
 
         const { data: publicUrlData } = supabaseClient.storage.from('parcels').getPublicUrl(fileName);
         const photoUrl = publicUrlData.publicUrl;
 
-        const { error: dbError } = await supabaseClient.from('parcels').insert({
+        // Build array of records to insert (creates multiple history rows instantly)
+        const inserts = barcodes.map(bc => ({
           recipient_id: recipientId,
           photo_url: photoUrl,
           notes: notes || 'Front desk package arrival',
-          barcode: barcode || null,
+          barcode: bc,
           logged_by: emp.id,
           status: 'pending_pickup'
-        });
+        }));
+
+        const { error: dbError } = await supabaseClient.from('parcels').insert(inserts);
         if (dbError) throw dbError;
 
-        // Notify Employee
+        // Send 1 combined notification to the employee so we don't spam their phone
+        const packageCountStr = inserts.length > 1 ? `${inserts.length} packages have` : `Your package has`;
         await supabaseClient.from('notifications').insert({
           employee_id: recipientId,
           title: '📦 Parcel Arrival',
-          message: `Your package has arrived at the front desk/guardhouse. Notes: "${notes || 'Ready for claim'}".`,
+          message: `${packageCountStr} arrived at the front desk. Notes: "${notes || 'Ready for claim'}".`,
           link: photoUrl,
           is_read: false
         });
 
-        alert("Parcel logged successfully!");
+        alert(`Successfully logged ${inserts.length} parcel(s)!`);
         
         // Reset inputs
         document.getElementById('parcelBarcode').value = '';
@@ -5155,9 +5133,10 @@ if (saveScheduleBtn) {
   async function loadParcelsList() {
     const loading = document.getElementById('parcelLoading');
     
+    // We add guard:employees!logged_by(name) to fetch the guard's name
     const { data: parcels, error } = await supabaseClient
       .from('parcels')
-      .select('id, photo_url, claim_photo_url, notes, barcode, status, created_at, employees!recipient_id(name, badge_id)')
+      .select('id, photo_url, claim_photo_url, notes, barcode, status, created_at, employees!recipient_id(name, badge_id), guard:employees!logged_by(name)')
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -5169,7 +5148,7 @@ if (saveScheduleBtn) {
     renderParcelsList();
   }
 
-  // 5. Render History Table (With Live Search)
+  // 5. Render History Table
   function renderParcelsList() {
     const tbody = document.getElementById('parcelTableBody');
     if (!tbody) return;
@@ -5185,16 +5164,17 @@ if (saveScheduleBtn) {
     });
 
     if (filteredParcels.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="7" style="text-align:center; padding: 20px; color: #7488b6;">No parcels found.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8" style="text-align:center; padding: 20px; color: #7488b6;">No parcels found.</td></tr>';
       return;
     }
 
     tbody.innerHTML = filteredParcels.map(p => {
       const recipientName = p.employees ? p.employees.name : 'Unknown';
+      const guardName = p.guard ? p.guard.name.split(' ')[0] : 'Unknown'; // Grab guard's first name
       
       const dateObj = new Date(p.created_at);
-      const dateStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       
       const statusBadge = p.status === 'claimed'
         ? `<a href="javascript:void(0)" onclick="viewAdminProof('${p.claim_photo_url}')" style="display:inline-block; text-decoration:none;"><span class="pill approved">Claimed (View Proof)</span></a>`
@@ -5212,6 +5192,7 @@ if (saveScheduleBtn) {
           </td>
           <td style="padding: 10px 8px; font-family: var(--font-mono); font-weight: bold; color: var(--amber-400);">${escapeHtml(p.barcode || '—')}</td>
           <td style="padding: 10px 8px; font-weight: bold; color: var(--paper);">${escapeHtml(recipientName)}</td>
+          <td style="padding: 10px 8px; color: #7488b6;">${escapeHtml(guardName)}</td>
           <td style="padding: 10px 8px; color: #7488b6;">${escapeHtml(p.notes || '—')}</td>
           <td style="padding: 10px 8px;">
             <a href="javascript:void(0)" onclick="viewAdminProof('${p.photo_url}')" style="color: var(--mint-500); font-weight: bold; text-decoration: underline;">View Photo</a>
