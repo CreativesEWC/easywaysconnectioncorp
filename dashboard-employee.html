@@ -629,17 +629,29 @@
   .nav-bell-btn svg { width: 22px; height: 22px; }
   .nav-bell-badge { position: absolute; top: -2px; right: -4px; background: var(--coral-500); color: white; font-family: var(--font-mono); font-size: 9px; font-weight: bold; min-width: 15px; height: 15px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--navy-950); }
   
+  /* Mobile backdrop for dropdown */
+  .nav-bell-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1099;
+  }
+  .nav-bell-backdrop.show {
+    display: block;
+  }
+
   @media (max-width: 600px) {
     .nav-bell-wrapper {
       position: static;
     }
     .nav-bell-dropdown {
       position: fixed;
-      top: 64px;
+      top: 60px;
       left: 12px;
       right: 12px;
       width: auto;
-      background: #121212 !important; /* Forces solid background so page content never shows through */
+      background: #181818 !important;
       border: 1px solid var(--line);
       max-height: calc(100vh - 90px);
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95);
@@ -648,11 +660,11 @@
       overflow: hidden;
     }
     .nav-bell-header {
-      background: #181818;
+      background: #202020;
     }
     .nav-bell-list {
       max-height: calc(100vh - 160px);
-      background: #121212;
+      background: #181818;
       overflow-y: auto;
     }
   }
@@ -933,9 +945,9 @@ aside.sidebar.collapsed ~ main.main-content {
     <div style="flex:1;"></div> <!-- Spacer pushes the bell to the right -->
     <!-- SWITCH TO ADMIN VIEW BUTTON (Only visible for Admin/Presidents) -->
     <button id="switchViewBtn" class="btn2" style="display:none;">Switch to Admin View</button>
-    <!-- NOTIFICATION BELL -->
+   <!-- NOTIFICATION BELL -->
+    <div class="nav-bell-backdrop" id="navBellBackdrop"></div>
     <div class="nav-bell-wrapper" id="navBellWrapper">
-      <button class="nav-bell-btn" id="navBellBtn" aria-label="Notifications">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -1971,22 +1983,45 @@ aside.sidebar.collapsed ~ main.main-content {
   
   const navBellBtn = document.getElementById('navBellBtn');
   const navBellDropdown = document.getElementById('navBellDropdown');
+  const navBellBackdrop = document.getElementById('navBellBackdrop');
   const navBellBadge = document.getElementById('navBellBadge');
   const navBellList = document.getElementById('navBellList');
   const navBellMarkRead = document.getElementById('navBellMarkRead');
 
-  // Toggle Dropdown
+  function closeBellDropdown() {
+    if (navBellDropdown) navBellDropdown.classList.remove('show');
+    if (navBellBackdrop) navBellBackdrop.classList.remove('show');
+  }
+
+  function openBellDropdown() {
+    if (navBellDropdown) navBellDropdown.classList.add('show');
+    if (navBellBackdrop) navBellBackdrop.classList.add('show');
+  }
+
+  // Toggle Dropdown & Backdrop
   if (navBellBtn) {
     navBellBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      navBellDropdown.classList.toggle('show');
+      const isOpen = navBellDropdown.classList.contains('show');
+      if (isOpen) {
+        closeBellDropdown();
+      } else {
+        openBellDropdown();
+      }
     });
   }
 
-  // Close dropdown when clicking outside
+  // Tap dark backdrop to close
+  if (navBellBackdrop) {
+    navBellBackdrop.addEventListener('click', () => {
+      closeBellDropdown();
+    });
+  }
+
+  // Close dropdown when clicking outside on desktop
   document.addEventListener('click', (e) => {
     if (navBellDropdown && navBellDropdown.classList.contains('show') && !e.target.closest('#navBellWrapper')) {
-      navBellDropdown.classList.remove('show');
+      closeBellDropdown();
     }
   });
   // Helper to safely format text (Moved to the top so it never fails to load!)
@@ -2429,6 +2464,9 @@ aside.sidebar.collapsed ~ main.main-content {
     // Wire up clicks
     document.querySelectorAll('.nav-bell-item').forEach(item => {
       item.addEventListener('click', async () => {
+        // Automatically dismiss the dropdown when any notification is tapped
+        closeBellDropdown();
+
         const notifId = item.getAttribute('data-id');
         const linkId = item.getAttribute('data-link');
         
@@ -2448,14 +2486,11 @@ aside.sidebar.collapsed ~ main.main-content {
           const parcelCap = document.getElementById('parcelModalCaption');
           const parcelModal = document.getElementById('parcelViewModal');
 
-          // Close the dropdown first so it doesn't stay open behind the modal
-          if (navBellDropdown) navBellDropdown.classList.remove('show');
-
           if (parcelImg && parcelModal) {
             parcelImg.src = linkId;
             const msgSpan = item.querySelector('span[style*="color: var(--paper)"]');
             if (parcelCap) {
-              parcelCap.textContent = msgSpan ? msgSpan.textContent.trim() : 'Your parcel is ready for pickup.';
+              parcelCap.textContent = msgSpan ? msgSpan.textContent.trim() : 'Your parcel is waiting at the front desk.';
             }
             parcelModal.classList.add('open');
           }
