@@ -1803,6 +1803,38 @@ aside.sidebar.collapsed ~ main.main-content {
     <video id="viewerVideoSrc" controls autoplay style="max-width: 100%; max-height: 85vh; border-radius: 8px; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0,0,0,0.8); background: #0a0f1e;"></video>
   </div>
 </div>
+
+ <!-- PARCEL CLAIM PROOF MODAL -->
+<div class="modal-overlay" id="claimParcelModal" style="z-index: 10000; padding: 12px;">
+  <div class="modal-box" style="width: 100%; max-width: 420px; text-align: center;">
+    <h2 style="color: var(--mint-500); margin: 0 0 10px;">📸 Proof of Claim</h2>
+    <p style="font-size: 13px; color: #7488b6; margin-bottom: 20px;">Take a photo of the employee receiving the parcel to verify handover.</p>
+    
+    <input type="hidden" id="claimParcelId">
+
+    <div style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+      <label class="btn2 primary" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px 20px; font-size: 14px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        Capture Proof
+        <input type="file" id="claimPhotoInput" accept="image/*" capture="user" style="display:none;">
+      </label>
+      <span id="claimFileName" style="font-size: 12px; color: #7488b6; font-family: var(--font-mono);">No photo taken</span>
+    </div>
+
+    <div id="claimPreviewContainer" style="display: none; margin-bottom: 20px;">
+      <img id="claimPreviewImg" src="" style="width: 100%; max-height: 250px; border-radius: 8px; border: 2px solid var(--mint-500); object-fit: cover;">
+    </div>
+
+    <div class="modal-actions" style="justify-content: center; gap: 10px;">
+      <button class="btn2" onclick="document.getElementById('claimParcelModal').classList.remove('open')">Cancel</button>
+      <button class="btn2 success" id="confirmClaimBtn" style="border: none;">Confirm Handover</button>
+    </div>
+  </div>
+</div>
+
   
 <script src="supabase-config.js"></script>
 
@@ -5125,7 +5157,7 @@ if (saveScheduleBtn) {
     
     const { data: parcels, error } = await supabaseClient
       .from('parcels')
-      .select('id, photo_url, notes, barcode, status, created_at, employees!recipient_id(name, badge_id)')
+      .select('id, photo_url, claim_photo_url, notes, barcode, status, created_at, employees!recipient_id(name, badge_id)')
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -5165,7 +5197,7 @@ if (saveScheduleBtn) {
       const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
       const statusBadge = p.status === 'claimed'
-        ? '<span class="pill approved">Claimed</span>'
+        ? `<a href="javascript:void(0)" onclick="viewAdminProof('${p.claim_photo_url}')" style="display:inline-block; text-decoration:none;"><span class="pill approved">Claimed (View Proof)</span></a>`
         : '<span class="pill pending">Pending Pickup</span>';
 
       const actionBtn = p.status === 'pending_pickup'
@@ -5194,11 +5226,85 @@ if (saveScheduleBtn) {
   // Trigger search on input
   document.getElementById('parcelSearchBarcode')?.addEventListener('input', renderParcelsList);
 
-  window.markParcelClaimed = async function(parcelId) {
-    const { error } = await supabaseClient.from('parcels').update({ status: 'claimed' }).eq('id', parcelId);
-    if (error) alert("Could not update: " + error.message);
-    else loadParcelsList();
+  // --- PROOF OF CLAIM ENGINE ---
+  let selectedClaimFile = null;
+
+  // 1. Open the modal instead of instant-claiming
+  window.markParcelClaimed = function(parcelId) {
+    document.getElementById('claimParcelId').value = parcelId;
+    document.getElementById('claimPhotoInput').value = '';
+    selectedClaimFile = null;
+    document.getElementById('claimPreviewContainer').style.display = 'none';
+    document.getElementById('claimFileName').textContent = 'No photo taken';
+    document.getElementById('claimParcelModal').classList.add('open');
   };
+
+  // 2. Handle Camera Input
+  const claimPhotoInput = document.getElementById('claimPhotoInput');
+  if (claimPhotoInput) {
+    claimPhotoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      selectedClaimFile = file;
+
+      document.getElementById('claimFileName').textContent = file.name;
+      const previewImg = document.getElementById('claimPreviewImg');
+      previewImg.src = URL.createObjectURL(file);
+      document.getElementById('claimPreviewContainer').style.display = 'block';
+    });
+  }
+
+  // 3. Upload & Confirm
+  const confirmClaimBtn = document.getElementById('confirmClaimBtn');
+  if (confirmClaimBtn) {
+    confirmClaimBtn.addEventListener('click', async () => {
+      const parcelId = document.getElementById('claimParcelId').value;
+      if (!selectedClaimFile) {
+        alert("Please capture a proof photo of the handover first.");
+        return;
+      }
+
+      confirmClaimBtn.disabled = true;
+      confirmClaimBtn.textContent = 'Uploading Proof...';
+
+      try {
+        const fileExt = selectedClaimFile.name.split('.').pop();
+        const fileName = `claim_${parcelId}_${Date.now()}.${fileExt}`;
+
+        // Upload to the same 'parcels' storage bucket
+        const { error: uploadError } = await supabaseClient.storage
+          .from('parcels')
+          .upload(fileName, selectedClaimFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabaseClient.storage
+          .from('parcels')
+          .getPublicUrl(fileName);
+
+        // Update the database record
+        const { error: dbError } = await supabaseClient
+          .from('parcels')
+          .update({ 
+            status: 'claimed',
+            claim_photo_url: publicUrlData.publicUrl 
+          })
+          .eq('id', parcelId);
+
+        if (dbError) throw dbError;
+
+        document.getElementById('claimParcelModal').classList.remove('open');
+        loadParcelsList(); // Refresh the table
+        
+      } catch (err) {
+        console.error("Error finalizing claim:", err);
+        alert("Failed to confirm claim: " + err.message);
+      }
+
+      confirmClaimBtn.disabled = false;
+      confirmClaimBtn.textContent = 'Confirm Handover';
+    });
+  }
 
   // Boot Parcel Listeners
   populateParcelRecipients();
