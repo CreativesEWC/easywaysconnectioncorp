@@ -634,38 +634,42 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    z-index: 1099;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1200;
   }
   .nav-bell-backdrop.show {
-    display: block;
+    display: block !important;
   }
 
+  /* Dropdown: strictly hidden by default on all screen sizes */
+  .nav-bell-dropdown { 
+    display: none; 
+    position: absolute; 
+    top: calc(100% + 10px); 
+    right: 0; 
+    width: 320px; 
+    background: #141414; 
+    border: 1px solid var(--line); 
+    border-radius: 12px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.85); 
+    z-index: 1250; 
+    overflow: hidden; 
+  }
+  
+  /* Only show when .show class is explicitly added by JavaScript */
+  .nav-bell-dropdown.show { 
+    display: block !important; 
+  }
+
+  /* Mobile overlay styling (keeps it hidden until .show is active) */
   @media (max-width: 600px) {
-    .nav-bell-wrapper {
-      position: static;
-    }
     .nav-bell-dropdown {
       position: fixed;
-      top: 60px;
-      left: 12px;
-      right: 12px;
+      top: 65px;
+      left: 14px;
+      right: 14px;
       width: auto;
-      background: #181818 !important;
-      border: 1px solid var(--line);
       max-height: calc(100vh - 90px);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95);
-      border-radius: 14px;
-      z-index: 1200;
-      overflow: hidden;
-    }
-    .nav-bell-header {
-      background: #202020;
-    }
-    .nav-bell-list {
-      max-height: calc(100vh - 160px);
-      background: #181818;
-      overflow-y: auto;
     }
   }
   
@@ -1985,50 +1989,51 @@ aside.sidebar.collapsed ~ main.main-content {
   const navBellBtn = document.getElementById('navBellBtn');
   const navBellDropdown = document.getElementById('navBellDropdown');
   const navBellBackdrop = document.getElementById('navBellBackdrop');
-  const navBellBadge = document.getElementById('navBellBadge');
-  const navBellList = document.getElementById('navBellList');
-  const navBellMarkRead = document.getElementById('navBellMarkRead');
 
   function closeBellDropdown() {
     if (navBellDropdown) navBellDropdown.classList.remove('show');
     if (navBellBackdrop) navBellBackdrop.classList.remove('show');
   }
 
-  function openBellDropdown() {
-    if (navBellDropdown) navBellDropdown.classList.add('show');
-    if (navBellBackdrop) navBellBackdrop.classList.add('show');
-  }
-
-  // Toggle Dropdown & Backdrop
-  if (navBellBtn) {
-    navBellBtn.addEventListener('click', (e) => {
+  function toggleBellDropdown(e) {
+    if (e) {
+      e.preventDefault();
       e.stopPropagation();
-      const isOpen = navBellDropdown.classList.contains('show');
-      if (isOpen) {
-        closeBellDropdown();
-      } else {
-        openBellDropdown();
-      }
-    });
+    }
+    if (!navBellDropdown) return;
+
+    const isCurrentlyOpen = navBellDropdown.classList.contains('show');
+    if (isCurrentlyOpen) {
+      closeBellDropdown();
+    } else {
+      navBellDropdown.classList.add('show');
+      if (navBellBackdrop) navBellBackdrop.classList.add('show');
+    }
   }
 
-  // Tap dark backdrop to close
+  // Toggle open/close on bell click
+  if (navBellBtn) {
+    navBellBtn.onclick = toggleBellDropdown;
+  }
+
+  // Tap dark area outside to close
   if (navBellBackdrop) {
-    navBellBackdrop.addEventListener('click', () => {
-      closeBellDropdown();
-    });
+    navBellBackdrop.onclick = closeBellDropdown;
   }
 
-  // Close dropdown when clicking outside on desktop
+  // Close when tapping anywhere outside the bell container
   document.addEventListener('click', (e) => {
-    if (navBellDropdown && navBellDropdown.classList.contains('show') && !e.target.closest('#navBellWrapper')) {
-      closeBellDropdown();
+    if (navBellDropdown && navBellDropdown.classList.contains('show')) {
+      if (!e.target.closest('#navBellWrapper') && !e.target.closest('#navBellBtn')) {
+        closeBellDropdown();
+      }
     }
   });
-  // Helper to safely format text (Moved to the top so it never fails to load!)
-  function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
+
+  // Automatically close dropdown when switching sidebar tabs
+  document.querySelectorAll('.sidebar-nav button').forEach(btn => {
+    btn.addEventListener('click', closeBellDropdown);
+  });
 
   // ==========================================================
   // SMART SCHEDULE LOADER (ROUTES BASED ON EMPLOYEE ROLE)
