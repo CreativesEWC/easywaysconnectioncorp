@@ -5063,6 +5063,21 @@ if (saveScheduleBtn) {
   let selectedParcelFile = null;
   window.allParcelsData = []; // Holds data for fast barcode searching
 
+  // 0. Parcel Sub-Tab Routing
+  const parcelSubBtns = document.querySelectorAll('#parcelSubNav .sub-tab-btn');
+  parcelSubBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active class from all buttons, add to the clicked one
+      parcelSubBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Hide all panels, show the target panel
+      document.querySelectorAll('.parcel-sub-panel').forEach(p => p.style.display = 'none');
+      const targetId = btn.getAttribute('data-target');
+      document.getElementById(targetId).style.display = 'block';
+    });
+  });
+
   // 1. Parcel Photo Selection & Preview Handler
   const parcelPhotoInput = document.getElementById('parcelPhotoInput');
   if (parcelPhotoInput) {
@@ -5076,11 +5091,11 @@ if (saveScheduleBtn) {
       // Update the UI with the file name and image preview
       document.getElementById('parcelFileSelectedName').textContent = file.name;
       const previewImg = document.getElementById('parcelPreviewImg');
-      previewImg.src = URL.createObjectURL(file);
-      document.getElementById('parcelPreviewContainer').style.display = 'block';
+      if (previewImg) previewImg.src = URL.createObjectURL(file);
+      const previewContainer = document.getElementById('parcelPreviewContainer');
+      if (previewContainer) previewContainer.style.display = 'block';
     });
   }
-
   
   // -----------------------------------------
   // SMARTPHONE CAMERA BARCODE SCANNER (CONTINUOUS MODE)
