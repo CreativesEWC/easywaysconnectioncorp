@@ -5015,7 +5015,20 @@ if (saveScheduleBtn) {
   let selectedParcelFile = null;
   window.allParcelsData = []; // Holds data for fast barcode searching
 
-  // -----------------------------------------
+  // 0. Parcel Sub-Tab Routing
+  const parcelSubBtns = document.querySelectorAll('#parcelSubNav .sub-tab-btn');
+  parcelSubBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      parcelSubBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      document.querySelectorAll('.parcel-sub-panel').forEach(p => p.style.display = 'none');
+      const targetId = btn.getAttribute('data-target');
+      document.getElementById(targetId).style.display = 'block';
+    });
+  });
+
+  
   // -----------------------------------------
   // SMARTPHONE CAMERA BARCODE SCANNER (CONTINUOUS MODE)
   // -----------------------------------------
@@ -5344,6 +5357,35 @@ if (saveScheduleBtn) {
       confirmClaimBtn.textContent = 'Confirm Handover';
     });
   }
+
+  // 7. Populate Parcel Recipients (Filtered for Guards)
+  window.populateParcelRecipients = async function() {
+    const sel = document.getElementById('parcelRecipient');
+    if (!sel) return;
+
+    try {
+      const { data: emps, error } = await supabaseClient
+        .from('employees')
+        .select('id, name, badge_id')
+        .order('name');
+
+      if (error) throw error;
+
+      // Filter out test/dev accounts so they don't clutter the guard's view
+      const validEmps = (emps || []).filter(e => {
+          const isTestAccount = e.badge_id && String(e.badge_id).startsWith('TEST-');
+          const isDevAccount = e.name && e.name.toUpperCase().includes('[DEV]');
+          return !isTestAccount && !isDevAccount;
+      });
+
+      sel.innerHTML = '<option value="">Select recipient employee...</option>' + 
+        validEmps.map(e => `<option value="${e.id}">${escapeHtmlGlobal(e.name)}</option>`).join('');
+        
+    } catch (err) {
+      console.error("Error loading recipients:", err);
+      sel.innerHTML = '<option value="">Failed to load employees</option>';
+    }
+  };
 
   // Boot Parcel Listeners
   if (typeof populateParcelRecipients === 'function') populateParcelRecipients();
