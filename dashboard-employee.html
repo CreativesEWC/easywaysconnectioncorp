@@ -1662,6 +1662,18 @@ aside.sidebar.collapsed ~ main.main-content {
 <script src="supabase-config.js"></script>
 <script>
 
+  // Global HTML sanitizer
+  window.escapeHtml = function(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+  };
+  const escapeHtml = window.escapeHtml;
+
   // ---- LIVE HOST SUB-NAV LOGIC ----
   window.switchLhTab = function(tabId) {
       // Hide all tabs
