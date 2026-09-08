@@ -2417,6 +2417,12 @@ aside.sidebar.collapsed ~ main.main-content {
         
         if (!linkId) return;
 
+        // Open parcel photo in a new tab if the notification link is an image
+        if (linkId.startsWith('http') && (linkId.includes('/parcels/') || linkId.match(/\.(jpeg|jpg|png|webp)/i))) {
+          window.open(linkId, '_blank');
+          return;
+        }
+
         const { data: post } = await supabaseClient.from('announcements').select('*, brands(name)').eq('id', linkId).maybeSingle();
         
         if (post) {
