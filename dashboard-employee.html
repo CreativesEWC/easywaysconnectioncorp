@@ -2008,6 +2008,7 @@ aside.sidebar.collapsed ~ main.main-content {
     } else {
       navBellDropdown.classList.add('show');
       if (navBellBackdrop) navBellBackdrop.classList.add('show');
+      loadNotifications(); // <--- Guarantees immediate fresh fetch
     }
   }
 
@@ -2356,14 +2357,16 @@ aside.sidebar.collapsed ~ main.main-content {
     }
 }
   
-
   // ==========================================================
-  // // ==========================================================
-  // NOTIFICATION SYSTEM (INSTAGRAM UI UPGRADE)
+  // NOTIFICATION SYSTEM (FIXED LOADER & SAFE PARCEL MODAL)
   // ==========================================================
   async function loadNotifications() {
     if (!emp || !emp.id) return; 
     
+    const navBellList = document.getElementById('navBellList');
+    const fullListEl = document.getElementById('fullNotificationsList');
+    const navBellBadge = document.getElementById('navBellBadge');
+
     const { data, error } = await supabaseClient
       .from('notifications')
       .select('*')
@@ -2371,30 +2374,26 @@ aside.sidebar.collapsed ~ main.main-content {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    const fullListEl = document.getElementById('fullNotificationsList');
-    const navBellList = document.getElementById('navBellList');
-    const navBellBadge = document.getElementById('navBellBadge');
-
     if (error) {
       console.error("Error loading notifications:", error);
-      if (navBellList) navBellList.innerHTML = '<div class="nav-bell-empty">Error loading notifications.</div>';
+      if (navBellList) navBellList.innerHTML = '<div class="nav-bell-empty" style="color:var(--coral-500); padding:16px;">Failed to load notifications.</div>';
       if (fullListEl) fullListEl.innerHTML = '<div class="empty-note">Error loading notifications.</div>';
       return;
     }
 
-    const unreadCount = data.filter(n => !n.is_read).length;
+    const unreadCount = data ? data.filter(n => !n.is_read).length : 0;
 
     if (navBellBadge) {
-        if (unreadCount > 0) {
-          navBellBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-          navBellBadge.style.display = 'flex';
-        } else {
-          navBellBadge.style.display = 'none';
-        }
+      if (unreadCount > 0) {
+        navBellBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        navBellBadge.style.display = 'flex';
+      } else {
+        navBellBadge.style.display = 'none';
+      }
     }
 
     if (!data || data.length === 0) {
-      if (navBellList) navBellList.innerHTML = '<div class="nav-bell-empty" style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 14px;">No notifications yet.</div>';
+      if (navBellList) navBellList.innerHTML = '<div class="nav-bell-empty" style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No notifications yet.</div>';
       if (fullListEl) fullListEl.innerHTML = '<div class="empty-note" style="padding: 16px; color: var(--text-muted);">You have no notifications.</div>';
       return;
     }
@@ -2402,91 +2401,78 @@ aside.sidebar.collapsed ~ main.main-content {
     const groups = { 'Today': [], 'This week': [], 'This month': [], 'Earlier': [] };
 
     data.forEach(n => {
-       const now = new Date();
-       const past = new Date(n.created_at);
-       const diffDays = Math.floor((now - past) / (1000 * 60 * 60 * 24));
-       
-       if (diffDays === 0) groups['Today'].push(n);
-       else if (diffDays < 7) groups['This week'].push(n);
-       else if (diffDays < 30) groups['This month'].push(n);
-       else groups['Earlier'].push(n);
+      const now = new Date();
+      const past = new Date(n.created_at);
+      const diffDays = Math.floor((now - past) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) groups['Today'].push(n);
+      else if (diffDays < 7) groups['This week'].push(n);
+      else if (diffDays < 30) groups['This month'].push(n);
+      else groups['Earlier'].push(n);
     });
 
     let notifHTML = '';
 
     for (const [groupName, items] of Object.entries(groups)) {
-       if (items.length === 0) continue;
+      if (items.length === 0) continue;
 
-       // Group Header (Now uses var(--paper))
-       notifHTML += `<div style="font-size: 16px; font-weight: bold; color: var(--paper); margin: 20px 0 10px 0; padding: 0 16px;">${groupName}</div>`;
+      notifHTML += `<div style="font-size: 13px; font-weight: bold; color: var(--amber-400); margin: 14px 0 6px 0; padding: 0 14px; text-transform: uppercase; font-family: var(--font-mono);">${groupName}</div>`;
 
-       items.forEach(n => {
-           const diffMs = new Date() - new Date(n.created_at);
-           const diffMins = Math.floor(diffMs / 60000);
-           const diffHours = Math.floor(diffMins / 60);
-           const diffDays = Math.floor(diffHours / 24);
-           const diffWeeks = Math.floor(diffDays / 7);
-           let timeStr = diffMins < 60 ? diffMins + 'm' : (diffHours < 24 ? diffHours + 'h' : (diffDays < 7 ? diffDays + 'd' : diffWeeks + 'w'));
+      items.forEach(n => {
+        const diffMs = new Date() - new Date(n.created_at);
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        const diffWeeks = Math.floor(diffDays / 7);
+        let timeStr = diffMins < 60 ? diffMins + 'm' : (diffHours < 24 ? diffHours + 'h' : (diffDays < 7 ? diffDays + 'd' : diffWeeks + 'w'));
 
-           let displayAvatar = n.avatar_url || 'easyway_icon.svg'; 
-           let titlePart = n.title || 'System';
-           let msgPart = n.message || 'sent a notification.';
+        let displayAvatar = n.avatar_url || 'easyway_icon.svg'; 
+        let titlePart = n.title || 'System';
+        let msgPart = n.message || 'sent a notification.';
 
-           let actionBtn = '';
-           if (n.link) {
-               actionBtn = `<button type="button" style="background: #3797F0; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; pointer-events: none;">View</button>`;
-           }
-
-           const unreadDot = !n.is_read ? `<div style="width: 8px; height: 8px; border-radius: 50%; background: #3797F0; flex-shrink: 0; margin-left: 5px;"></div>` : '';
-
-           notifHTML += `
-           <div class="nav-bell-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-link="${n.link || ''}" style="display: flex; gap: 10px; align-items: center; padding: 12px 14px; cursor: pointer; background: transparent; border-bottom: 1px solid var(--line); flex-wrap: nowrap;">
-               <img src="${displayAvatar}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line);">
-               <div style="flex-grow: 1; font-size: 14px; color: var(--paper); line-height: 1.4;">
-                   <strong style="color: var(--paper);">${escapeHtml(titlePart)}</strong> <span style="color: var(--paper);">${escapeHtml(msgPart)}</span> <span style="color: var(--text-muted); margin-left: 4px;">${timeStr}</span>
-               </div>
-               ${unreadDot}
-               ${actionBtn}
-           </div>
-           `;
-       });
-    }
-
-    if (navBellList) {
-        navBellList.innerHTML = notifHTML;
-    }
-    
-    if (fullListEl) {
-        fullListEl.innerHTML = notifHTML;
-        const parentPanel = fullListEl.closest('.panel');
-        if (parentPanel) {
-            parentPanel.style.background = 'var(--navy-900)';
-            parentPanel.style.border = '1px solid var(--line)';
-            parentPanel.style.borderRadius = '16px';
-            parentPanel.style.padding = '16px';
+        let actionBtn = '';
+        if (n.link) {
+          actionBtn = `<button type="button" class="btn2 primary" style="padding: 4px 10px; font-size: 11px; flex-shrink: 0; pointer-events: none;">View</button>`;
         }
+
+        const unreadDot = !n.is_read ? `<div style="width: 7px; height: 7px; border-radius: 50%; background: #3797F0; flex-shrink: 0; margin-left: 4px;"></div>` : '';
+
+        notifHTML += `
+          <div class="nav-bell-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-link="${n.link || ''}" data-msg="${escapeHtml(msgPart)}" style="display: flex; gap: 10px; align-items: center; padding: 10px 14px; cursor: pointer; background: transparent; border-bottom: 1px solid var(--line); transition: background 0.15s;">
+            <img src="${displayAvatar}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line); background: #111;">
+            <div style="flex-grow: 1; min-width: 0; font-size: 13px; color: var(--paper); line-height: 1.35;">
+              <strong style="color: var(--paper); display: inline-block; margin-right: 4px;">${escapeHtml(titlePart)}</strong>
+              <span style="color: #cbd5e1;">${escapeHtml(msgPart)}</span>
+              <span style="color: #7488b6; font-size: 10px; font-family: var(--font-mono); margin-left: 6px;">${timeStr}</span>
+            </div>
+            ${unreadDot}
+            ${actionBtn}
+          </div>
+        `;
+      });
     }
 
-    // Wire up clicks
+    if (navBellList) navBellList.innerHTML = notifHTML;
+    if (fullListEl) fullListEl.innerHTML = notifHTML;
+
+    // Attach click listeners
     document.querySelectorAll('.nav-bell-item').forEach(item => {
-      item.addEventListener('click', async () => {
-        // Automatically dismiss the dropdown when any notification is tapped
+      item.addEventListener('click', async (e) => {
+        e.stopPropagation();
         closeBellDropdown();
 
         const notifId = item.getAttribute('data-id');
         const linkId = item.getAttribute('data-link');
-        
+        const msgText = item.getAttribute('data-msg') || 'Package waiting at front desk.';
+
         if (item.classList.contains('unread')) {
           await supabaseClient.from('notifications').update({ is_read: true }).eq('id', notifId);
           item.classList.remove('unread');
-          const dot = item.querySelector('div[style*="background: #3797F0"]');
-          if (dot) dot.remove();
-          loadNotifications(); 
         }
-        
+
         if (!linkId) return;
 
-        // Check if the link points to a logged parcel image
+        // Open Parcel Photo Modal
         if (linkId.startsWith('http') && (linkId.includes('/parcels/') || linkId.match(/\.(jpeg|jpg|png|webp)/i))) {
           const parcelImg = document.getElementById('parcelModalImg');
           const parcelCap = document.getElementById('parcelModalCaption');
@@ -2494,18 +2480,14 @@ aside.sidebar.collapsed ~ main.main-content {
 
           if (parcelImg && parcelModal) {
             parcelImg.src = linkId;
-            const msgSpan = item.querySelector('span[style*="color: var(--paper)"]');
-            if (parcelCap) {
-              parcelCap.textContent = msgSpan ? msgSpan.textContent.trim() : 'Your parcel is waiting at the front desk.';
-            }
+            if (parcelCap) parcelCap.textContent = msgText;
             parcelModal.classList.add('open');
           }
           return;
         }
 
+        // Announcement Modal routing
         const { data: post } = await supabaseClient.from('announcements').select('*, brands(name)').eq('id', linkId).maybeSingle();
-        //---------------------------------------------------------------------
-        
         if (post) {
           const brandLabel = post.brands ? post.brands.name : 'Company-wide';
           const postedDate = new Date(post.created_at).toLocaleDateString([], {month:'long', day:'numeric', year:'numeric'});
@@ -2521,18 +2503,16 @@ aside.sidebar.collapsed ~ main.main-content {
           
           const modalEl = document.getElementById('announcementModal');
           if(modalEl) {
-              modalEl.dataset.postId = post.id;
-              modalEl.classList.add('open');
+            modalEl.dataset.postId = post.id;
+            modalEl.classList.add('open');
           }
-          
-          if (typeof loadComments === 'function') loadComments(post.id); 
-        } 
-        else if (typeof openEmployeeTicketDocument === 'function') {
+          if (typeof loadComments === 'function') loadComments(post.id);
+        } else if (typeof openEmployeeTicketDocument === 'function') {
           openEmployeeTicketDocument(linkId);
         }
       });
     });
-  } // <--- loadNotifications ACTUALLY closes properly here now!
+  }// <--- loadNotifications ACTUALLY closes properly here now!
 
   // Load Employee Submissions / Tickets
   async function loadSubmissions() {
