@@ -625,6 +625,16 @@ aside.sidebar.collapsed ~ main.main-content {
     <span>Attendance</span>
   </button>
 
+     <!-- PARCEL HUB (GUARDS & ADMINS) -->
+  <button data-tab="parcels" id="navParcelsBtn">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+    </svg>
+    <span>Parcel Hub</span>
+  </button>
+
   <!-- MESSAGES -->
   <button data-tab="messages">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -831,6 +841,7 @@ aside.sidebar.collapsed ~ main.main-content {
         <select id="annBrand"><option value="">Company-wide</option></select>
       </div>
 
+
     <!-- THIS IS YOUR NEW AUDIENCE DROPDOWN -->
     <div class="form-row" style="margin-bottom: 15px;">
       <select id="annTarget" style="flex:1; padding: 10px; background: var(--navy-900); color: var(--paper); border: 1px solid var(--line); border-radius: 4px; font-family: var(--font-body); font-size: 13px;">
@@ -1015,6 +1026,7 @@ aside.sidebar.collapsed ~ main.main-content {
           <select id="newBrand"><option value="">No brand assigned</option></select>
           <select id="newRole">
             <option value="employee">Employee</option>
+            <option value="guard">Guard</option>
             <option value="kiosk">Kiosk</option>
             <option value="admin">Admin</option>
             <option value="president">President</option>
@@ -1059,6 +1071,58 @@ aside.sidebar.collapsed ~ main.main-content {
       </table>
     </section>
   </div>
+
+        <!-- PARCEL HUB TAB -->
+  <div id="tab-parcels" class="tab-panel" style="display:none;">
+    <section class="panel" style="border-color: var(--amber-500);">
+      <h2 style="color: var(--amber-400); margin: 0 0 16px;">📦 Log Incoming Parcel</h2>
+      
+      <div class="form-row">
+        <select id="parcelRecipient" style="flex: 1; min-width: 220px;">
+          <option value="">Select recipient employee...</option>
+        </select>
+        <input type="text" id="parcelNotes" placeholder="Notes (e.g. Shopee, J&T, Rider Name, Box Color)" style="flex: 1; min-width: 220px;">
+      </div>
+
+      <!-- Camera & File Selector Input -->
+      <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <label class="btn2 primary" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 18px;">
+          📸 Take Photo or Upload
+          <input type="file" id="parcelPhotoInput" accept="image/*" capture="environment" style="display:none;">
+        </label>
+        <span id="parcelFileSelectedName" style="font-size: 12px; color: #7488b6; font-family: var(--font-mono);">No photo taken</span>
+      </div>
+
+      <!-- Live Photo Preview -->
+      <div id="parcelPreviewContainer" style="display: none; margin-bottom: 16px;">
+        <img id="parcelPreviewImg" src="" style="max-width: 280px; max-height: 200px; border-radius: 8px; border: 2px solid var(--amber-500); object-fit: cover;">
+      </div>
+
+      <button class="btn success" id="submitParcelBtn" style="padding: 10px 20px; font-size: 13px;">Log & Notify Employee</button>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Deliveries <span class="count" id="parcelCount">—</span></h2>
+      <div id="parcelLoading" class="loading-note">Loading deliveries...</div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 600px;" id="parcelTable">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Recipient</th>
+              <th>Notes</th>
+              <th>Photo</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="parcelTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+        
+        <!-- FINANCE TAB -->
        <div id="tab-finance" class="tab-panel" style="display:none;">
   <div style="margin-bottom: 24px;">
     <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Finance Department</h1>
@@ -2226,6 +2290,39 @@ function toggleSubNav(containerId, btnElement) {
   }
   // ==========================================
 
+  // ==== GUARD RESTRICTION LOGIC ====
+  if (emp.role === 'guard') {
+    // 1. Keep ONLY Attendance and Parcels tabs visible in sidebar
+    document.querySelectorAll('.sidebar-nav > button[data-tab]').forEach(btn => {
+      const tab = btn.getAttribute('data-tab');
+      if (tab !== 'attendance' && tab !== 'parcels') {
+        btn.style.display = 'none';
+      }
+    });
+
+    // 2. Hide accordion folders and other tools
+    document.querySelectorAll('.nav-accordion, .nav-group-btn, .sub-nav-group').forEach(el => {
+      el.style.display = 'none';
+    });
+
+    // 3. Hide Switch View button
+    const switchBtn = document.getElementById('switchViewBtn');
+    if (switchBtn) switchBtn.style.display = 'none';
+
+    // 4. Default to Attendance tab on load
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    const attTab = document.getElementById('tab-attendance');
+    if (attTab) attTab.style.display = 'block';
+
+    const attNavBtn = document.querySelector('.sidebar-nav button[data-tab="attendance"]');
+    if (attNavBtn) {
+      document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
+      attNavBtn.classList.add('active');
+    }
+
+    document.getElementById('whoLine').textContent = 'Signed in as ' + emp.name.split(' ')[0] + ' · Company Guard';
+  }
+
   // Handle Switch View functionality for Admin/President
   const switchBtn = document.getElementById('switchViewBtn');
   if (switchBtn) {
@@ -2240,7 +2337,10 @@ function toggleSubNav(containerId, btnElement) {
     });
   }
 
-  if (emp.role !== 'admin' && emp.role !== 'president') { routeToRoleHome(emp); return; }
+  if (emp.role !== 'admin' && emp.role !== 'president' && emp.role !== 'guard') {
+    routeToRoleHome(emp);
+    return;
+  }
 
   document.getElementById('authGate').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
@@ -4800,11 +4900,186 @@ if (saveScheduleBtn) {
       loadPayrollSettings();
   }, 1500);
 
+  // ==========================================
+  // PARCEL HUB ENGINE (CAMERA CAPTURE & NOTIFICATIONS)
+  // ==========================================
+  let selectedParcelFile = null;
+
+  // 1. Camera / File Selection Handler
+  const parcelInput = document.getElementById('parcelPhotoInput');
+  if (parcelInput) {
+    parcelInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      selectedParcelFile = file;
+
+      document.getElementById('parcelFileSelectedName').textContent = file.name;
+      const previewImg = document.getElementById('parcelPreviewImg');
+      previewImg.src = URL.createObjectURL(file);
+      document.getElementById('parcelPreviewContainer').style.display = 'block';
+    });
+  }
+
+  // 2. Populate Recipient Dropdown
+  async function populateParcelRecipients() {
+    const sel = document.getElementById('parcelRecipient');
+    if (!sel) return;
+    const { data: emps } = await supabaseClient
+      .from('employees')
+      .select('id, name, badge_id')
+      .order('name');
+
+    if (emps) {
+      sel.innerHTML = '<option value="">Select recipient employee...</option>' +
+        emps.map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${e.badge_id})</option>`).join('');
+    }
+  }
+
+  // 3. Submit Parcel & Dispatch Immediate In-App Notification
+  const submitParcelBtn = document.getElementById('submitParcelBtn');
+  if (submitParcelBtn) {
+    submitParcelBtn.addEventListener('click', async () => {
+      const recipientId = document.getElementById('parcelRecipient').value;
+      const notes = document.getElementById('parcelNotes').value.trim();
+
+      if (!recipientId) {
+        alert("Please select the recipient employee.");
+        return;
+      }
+      if (!selectedParcelFile) {
+        alert("Please capture or select a photo of the parcel first.");
+        return;
+      }
+
+      submitParcelBtn.disabled = true;
+      submitParcelBtn.textContent = 'Uploading photo & notifying...';
+
+      try {
+        const fileExt = selectedParcelFile.name.split('.').pop();
+        const fileName = `parcel_${recipientId}_${Date.now()}.${fileExt}`;
+
+        // Upload photo to Supabase storage bucket 'parcels'
+        const { error: uploadError } = await supabaseClient.storage
+          .from('parcels')
+          .upload(fileName, selectedParcelFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabaseClient.storage
+          .from('parcels')
+          .getPublicUrl(fileName);
+
+        const photoUrl = publicUrlData.publicUrl;
+
+        // Insert parcel record
+        const { error: dbError } = await supabaseClient.from('parcels').insert({
+          recipient_id: recipientId,
+          photo_url: photoUrl,
+          notes: notes || 'Front desk package arrival',
+          logged_by: emp.id,
+          status: 'pending_pickup'
+        });
+
+        if (dbError) throw dbError;
+
+        // Push notification directly to employee
+        await supabaseClient.from('notifications').insert({
+          user_id: recipientId,
+          title: '📦 Package Arrived at Guardhouse!',
+          message: `A parcel has arrived for you. Notes: "${notes || 'Ready for claim'}".`,
+          link: photoUrl,
+          read: false
+        });
+
+        alert("Parcel logged successfully! The recipient employee has been notified.");
+
+        // Reset inputs
+        document.getElementById('parcelRecipient').value = '';
+        document.getElementById('parcelNotes').value = '';
+        document.getElementById('parcelPhotoInput').value = '';
+        selectedParcelFile = null;
+        document.getElementById('parcelPreviewContainer').style.display = 'none';
+        document.getElementById('parcelFileSelectedName').textContent = 'No photo taken';
+
+        loadParcelsList();
+      } catch (err) {
+        console.error("Error logging parcel:", err);
+        alert("Failed to log parcel: " + err.message);
+      }
+
+      submitParcelBtn.disabled = false;
+      submitParcelBtn.textContent = 'Log & Notify Employee';
+    });
+  }
+
+  // 4. Render Logged Deliveries Table
+  async function loadParcelsList() {
+    const tbody = document.getElementById('parcelTableBody');
+    const loading = document.getElementById('parcelLoading');
+    if (!tbody) return;
+
+    const { data: parcels, error } = await supabaseClient
+      .from('parcels')
+      .select('id, photo_url, notes, status, created_at, employees!recipient_id(name, badge_id)')
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (loading) loading.style.display = 'none';
+
+    if (error || !parcels || parcels.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6" style="text-align:center; padding: 20px; color: #7488b6;">No parcels logged yet.</td></tr>';
+      return;
+    }
+
+    document.getElementById('parcelCount').textContent = `${parcels.length} deliveries`;
+
+    tbody.innerHTML = parcels.map(p => {
+      const recipientName = p.employees ? p.employees.name : 'Unknown';
+      const timeStr = new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const statusBadge = p.status === 'claimed'
+        ? '<span class="pill approved">Claimed</span>'
+        : '<span class="pill pending">Pending Pickup</span>';
+
+      const actionBtn = p.status === 'pending_pickup'
+        ? `<button class="btn success" onclick="markParcelClaimed('${p.id}')" style="font-size:11px; padding: 4px 8px;">Mark Claimed</button>`
+        : '<span style="color:#5c6d99; font-size:11px;">Claimed</span>';
+
+      return `
+        <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+          <td style="padding: 10px 8px; font-family: var(--font-mono);">${timeStr}</td>
+          <td style="padding: 10px 8px; font-weight: bold; color: var(--paper);">${escapeHtml(recipientName)}</td>
+          <td style="padding: 10px 8px; color: #7488b6;">${escapeHtml(p.notes || '—')}</td>
+          <td style="padding: 10px 8px;">
+            <a href="javascript:void(0)" onclick="viewAdminProof('${p.photo_url}')" style="color: var(--amber-400); font-weight: bold; text-decoration: underline;">View Photo</a>
+          </td>
+          <td style="padding: 10px 8px;">${statusBadge}</td>
+          <td style="padding: 10px 8px;">${actionBtn}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  window.markParcelClaimed = async function(parcelId) {
+    const { error } = await supabaseClient
+      .from('parcels')
+      .update({ status: 'claimed' })
+      .eq('id', parcelId);
+
+    if (error) alert("Could not update: " + error.message);
+    else loadParcelsList();
+  };
+
+  // Boot Parcel Listeners
+  populateParcelRecipients();
+  loadParcelsList();
+
   // Boot up the Finance Tab tables!
   initFinanceTab();
   populateVideoAuditSellers();
   loadFinanceVideoTracker();
   loadFinanceLiveTracker();
+
+  
 
 })(); 
 </script>
