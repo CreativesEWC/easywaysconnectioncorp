@@ -2247,8 +2247,8 @@ function toggleSubNav(containerId, btnElement) {
   const emp = await getMyEmployeeRecord();
   if (!emp) { window.location.href = 'login.html'; return; }
 
-  // If they are not admin/president, route to their role home
-  if (emp.role !== 'admin' && emp.role !== 'president') { 
+  // If they are not admin, president, OR guard, route to their role home
+  if (emp.role !== 'admin' && emp.role !== 'president' && emp.role !== 'guard') { 
     routeToRoleHome(emp); 
     return; 
   }
