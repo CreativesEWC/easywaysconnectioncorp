@@ -631,24 +631,31 @@
   
   @media (max-width: 600px) {
     .nav-bell-wrapper {
-      position: static; /* Let dropdown position relative to viewport/header */
+      position: static;
     }
     .nav-bell-dropdown {
       position: fixed;
-      top: 60px;
-      left: 10px;
-      right: 10px;
+      top: 64px;
+      left: 12px;
+      right: 12px;
       width: auto;
-      max-height: calc(100vh - 80px);
-      box-shadow: 0 12px 35px rgba(0,0,0,0.85);
-      border-radius: 12px;
-      z-index: 1100;
+      background: #121212 !important; /* Forces solid background so page content never shows through */
+      border: 1px solid var(--line);
+      max-height: calc(100vh - 90px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95);
+      border-radius: 14px;
+      z-index: 1200;
+      overflow: hidden;
+    }
+    .nav-bell-header {
+      background: #181818;
     }
     .nav-bell-list {
-      max-height: calc(100vh - 150px);
+      max-height: calc(100vh - 160px);
+      background: #121212;
+      overflow-y: auto;
     }
   }
-  .nav-bell-dropdown.show { display: block; }
   
   .nav-bell-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--paper); }
   .mark-read-btn { background: none; border: none; color: var(--amber-500); font-size: 11px; cursor: pointer; }
@@ -2404,18 +2411,18 @@ aside.sidebar.collapsed ~ main.main-content {
        });
     }
 
-    if (navBellList) navBellList.innerHTML = notifHTML;
+    if (navBellList) {
+        navBellList.innerHTML = notifHTML;
+    }
     
     if (fullListEl) {
         fullListEl.innerHTML = notifHTML;
         const parentPanel = fullListEl.closest('.panel');
         if (parentPanel) {
-            parentPanel.style.background = 'transparent'; // Allows the Light/Dark mode background to naturally flow through
-            parentPanel.style.border = 'none';
-            parentPanel.style.padding = '0';
-            
-            const oldH2 = parentPanel.querySelector('h2');
-            if (oldH2) oldH2.style.display = 'none';
+            parentPanel.style.background = 'var(--navy-900)';
+            parentPanel.style.border = '1px solid var(--line)';
+            parentPanel.style.borderRadius = '16px';
+            parentPanel.style.padding = '16px';
         }
     }
 
@@ -2441,10 +2448,14 @@ aside.sidebar.collapsed ~ main.main-content {
           const parcelCap = document.getElementById('parcelModalCaption');
           const parcelModal = document.getElementById('parcelViewModal');
 
+          // Close the dropdown first so it doesn't stay open behind the modal
+          if (navBellDropdown) navBellDropdown.classList.remove('show');
+
           if (parcelImg && parcelModal) {
             parcelImg.src = linkId;
+            const msgSpan = item.querySelector('span[style*="color: var(--paper)"]');
             if (parcelCap) {
-              parcelCap.textContent = n.message || 'Your parcel is waiting at the front desk / guardhouse.';
+              parcelCap.textContent = msgSpan ? msgSpan.textContent.trim() : 'Your parcel is ready for pickup.';
             }
             parcelModal.classList.add('open');
           }
