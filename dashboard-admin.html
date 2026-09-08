@@ -5016,10 +5016,12 @@ if (saveScheduleBtn) {
   window.allParcelsData = []; // Holds data for fast barcode searching
 
   // -----------------------------------------
+  // -----------------------------------------
   // SMARTPHONE CAMERA BARCODE SCANNER (CONTINUOUS MODE)
   // -----------------------------------------
   let html5QrcodeScannerObj = null;
   let lastScannedBarcode = '';
+  let isConfirming = false; // NEW: Locks the scanner while the popup is open
 
   document.getElementById('startScannerBtn')?.addEventListener('click', () => {
     const scannerContainer = document.getElementById('scannerContainer');
@@ -5027,7 +5029,8 @@ if (saveScheduleBtn) {
     
     const html5QrCode = new Html5Qrcode("reader");
     html5QrcodeScannerObj = html5QrCode;
-    lastScannedBarcode = ''; // Reset memory on open
+    lastScannedBarcode = ''; 
+    isConfirming = false; 
 
     // Update instruction text
     scannerContainer.querySelector('span').textContent = 'Align barcode. Scan multiple in a row.';
@@ -5036,16 +5039,36 @@ if (saveScheduleBtn) {
       { facingMode: "environment" }, 
       { fps: 10, qrbox: { width: 250, height: 100 } },
       (decodedText) => {
-        // Continuous scan mode: Append new barcodes to the text area
-        if (decodedText !== lastScannedBarcode) {
-            lastScannedBarcode = decodedText;
-            const barcodeBox = document.getElementById('parcelBarcode');
-            const currentVal = barcodeBox.value.trim();
-            barcodeBox.value = currentVal ? currentVal + '\n' + decodedText : decodedText;
+        // Only trigger if we aren't currently asking the user, and it's a new scan
+        if (!isConfirming && decodedText !== lastScannedBarcode) {
+            isConfirming = true; // Lock the scanner
             
-            // Visual flash feedback so guard knows it scanned successfully
-            scannerContainer.style.border = '2px solid var(--mint-500)';
-            setTimeout(() => scannerContainer.style.border = '1px solid var(--amber-500)', 500);
+            // Slight delay so the camera doesn't freeze mid-frame
+            setTimeout(() => {
+                const userConfirmed = confirm(`Scanned: ${decodedText}\n\nAdd this barcode? Click [OK] to accept, or [Cancel] to ignore.`);
+                
+                if (userConfirmed) {
+                    const barcodeBox = document.getElementById('parcelBarcode');
+                    const currentVal = barcodeBox.value.trim();
+                    
+                    // Extra safety check: prevent adding it if it's already in the text box
+                    if (!barcodeBox.value.includes(decodedText)) {
+                        barcodeBox.value = currentVal ? currentVal + '\n' + decodedText : decodedText;
+                        
+                        // Visual flash feedback
+                        scannerContainer.style.border = '2px solid var(--mint-500)';
+                        setTimeout(() => scannerContainer.style.border = '1px solid var(--amber-500)', 500);
+                    } else {
+                        alert("This barcode is already in the list!");
+                    }
+                }
+                
+                // Remember this barcode so it doesn't instantly ask again if the camera is still pointing at it
+                lastScannedBarcode = decodedText;
+                
+                // Unlock the scanner for the next item
+                isConfirming = false;
+            }, 100);
         }
       },
       (errorMessage) => {}
