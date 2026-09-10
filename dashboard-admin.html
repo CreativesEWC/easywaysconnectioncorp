@@ -1208,7 +1208,7 @@ aside.sidebar.collapsed ~ main.main-content {
   <div id="tab-kiosk-scanner" class="tab-panel" style="display:none;">
     <section class="panel" style="border-color: var(--mint-500); text-align: center; max-width: 600px; margin: 0 auto;">
       <h2 style="color: var(--mint-500); justify-content: center; margin-bottom: 20px;">
-        📱 Mobile Kiosk Scanner
+        Mobile Kiosk Scanner
       </h2>
       <p style="font-size: 13px; color: #7488b6; margin-bottom: 20px;">Use this backup scanner if the main attendance kiosk is unavailable.</p>
 
@@ -1231,8 +1231,11 @@ aside.sidebar.collapsed ~ main.main-content {
       <!-- Live Camera Feed -->
       <div id="kioskScannerContainer" style="display: none; margin: 0 auto 20px auto; max-width: 400px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid var(--mint-500);">
         <div style="display: flex; justify-content: space-between; padding: 10px; background: var(--navy-900);">
-           <span style="font-size: 12px; color: var(--mint-400);" id="kioskScanStatus">Align Employee Badge (QR/Barcode)</span>
+           <span style="font-size: 12px; color: var(--mint-400);" id="kioskScanStatus">Align Employee Badge</span>
            <button type="button" id="stopKioskScannerBtn" style="background: transparent; border: none; color: var(--coral-500); font-weight: bold; cursor: pointer; font-size: 12px;">Close</button>
+        </div>
+        <div style="background: rgba(5, 150, 105, 0.15); padding: 8px; text-align: center; border-bottom: 1px solid var(--mint-700);">
+            <span style="font-size: 11px; color: var(--mint-500); font-family: var(--font-mono); font-weight: bold; letter-spacing: 1px;">[ PLACE BARCODE HORIZONTALLY IN BOX ]</span>
         </div>
         <div id="kioskReader" style="width: 100%;"></div>
       </div>
@@ -5506,7 +5509,7 @@ if (saveScheduleBtn) {
 
     html5QrCode.start(
       { facingMode: "environment" }, 
-      { fps: 10, qrbox: { width: 250, height: 250 } }, // Square box for ID badges
+      { fps: 10, qrbox: { width: 280, height: 100 } }, // Wide rectangle for standard barcodes
       async (decodedText) => {
         if (!isKioskConfirming) {
             isKioskConfirming = true;
