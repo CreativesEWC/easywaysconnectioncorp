@@ -562,6 +562,35 @@ aside.sidebar.collapsed ~ main.main-content {
   
   .matrix-host-select { width: 100%; background: var(--navy-900); border: 1px solid transparent; color: var(--paper); font-weight: bold; font-size: 12px; padding: 8px; border-radius: 4px; cursor: pointer; }
   .matrix-host-select:hover { border-color: var(--line); }
+
+  /* ---- KIOSK CARD OVERLAY STYLES ---- */
+  #confirmOverlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(6,10,22,0.88); backdrop-filter:blur(3px); z-index:10005; }
+  #confirmOverlay.show{ display:flex; }
+  .badge-card{ width:440px; max-width:92vw; background:var(--paper); color:var(--navy-950); border-radius:20px; position:relative; overflow:hidden; box-shadow:0 30px 70px rgba(0,0,0,0.5); animation:cardIn .35s cubic-bezier(.2,.9,.25,1.1); }
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(18px) scale(.96);} to{ opacity:1; transform:translateY(0) scale(1);} }
+  .badge-card.reject{ width:380px; max-width:92vw; }
+  .badge-top{ background:var(--navy-950); padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .badge-top .co-name{ font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--amber-400); }
+  .badge-top .badge-id{ font-family:var(--font-mono); font-size:12px; color:#9fb0d6; }
+  .badge-body{ padding:24px 28px 8px; display:flex; gap:18px; align-items:center; }
+  .avatar{ width:76px; height:76px; border-radius:50%; background:var(--navy-950); color:var(--amber-400); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:26px; font-weight:700; flex-shrink:0; border:3px solid var(--amber-500); }
+  .badge-name{ font-family:var(--font-display); font-size:23px; font-weight:700; line-height:1.15; }
+  .badge-position{ font-family:var(--font-mono); font-size:12px; color:#5c6a8f; text-transform:uppercase; letter-spacing:.05em; margin-top:4px; }
+  .stamp-row{ display:flex; gap:12px; padding:16px 28px 22px; }
+  .stamp-box{ flex:1; border:2px dashed #c9c2b0; border-radius:14px; padding:12px; text-align:center; position:relative; min-height:88px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .stamp-box .label{ font-family:var(--font-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#8a8272; margin-bottom:6px; }
+  .stamp-box .value{ font-family:var(--font-mono); font-size:12px; color:#c9c2b0; }
+  .stamp-mark{ font-family:var(--font-display); font-weight:700; font-size:18px; border:3px solid; border-radius:8px; padding:5px 9px; display:inline-block; transform:rotate(-6deg); animation:stampIn .28s ease-out; }
+  @keyframes stampIn{ from{ opacity:0; transform:rotate(-6deg) scale(1.8);} to{ opacity:1; transform:rotate(-6deg) scale(1);} }
+  .stamp-mark.in{ color:var(--mint-700); border-color:var(--mint-500); background:rgba(79,178,134,0.08); }
+  .stamp-mark.out{ color:var(--coral-700); border-color:var(--coral-500); background:rgba(217,97,79,0.08); }
+  .badge-message{ padding:0 28px 22px; font-size:14px; color:#5c6a8f; text-align:center; }
+  .badge-card.reject .badge-body{ flex-direction:column; text-align:center; padding-top:30px; }
+  .badge-card.reject .avatar{ background:var(--coral-700); border-color:var(--coral-500); color:var(--paper); }
+  .badge-card.reject .badge-name{ color:var(--coral-700); }
+  .badge-card.reject .reject-id{ font-family:var(--font-mono); font-size:12px; color:#8a8272; margin-top:4px; }
+  .badge-card.reject .badge-message{ padding-bottom:26px; font-size:14px; }
+  
   
 </style>
 </head>
@@ -1229,15 +1258,23 @@ aside.sidebar.collapsed ~ main.main-content {
       </div>
 
       <!-- Live Camera Feed -->
-      <div id="kioskScannerContainer" style="display: none; margin: 0 auto 20px auto; max-width: 400px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid var(--mint-500);">
-        <div style="display: flex; justify-content: space-between; padding: 10px; background: var(--navy-900);">
+      <div id="kioskScannerContainer" style="display: none; margin: 0 auto 20px auto; max-width: 400px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid var(--mint-500); position: relative;">
+        <div style="display: flex; justify-content: space-between; padding: 10px; background: var(--navy-900); position: relative; z-index: 10;">
            <span style="font-size: 12px; color: var(--mint-400);" id="kioskScanStatus">Align Employee Badge</span>
            <button type="button" id="stopKioskScannerBtn" style="background: transparent; border: none; color: var(--coral-500); font-weight: bold; cursor: pointer; font-size: 12px;">Close</button>
         </div>
-        <div style="background: rgba(5, 150, 105, 0.15); padding: 8px; text-align: center; border-bottom: 1px solid var(--mint-700);">
-            <span style="font-size: 11px; color: var(--mint-500); font-family: var(--font-mono); font-weight: bold; letter-spacing: 1px;">[ PLACE BARCODE HORIZONTALLY IN BOX ]</span>
+        <div style="background: rgba(5, 150, 105, 0.15); padding: 8px; text-align: center; border-bottom: 1px solid var(--mint-700); position: relative; z-index: 10;">
+            <span style="font-size: 11px; color: var(--mint-500); font-family: var(--font-mono); font-weight: bold; letter-spacing: 1px;">[ PLACE BARCODE INSIDE BRACKETS ]</span>
         </div>
-        <div id="kioskReader" style="width: 100%;"></div>
+        
+        <!-- The Camera Box with White Guide Corners -->
+        <div style="position: relative; width: 100%;">
+            <div id="kioskReader" style="width: 100%;"></div>
+            <div style="position:absolute; width:46px; height:46px; border-color:#ffffff; border-top:4px solid; border-left:4px solid; border-radius:8px 0 0 0; top:14px; left:14px; pointer-events:none; z-index: 5;"></div>
+            <div style="position:absolute; width:46px; height:46px; border-color:#ffffff; border-top:4px solid; border-right:4px solid; border-radius:0 8px 0 0; top:14px; right:14px; pointer-events:none; z-index: 5;"></div>
+            <div style="position:absolute; width:46px; height:46px; border-color:#ffffff; border-bottom:4px solid; border-left:4px solid; border-radius:0 0 0 8px; bottom:14px; left:14px; pointer-events:none; z-index: 5;"></div>
+            <div style="position:absolute; width:46px; height:46px; border-color:#ffffff; border-bottom:4px solid; border-right:4px solid; border-radius:0 0 8px 0; bottom:14px; right:14px; pointer-events:none; z-index: 5;"></div>
+        </div>
       </div>
 
       <!-- Success/Error Message Output -->
@@ -1898,6 +1935,10 @@ aside.sidebar.collapsed ~ main.main-content {
   </div>
 </div>
 
+  <!-- KIOSK CARD OVERLAY WRAPPER -->
+<div id="confirmOverlay">
+  <div class="badge-card" id="badgeCard"></div>
+</div>
   
 <script src="supabase-config.js"></script>
 
@@ -5474,7 +5515,7 @@ if (saveScheduleBtn) {
     .subscribe();
 
   // ==========================================
-  // MOBILE KIOSK BACKUP ENGINE
+  // MOBILE KIOSK BACKUP ENGINE (WITH CARD UI)
   // ==========================================
   const btnIn = document.getElementById('kioskModeIn');
   const btnOut = document.getElementById('kioskModeOut');
@@ -5494,14 +5535,27 @@ if (saveScheduleBtn) {
       document.getElementById('kioskScannerContainer').style.borderColor = 'var(--amber-500)';
   });
 
+  function showMobileCard(html, isReject){
+      const overlay = document.getElementById('confirmOverlay');
+      const card = document.getElementById('badgeCard');
+      card.className = 'badge-card' + (isReject ? ' reject' : '');
+      card.innerHTML = html;
+      overlay.classList.add('show');
+      setTimeout(()=>{ overlay.classList.remove('show'); }, 3000); // Closes automatically after 3 seconds
+  }
+
+  function getInitials(name) {
+      if(!name) return '?';
+      const parts = name.trim().split(' ');
+      return ((parts[0][0]||'') + (parts[parts.length-1][0]||'')).toUpperCase();
+  }
+
   let kioskScannerObj = null;
   let isKioskConfirming = false;
 
   document.getElementById('startKioskScannerBtn')?.addEventListener('click', () => {
     const container = document.getElementById('kioskScannerContainer');
-    const msgArea = document.getElementById('kioskMessageArea');
     container.style.display = 'block';
-    msgArea.innerHTML = '';
     
     const html5QrCode = new Html5Qrcode("kioskReader");
     kioskScannerObj = html5QrCode;
@@ -5509,79 +5563,105 @@ if (saveScheduleBtn) {
 
     html5QrCode.start(
       { facingMode: "environment" }, 
-      { fps: 10, qrbox: { width: 280, height: 100 } }, // Wide rectangle for standard barcodes
+      { fps: 10, qrbox: { width: 280, height: 100 } }, 
       async (decodedText) => {
         if (!isKioskConfirming) {
             isKioskConfirming = true;
             
-            // Visual flash
-            container.style.opacity = '0.5';
-            setTimeout(() => container.style.opacity = '1', 150);
-
             const mode = modeVal.value;
-            const modeText = mode === 'in' ? 'TIME IN' : 'TIME OUT';
+            const id = decodedText.trim().toUpperCase();
             
-            // Wait for confirmation to prevent accidental double-scans
-            const confirmed = confirm(`Scanned ID: ${decodedText}\n\nConfirm ${modeText} for this employee?`);
-            
-            if (confirmed) {
-                msgArea.style.color = '#7488b6';
-                msgArea.textContent = `Processing ${decodedText}...`;
-                
-                try {
-                    // 1. Verify Employee
-                    const { data: empData, error: empErr } = await supabaseClient
-                        .from('employees')
-                        .select('id, name')
-                        .eq('badge_id', decodedText)
-                        .single();
-                        
-                    if (empErr || !empData) throw new Error("Employee badge not found in system!");
-
-                    const today = todayStr();
-                    const nowIso = new Date().toISOString();
-
-                    if (mode === 'in') {
-                        // Time In Logic
-                        const { data: exist } = await supabaseClient.from('attendance_logs').select('id').eq('employee_id', empData.id).eq('log_date', today).maybeSingle();
-                        if (exist) throw new Error(`${empData.name} is already timed in today!`);
-                        
-                        const { error: insErr } = await supabaseClient.from('attendance_logs').insert({
-                            employee_id: empData.id,
-                            log_date: today,
-                            time_in: nowIso
-                        });
-                        if (insErr) throw insErr;
-                        
-                        msgArea.style.color = 'var(--mint-500)';
-                        msgArea.textContent = `✅ Success! ${empData.name} timed IN.`;
-                    } else {
-                        // Time Out Logic
-                        const { data: exist } = await supabaseClient.from('attendance_logs').select('id, time_out').eq('employee_id', empData.id).eq('log_date', today).maybeSingle();
-                        if (!exist) throw new Error(`${empData.name} has not timed in today!`);
-                        if (exist.time_out) throw new Error(`${empData.name} is already timed out!`);
-                        
-                        const { error: updErr } = await supabaseClient.from('attendance_logs').update({ time_out: nowIso }).eq('id', exist.id);
-                        if (updErr) throw updErr;
-                        
-                        msgArea.style.color = 'var(--amber-400)';
-                        msgArea.textContent = `✅ Success! ${empData.name} timed OUT.`;
-                    }
+            try {
+                // 1. Verify Employee (If missing, instantly throw error to Reject card)
+                const { data: empData, error: empErr } = await supabaseClient
+                    .from('employees')
+                    .select('id, name, badge_id, positions(name)')
+                    .eq('badge_id', id)
+                    .maybeSingle();
                     
-                    // Live refresh the attendance table if it's open in the background
-                    if (typeof loadAttendance === 'function') loadAttendance();
-                    
-                } catch (err) {
-                    msgArea.style.color = 'var(--coral-500)';
-                    msgArea.textContent = `❌ ${err.message}`;
+                if (empErr || !empData) {
+                    showMobileCard(`
+                      <div class="badge-top">
+                        <span class="co-name">Easy Ways Connection Corp.</span>
+                        <span class="badge-id">Not recognized</span>
+                      </div>
+                      <div class="badge-body">
+                        <div class="avatar">✕</div><div><div class="badge-name">ID Not Registered</div>
+                        <div class="reject-id">${id}</div></div>
+                      </div>
+                      <div class="badge-message">This ID does not match any employee on file.</div>
+                    `, true);
+                    setTimeout(() => { isKioskConfirming = false; }, 3000);
+                    return;
                 }
+
+                const today = todayStr();
+                const nowIso = new Date().toISOString();
+                const timeString = new Date(nowIso).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+                
+                let inVal = `<div class="value">— not yet —</div>`;
+                let outVal = `<div class="value">— not yet —</div>`;
+                let message = '';
+
+                if (mode === 'in') {
+                    const { data: exist } = await supabaseClient.from('attendance_logs').select('id').eq('employee_id', empData.id).eq('log_date', today).maybeSingle();
+                    if (exist) throw new Error(`Already timed in.`);
+                    
+                    await supabaseClient.from('attendance_logs').insert({ employee_id: empData.id, log_date: today, time_in: nowIso });
+                    
+                    inVal = `<div class="stamp-mark in">IN · ${timeString}</div>`;
+                    message = 'Time In recorded manually via Backup Kiosk.';
+                } else {
+                    const { data: exist } = await supabaseClient.from('attendance_logs').select('id, time_in, time_out').eq('employee_id', empData.id).eq('log_date', today).maybeSingle();
+                    if (!exist) throw new Error(`No Time In found for today.`);
+                    if (exist.time_out) throw new Error(`Already timed out.`);
+                    
+                    await supabaseClient.from('attendance_logs').update({ time_out: nowIso }).eq('id', exist.id);
+                    
+                    const existInTime = new Date(exist.time_in).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+                    inVal = `<div class="stamp-mark in">IN · ${existInTime}</div>`;
+                    outVal = `<div class="stamp-mark out">OUT · ${timeString}</div>`;
+                    message = 'Time Out recorded manually via Backup Kiosk.';
+                }
+
+                // Render Accepted Card
+                const posName = empData.positions ? empData.positions.name : '';
+                showMobileCard(`
+                  <div class="badge-top">
+                    <span class="co-name">Easy Ways Connection Corp.</span>
+                    <span class="badge-id">${empData.badge_id}</span>
+                  </div>
+                  <div class="badge-body">
+                    <div class="avatar" style="color: var(--navy-950);">${getInitials(empData.name)}</div>
+                    <div><div class="badge-name">${escapeHtmlGlobal(empData.name)}</div><div class="badge-position">${posName}</div></div>
+                  </div>
+                  <div class="stamp-row">
+                    <div class="stamp-box"><div class="label">Time In</div>${inVal}</div>
+                    <div class="stamp-box"><div class="label">Time Out</div>${outVal}</div>
+                  </div>
+                  <div class="badge-message">${message}</div>
+                `, false);
+                
+                if (typeof loadAttendance === 'function') loadAttendance();
+                setTimeout(() => { isKioskConfirming = false; }, 3000);
+                
+            } catch (err) {
+                // If they are already timed in/out, show the error on a reject card
+                showMobileCard(`
+                  <div class="badge-top">
+                    <span class="co-name">Easy Ways Connection Corp.</span>
+                    <span class="badge-id">${id}</span>
+                  </div>
+                  <div class="badge-body">
+                    <div class="avatar">!</div><div><div class="badge-name" style="color: var(--amber-500);">Conflict</div></div>
+                  </div>
+                  <div class="badge-message">${err.message}</div>
+                `, true);
+                setTimeout(() => { isKioskConfirming = false; }, 3000);
             }
-            
-            // Unlock scanner after 1.5 seconds so they can scan the next person
-            setTimeout(() => { isKioskConfirming = false; }, 1500);
         }
       },
-      (err) => {} // Suppress constant empty frame errors
+      (err) => {} 
     ).catch((err) => {
       alert("Could not start camera. Please ensure permissions are allowed.");
       container.style.display = 'none';
