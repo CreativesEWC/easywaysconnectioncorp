@@ -5009,13 +5009,20 @@ window.loadTodayOverallTotal = async function() {
   // ==========================================================
   // ROLE-BASED ACCESS: SUBMISSION FORMS
   // ==========================================================
-  window.restrictSubmissionTabs = function(userRole) {
+  window.restrictSubmissionTabs = function() {
+      if (!emp) return;
+      
+      // Safely grab the position and convert to lowercase to avoid exact-match errors
+      const positionName = (emp.positions && emp.positions.name) 
+          ? emp.positions.name.toLowerCase() 
+          : (emp.position || '').toLowerCase();
+          
       const liveBtn = document.getElementById('nav-live-commi');
       const videoBtn = document.getElementById('nav-video-commi');
       const requestBtn = document.getElementById('nav-requests');
       
-      // Check if the user is NOT a Live Seller (Make sure this string matches your database exactly)
-      if (userRole !== 'Live Seller') {
+      // Check if the user is NOT a Live Seller
+      if (!positionName.includes('live seller')) {
           // Hide the restricted buttons from the sidebar
           if (liveBtn) liveBtn.style.display = 'none';
           if (videoBtn) videoBtn.style.display = 'none';
@@ -5026,6 +5033,9 @@ window.loadTodayOverallTotal = async function() {
           }
       }
   };
+
+  // Trigger the security check immediately!
+  window.restrictSubmissionTabs();
 
 })(); // <--- THIS IS THE FINAL WRAPPER CLOSING YOUR ENTIRE SCRIPT
 </script>
