@@ -2516,7 +2516,7 @@ function toggleSubNav(containerId, btnElement) {
       attNavBtn.classList.add('active');
     }
 
-    document.getElementById('whoLine').textContent = 'Signed in as ' + emp.name.split(' ')[0] + ' · Company Guard';
+    document.getElementById('whoLine').textContent = 'Signed in as ' + emp.name + ' · Company Guard';
   } // ===== END GUARD RESTRICTION LOGIC =====
 
   // Handle Switch View functionality for Admin/President
@@ -5353,7 +5353,7 @@ if (saveScheduleBtn) {
 
     tbody.innerHTML = filteredParcels.map(p => {
       const recipientName = p.employees ? p.employees.name : 'Unknown';
-      const guardName = p.guard ? p.guard.name.split(' ')[0] : 'Unknown'; // Grab guard's first name
+      const guardName = p.guard ? p.guard.name : 'Unknown'; // Grab guard's full name
       
       const dateObj = new Date(p.created_at);
       const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
