@@ -891,13 +891,15 @@ aside.sidebar.collapsed ~ main.main-content {
       </select>
     </div>
 
-    <div class="form-row">
-      <textarea id="annBody" placeholder="Announcement text..."></textarea>
+      <div class="form-row">
+      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase; width: 100%;">Optional Image Attachment (.png, .jpg)</label>
+      <input type="file" id="annImage" accept="image/*" style="width: 100%; background: var(--navy-800); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
     </div>
 
-      <div class="form-row">
-        <textarea id="annBody" placeholder="Announcement text…"></textarea>
-      </div>
+    <div class="form-row">
+      <textarea id="annBody" placeholder="Announcement text..." style="min-height: 100px; width: 100%;"></textarea>
+    </div>
+      
       <div class="form-row">
         <input type="date" id="annEventDate" title="Optional event date">
         <input type="text" id="annLocation" placeholder="Optional location" style="flex:1; min-width:160px;">
@@ -1784,7 +1786,10 @@ aside.sidebar.collapsed ~ main.main-content {
     <input type="hidden" id="activeAnnPosterId">
 
     <h2 style="font-family: var(--font-display); font-size: 18px; color: var(--amber-400); margin-top: 0; margin-bottom: 5px;" id="modalAnnTitle">Announcement Title</h2>
-    <div style="font-size: 11px; color: #7488b6; font-family: var(--font-mono); margin-bottom: 20px;" id="modalAnnMeta">Posted details</div>
+    <div style="font-size: 11px; color: #7488b6; font-family: var(--font-mono); margin-bottom: 20px;" id="modalAnnMeta">Posted details</div>.
+
+    <!-- NEW IMAGE PREVIEW AREA -->
+    <img id="modalAnnImage" src="" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; margin-bottom: 20px; display: none; background: #000; border: 1px solid var(--line);">
 
     <h3 style="font-family: var(--font-mono); font-size: 12px; color: var(--paper); text-transform: uppercase; margin-bottom: 10px;">Comments</h3>
     
@@ -3280,7 +3285,7 @@ async function reviewTicket(ticketId, status, approverName) {
         <td class="mono">${a.event_date ? escapeHtml(a.event_date) : '-'}</td>
         <td class="mono">${posterName} &bull; ${new Date(a.created_at).toLocaleDateString([], {month: 'short', day: 'numeric'})}</td>
         <td class="row-actions">
-    <button class="btn primary" data-viewcomments="${a.id}" data-poster="${a.posted_by}" data-title="${escapeHtml(a.title)}">💬 Comments</button>
+    <button class="btn primary" data-viewcomments="${a.id}" data-poster="${a.posted_by}" data-title="${escapeHtml(a.title)}" data-img="${a.image_url || ''}">💬 Comments</button>
     <button class="btn danger" data-delann="${a.id}">Delete</button>
   </td>
       </tr>
@@ -3307,27 +3312,86 @@ async function reviewTicket(ticketId, status, approverName) {
     const event_date = document.getElementById('annEventDate').value || null;
     const location = document.getElementById('annLocation').value.trim() || null;
     const target_audience = document.getElementById('annTarget').value;
+    const fileInput = document.getElementById('annImage');
+    const file = fileInput ? fileInput.files[0] : null;
+
     if(!title || !body){ alert('Title and body are required.'); return; }
 
     const btn = document.getElementById('postAnnBtn');
     btn.disabled = true; btn.textContent = 'Posting…';
 
-    const { error } = await supabaseClient.from('announcements').insert({
-      title, body, brand_id, event_date, location, posted_by: emp.id, target_audience
-    });
+    try {
+      let imageUrl = null;
+      
+      // If they attached an image, upload it to Supabase first
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `announcement_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabaseClient.storage.from('site_assets').upload(fileName, file);
+        if (uploadError) throw uploadError;
+        
+        const { data: urlData } = supabaseClient.storage.from('site_assets').getPublicUrl(fileName);
+        imageUrl = urlData.publicUrl;
+      }
 
-    btn.disabled = false; btn.textContent = 'Post Announcement';
+      // Save the announcement to the database
+      const { error } = await supabaseClient.from('announcements').insert({
+        title, body, brand_id, event_date, location, posted_by: emp.id, target_audience, image_url: imageUrl
+      });
 
-    if(error){ alert('Could not post announcement: ' + error.message); return; }
-    document.getElementById('annTitle').value = '';
-    document.getElementById('annBody').value = '';
-    document.getElementById('annBrand').value = '';
-    document.getElementById('annTarget').value = 'company';
-    document.getElementById('annEventDate').value = '';
-    document.getElementById('annLocation').value = '';
-    await loadAnnouncements();
+      if(error) throw error;
+
+      // Reset the form
+      document.getElementById('annTitle').value = '';
+      document.getElementById('annBody').value = '';
+      document.getElementById('annBrand').value = '';
+      document.getElementById('annTarget').value = 'company';
+      document.getElementById('annEventDate').value = '';
+      document.getElementById('annLocation').value = '';
+      if (fileInput) fileInput.value = '';
+      
+      await loadAnnouncements();
+    } catch (err) {
+      alert('Could not post announcement: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Post Announcement';
+    }
   });
 
+  // 2. Open Modal Logic (Upgraded to pass the image URL)
+  function attachCommentButtons() {
+    document.querySelectorAll('[data-viewcomments]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const annId = btn.getAttribute('data-viewcomments');
+        const posterId = btn.getAttribute('data-poster');
+        const title = btn.getAttribute('data-title');
+        const imgUrl = btn.getAttribute('data-img');
+
+        // Set the hidden fields and title
+        document.getElementById('activeAnnId').value = annId;
+        document.getElementById('activeAnnPosterId').value = posterId;
+        document.getElementById('modalAnnTitle').textContent = title;
+        
+        // Handle the Image Preview inside the Modal
+        const modalImg = document.getElementById('modalAnnImage');
+        if (modalImg) {
+            if (imgUrl && imgUrl !== 'null' && imgUrl !== 'undefined') {
+                modalImg.src = imgUrl;
+                modalImg.style.display = 'block';
+            } else {
+                modalImg.src = '';
+                modalImg.style.display = 'none';
+            }
+        }
+        
+        // Open the modal
+        document.getElementById('commentsModal').classList.add('open');
+        
+        // Fetch the comments
+        loadComments(annId);
+      });
+    });
+  }
   // --- ANNOUNCEMENT REPLIES & NOTIFICATIONS ---
 
   // Note: Ensure your "Post Reply" button has id="postReplyBtn" 
