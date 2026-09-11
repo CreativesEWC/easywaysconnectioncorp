@@ -7,6 +7,49 @@
 <link rel="icon" type="image/svg+xml" href="easyway_icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
+
+  /* FACEBOOK REACTION TRAY */
+  .reaction-wrapper { position: relative; display: flex; align-items: center; }
+  
+  .reaction-tray {
+    position: absolute; 
+    bottom: 100%; 
+    left: 0; 
+    padding-bottom: 10px;
+    opacity: 0; 
+    visibility: hidden; 
+    transform: translateY(10px);
+    transition: all 0.2s ease; 
+    z-index: 100;
+  }
+  
+  .reaction-wrapper:hover .reaction-tray { 
+    opacity: 1; 
+    visibility: visible; 
+    transform: translateY(0); 
+  }
+  
+  .reaction-tray-inner {
+    background: white; 
+    border-radius: 30px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    padding: 6px 12px; 
+    display: flex; 
+    gap: 10px; 
+    border: 1px solid var(--line);
+  }
+  
+  .r-icon { 
+    font-size: 22px; 
+    cursor: pointer; 
+    transition: transform 0.2s; 
+    user-select: none; 
+  }
+  
+  .r-icon:hover { 
+    transform: scale(1.3) translateY(-3px); 
+  }
+  
   /* STRICTLY WHITE THEME (No Dark Mode Variables) */
   :root {
     --bg-main: #f8f9fa;
@@ -90,8 +133,8 @@
 </main>
 
 <!-- UNIFIED MODAL -->
-<div id="announcementModal" class="modal-overlay">
-  <div class="modal-box">
+<div id="announcementModal" class="modal-overlay" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
     <input type="hidden" id="activePostId">
     
     <h2 id="modalTitle" style="margin: 0 0 8px 0; font-family: var(--font-display); font-size: 24px; color: var(--text-main);">Title</h2>
@@ -116,6 +159,37 @@
 
 <script src="supabase-config.js"></script>
 <script>
+
+  // --- FRONTEND REACTION LOGIC (Visual Only) ---
+  window.setReaction = function(el, emoji, event) {
+    event.stopPropagation(); // Stop the modal from opening when reacting
+    const wrapper = el.closest('.reaction-wrapper');
+    const display = wrapper.querySelector('.react-display');
+    const color = el.getAttribute('data-color');
+    
+    // Replace the default icon with the chosen emoji and change the color
+    display.innerHTML = `<span style="font-size: 18px;">${emoji}</span> <span class="react-count">1</span>`;
+    display.style.color = color;
+    display.dataset.reacted = 'true';
+  };
+
+  window.toggleDefaultLike = function(btn, event) {
+    event.stopPropagation(); // Stop the modal from opening
+    const display = btn.querySelector('.react-display');
+    
+    // If they click the main button and it's already reacted, reset it back to 0
+    if (display.dataset.reacted === 'true') {
+      display.innerHTML = `<svg class="default-thumb" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> <span class="react-count">0</span>`;
+      display.style.color = 'var(--text-muted)';
+      display.dataset.reacted = 'false';
+    } else {
+      // If they just click the button directly, default to a standard "Like"
+      display.innerHTML = `<span style="font-size: 18px;">👍</span> <span class="react-count">1</span>`;
+      display.style.color = '#3b5998'; // Facebook Blue
+      display.dataset.reacted = 'true';
+    }
+  };
+  
   let emp = null;
 
   // 1. Escape HTML to prevent formatting breaks
@@ -211,10 +285,30 @@
           
           <!-- LIKES AND COMMENTS ACTION BAR -->
           <div class="a-actions">
-            <div class="a-action-btn" onclick="event.stopPropagation();">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
-              <span>Like</span>
+            
+            <!-- REACTION WRAPPER -->
+            <div class="reaction-wrapper">
+              <div class="a-action-btn" onclick="toggleDefaultLike(this, event)">
+                <span class="react-display" style="display: flex; align-items: center; gap: 6px;" data-reacted="false">
+                  <svg class="default-thumb" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                  <span class="react-count">0</span>
+                </span>
+              </div>
+              
+              <!-- THE HOVER TRAY -->
+              <div class="reaction-tray">
+                <div class="reaction-tray-inner">
+                  <span class="r-icon" data-color="#3b5998" onclick="setReaction(this, '👍', event)">👍</span>
+                  <span class="r-icon" data-color="#e0245e" onclick="setReaction(this, '❤️', event)">❤️</span>
+                  <span class="r-icon" data-color="#f5c33b" onclick="setReaction(this, '😂', event)">😂</span>
+                  <span class="r-icon" data-color="#f5c33b" onclick="setReaction(this, '😮', event)">😮</span>
+                  <span class="r-icon" data-color="#f5c33b" onclick="setReaction(this, '😢', event)">😢</span>
+                  <span class="r-icon" data-color="#e0245e" onclick="setReaction(this, '😡', event)">😡</span>
+                </div>
+              </div>
             </div>
+            
+            <!-- Chat Bubble / Comments -->
             <div class="a-action-btn">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               <span>${commentTotal}</span>
