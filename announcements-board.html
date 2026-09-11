@@ -50,6 +50,13 @@
   .a-preview { font-size: 14px; color: #4b5563; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .a-img-thumb { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-top: 15px; border: 1px solid var(--line); }
 
+  /* POSTER HEADER (Social Style) */
+  .a-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .a-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); background: #f3f4f6; }
+  .a-header-info { display: flex; flex-direction: column; }
+  .a-poster-name { font-weight: 700; font-size: 15px; color: var(--text-main); }
+  .a-post-time { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+
   /* MODAL */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 20px; z-index: 100; }
   .modal-overlay.open { display: flex; }
@@ -132,14 +139,19 @@
     }
   };
 
-  // 4. Load the Announcements Wall
+  // 4. Load the Announcements Wall (Upgraded with Social Headers)
   async function loadFeed() {
     const feed = document.getElementById('feedContainer');
     
+    // Fetch the posts AND the poster's avatar image
     const { data: posts, error } = await supabaseClient
       .from('announcements')
-      .select('*, brands(name), employees(name)')
+      .select('*, brands(name), employees(name, avatar_url)')
       .order('created_at', { ascending: false });
+
+    const { data: allComments } = await supabaseClient
+      .from('announcement_comments')
+      .select('announcement_id');
 
     if (error) {
       feed.innerHTML = `<div style="text-align:center; color:red;">Error loading feed: ${error.message}</div>`;
@@ -151,27 +163,67 @@
       return;
     }
 
+    const commentCounts = {};
+    if (allComments) {
+      allComments.forEach(c => {
+        commentCounts[c.announcement_id] = (commentCounts[c.announcement_id] || 0) + 1;
+      });
+    }
+
+    // A tiny SVG globe icon to match your screenshot
+    const globeIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`;
+
     feed.innerHTML = posts.map(p => {
       const brandLabel = p.brands ? p.brands.name : 'Company-wide';
-      const posterName = p.employees ? p.employees.name.split(' ')[0] : 'Admin';
-      const dateStr = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const posterName = p.employees ? p.employees.name : 'Admin';
+      const posterAvatar = (p.employees && p.employees.avatar_url) ? p.employees.avatar_url : 'easyway_icon.svg';
+      
+      // Format time to look exactly like "September 8 at 5:43 PM"
+      const d = new Date(p.created_at);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const formattedDateTime = `${dateStr} at ${timeStr}`;
       
       const imgThumb = p.image_url ? `<img src="${p.image_url}" class="a-img-thumb">` : '';
+      const commentTotal = commentCounts[p.id] || 0;
 
       return `
         <div class="announce-card" onclick="openModal('${p.id}')">
-          <div class="a-title">${escapeHtml(p.title)}</div>
-          <div class="a-meta">
-            <span class="a-badge">${brandLabel}</span>
-            <span>Posted by ${posterName} • ${dateStr}</span>
+          
+          <!-- SOCIAL PROFILE HEADER -->
+          <div class="a-header">
+            <img src="${posterAvatar}" class="a-avatar" alt="Avatar">
+            <div class="a-header-info">
+              <div class="a-poster-name">${escapeHtml(posterName)}</div>
+              <div class="a-post-time">${formattedDateTime} · ${globeIcon}</div>
+            </div>
           </div>
-          <div class="a-preview">${escapeHtml(p.body)}</div>
+
+          <!-- TITLE & BADGE -->
+          <div class="a-title" style="margin-top: 14px;">
+            <span class="a-badge" style="margin-right: 8px; font-size: 12px; vertical-align: middle;">${brandLabel}</span>
+            <span style="vertical-align: middle;">${escapeHtml(p.title)}</span>
+          </div>
+
+          <!-- CONTENT -->
+          <div class="a-preview" style="margin-top: 10px;">${escapeHtml(p.body)}</div>
           ${imgThumb}
+          
+          <!-- LIKES AND COMMENTS ACTION BAR -->
+          <div class="a-actions">
+            <div class="a-action-btn" onclick="event.stopPropagation();">
+              <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+              <span>Like</span>
+            </div>
+            <div class="a-action-btn">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>${commentTotal}</span>
+            </div>
+          </div>
         </div>
       `;
     }).join('');
     
-    // Cache the posts in memory so the modal can read them instantly
     window.allPosts = posts; 
   }
 
