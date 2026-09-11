@@ -914,7 +914,10 @@ aside.sidebar.collapsed ~ main.main-content {
     </section>
 
     <section class="panel">
-      <h2>Recent Announcements <span class="count" id="annCount">—</span></h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h2 style="margin: 0;">Recent Announcements <span class="count" id="annCount">—</span></h2>
+        <button class="btn primary" onclick="window.location.href='announcements-board.html'">📰 View Public Board</button>
+      </div>
       <div id="annLoading" class="loading-note">Loading announcements…</div>
       <table style="display:none;" id="annTable">
         <thead><tr><th>Title</th><th>Brand</th><th>Event</th><th>Posted</th><th></th></tr></thead>
