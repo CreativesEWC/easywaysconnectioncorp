@@ -4555,6 +4555,9 @@ if (saveScheduleBtn) {
       }, 6000);
   };
 
+  // GLOBAL ALERT OVERRIDE: Forces every normal alert() to use the themed toast instead!
+  window.alert = function(message) { showThemedToast("System Message", message, "🔔"); };
+
 // ---- REAL-TIME DASHBOARD ALERTS ----
   const dashboardChannel = supabaseClient.channel('dashboard-alerts');
 
