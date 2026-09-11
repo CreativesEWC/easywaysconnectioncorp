@@ -3426,16 +3426,16 @@ async function reviewTicket(ticketId, status, approverName) {
   window.postAdminComment = async function() {
       const postId = document.getElementById('activeAnnId').value;
       const textEl = document.getElementById('commentReplyText');
-      const comment = textEl.value.trim();
+      const commentText = textEl.value.trim();
       
-      if (!comment) return; 
+      if (!commentText) return; 
       
       const { error } = await supabaseClient
-        .from('comments')
+        .from('announcement_comments')
         .insert({
           announcement_id: postId,
-          user_id: emp.id,
-          content: comment
+          employee_id: emp.id,
+          comment: commentText
         });
         
       if (error) {
@@ -3453,7 +3453,7 @@ async function reviewTicket(ticketId, status, approverName) {
     listContainer.innerHTML = '<div class="loading-note">Loading comments...</div>';
 
     const { data, error } = await supabaseClient
-      .from('comments')
+      .from('announcement_comments')
       .select('*, employees(name)')
       .eq('announcement_id', annId)
       .order('created_at', { ascending: true });
@@ -3478,7 +3478,7 @@ async function reviewTicket(ticketId, status, approverName) {
             <strong style="color: var(--amber-400); font-size: 13px;">${escapeHtml(authorName)}</strong>
             <span style="color: #7488b6; font-size: 10px; font-family: var(--font-mono);">${dateStr}</span>
           </div>
-          <div style="font-size: 13px; color: var(--paper); line-height: 1.4;">${escapeHtml(c.content)}</div>
+          <div style="font-size: 13px; color: var(--paper); line-height: 1.4;">${escapeHtml(c.comment)}</div>
         </div>
       `;
     }).join('');
