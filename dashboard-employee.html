@@ -2736,6 +2736,16 @@ aside.sidebar.collapsed ~ main.main-content {
         document.getElementById('modalAnnouncementTitle').textContent = post.title;
         document.getElementById('modalAnnouncementDate').textContent = `${brandLabel} · Posted ${postedDate}`;
         document.getElementById('modalAnnouncementBody').textContent = post.body;
+
+        // ADDED IMAGE LOGIC
+        const imgEl = document.getElementById('modalAnnouncementImage');
+        if (post.image_url) {
+            imgEl.src = post.image_url;
+            imgEl.style.display = 'block';
+        } else {
+            imgEl.src = '';
+            imgEl.style.display = 'none';
+        }
         
         // Store the post ID on the modal so we know where to save new comments
         document.getElementById('announcementModal').dataset.postId = post.id;
@@ -5123,6 +5133,10 @@ window.loadTodayOverallTotal = async function() {
   <div class="modal-box">
     <h2 id="modalAnnouncementTitle">Announcement Title</h2>
     <p id="modalAnnouncementDate" style="font-size: 11px; color: #7488b6; margin-bottom: 12px;"></p>
+
+    <!-- NEW IMAGE PREVIEW AREA -->
+    <img id="modalAnnouncementImage" src="" style="width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; margin-bottom: 15px; display: none; background: #000; border: 1px solid var(--line);">
+    
     <div id="modalAnnouncementBody" style="font-size: 13px; margin-bottom: 24px;">
       <!-- Announcement text will load here -->
     </div>
