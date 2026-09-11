@@ -284,11 +284,12 @@
           ${imgThumb}
           
           <!-- LIKES AND COMMENTS ACTION BAR -->
-          <div class="a-actions">
+          <div class="a-actions"><!-- LIKES AND COMMENTS ACTION BAR -->
+          <div class="a-actions" style="display: flex !important; flex-direction: row !important; align-items: center; gap: 24px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text-muted); font-weight: 600; font-size: 14px;">
             
             <!-- REACTION WRAPPER -->
-            <div class="reaction-wrapper">
-              <div class="a-action-btn" onclick="toggleDefaultLike(this, event)">
+            <div class="reaction-wrapper" style="display: flex; align-items: center; position: relative;">
+              <div class="a-action-btn" onclick="toggleDefaultLike(this, event)" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
                 <span class="react-display" style="display: flex; align-items: center; gap: 6px;" data-reacted="false">
                   <svg class="default-thumb" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
                   <span class="react-count">0</span>
@@ -309,7 +310,7 @@
             </div>
             
             <!-- Chat Bubble / Comments -->
-            <div class="a-action-btn">
+            <div class="a-action-btn" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               <span>${commentTotal}</span>
             </div>
