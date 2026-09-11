@@ -590,6 +590,12 @@ aside.sidebar.collapsed ~ main.main-content {
   .badge-card.reject .badge-name{ color:var(--coral-700); }
   .badge-card.reject .reject-id{ font-family:var(--font-mono); font-size:12px; color:#8a8272; margin-top:4px; }
   .badge-card.reject .badge-message{ padding-bottom:26px; font-size:14px; }
+
+  /* ---- THEMED TOAST NOTIFICATIONS ---- */
+  #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  .themed-toast { background: var(--navy-900); border: 1px solid var(--amber-500); color: var(--paper); padding: 16px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); min-width: 250px; transform: translateX(120%); animation: slideInToast 0.3s forwards; pointer-events: auto; cursor: pointer; }
+  @keyframes slideInToast { to { transform: translateX(0); } }
+  .themed-toast.fade-out { opacity: 0; transition: opacity 0.3s ease; }
   
   
 </style>
@@ -4513,38 +4519,67 @@ if (saveScheduleBtn) {
     });
   }
 
+  // --- THEMED TOAST ENGINE ---
+  window.showThemedToast = function(title, message, icon) {
+      let container = document.getElementById('toastContainer');
+      if (!container) {
+          container = document.createElement('div');
+          container.id = 'toastContainer';
+          document.body.appendChild(container);
+      }
+      
+      const toast = document.createElement('div');
+      toast.className = 'themed-toast';
+      toast.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <span style="font-size: 18px;">${icon}</span>
+              <strong style="color: var(--amber-400); font-size: 14px; font-family: var(--font-display);">${escapeHtml(title)}</strong>
+          </div>
+          <div style="font-size: 13px; color: var(--paper); line-height: 1.4;">${escapeHtml(message)}</div>
+      `;
+      
+      // Click to dismiss early
+      toast.addEventListener('click', () => {
+          toast.classList.add('fade-out');
+          setTimeout(() => toast.remove(), 300);
+      });
+
+      container.appendChild(toast);
+      
+      // Auto-remove after 6 seconds
+      setTimeout(() => {
+          if (toast.parentNode) {
+              toast.classList.add('fade-out');
+              setTimeout(() => toast.remove(), 300);
+          }
+      }, 6000);
+  };
+
 // ---- REAL-TIME DASHBOARD ALERTS ----
   const dashboardChannel = supabaseClient.channel('dashboard-alerts');
 
   // 1. Listen for new Attendance Scans
-    dashboardChannel.on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'attendance_logs' },
-      (payload) => {
-        console.log('New scan received:', payload);
-        
-        // Convert that messy database timestamp into a clean, readable time
-        const timeInRaw = payload.new.time_in;
-        let formattedTime = "Unknown Time";
-        
-        if (timeInRaw) {
-            const dateObj = new Date(timeInRaw);
-            formattedTime = dateObj.toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
-                minute: '2-digit', 
-                hour12: true 
-            });
-        }
-        
-        // Show a clean, human-readable alert to Ming
-        alert(`🚨 New Attendance Scan Logged!\n\nTime In: ${formattedTime}\n\n(The monitoring board will now update automatically.)`);
-        
-        // Automatically refresh the Time In board
-        if (typeof loadMonitoringBoard === 'function') {
-            loadMonitoringBoard();
-        }
+  dashboardChannel.on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'attendance_logs' },
+    (payload) => {
+      console.log('New scan received:', payload);
+      const timeInRaw = payload.new.time_in;
+      let formattedTime = "Unknown Time";
+      
+      if (timeInRaw) {
+          const dateObj = new Date(timeInRaw);
+          formattedTime = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       }
-    );
+      
+      // CALL THE NEW THEMED TOAST
+      showThemedToast("New Attendance Scan", `Time In: ${formattedTime}`, "🚨");
+      
+      if (typeof loadMonitoringBoard === 'function') {
+          loadMonitoringBoard();
+      }
+    }
+  );
 
   // 2. Listen for urgent Announcements
   dashboardChannel.on(
@@ -4552,17 +4587,8 @@ if (saveScheduleBtn) {
     { event: 'INSERT', schema: 'public', table: 'announcements' },
     (payload) => {
       console.log('New announcement:', payload);
-      alert("📢 New Company Announcement!\n\nPlease check the dashboard for details.");
-    }
-  );
-
-  // 3. Listen for general Notifications
-  dashboardChannel.on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'notifications' },
-    (payload) => {
-      console.log('New notification:', payload);
-      //alert("🔔 You have a new notification!");
+      // CALL THE NEW THEMED TOAST
+      showThemedToast("Company Announcement", "A new announcement was just posted! Check the dashboard.", "📢");
     }
   );
 
