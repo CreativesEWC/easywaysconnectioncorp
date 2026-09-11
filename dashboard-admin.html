@@ -3437,20 +3437,21 @@ async function reviewTicket(ticketId, status, approverName) {
       if (!commentText) return; 
       
       const { error } = await supabaseClient
-        .from('announcement_comments')
+        .from('announcement_comments') // Using the correct table!
         .insert({
           announcement_id: postId,
           employee_id: emp.id,
-          comment: commentText
+          comment: commentText 
         });
         
       if (error) {
-        alert('Could not post comment: ' + error.message);
+        // USING YOUR NEW THEMED TOAST INSTEAD OF NATIVE ALERT
+        showThemedToast("Comment Failed", error.message, "⚠️");
         return;
       }
       
       textEl.value = ''; 
-      loadComments(postId); // Refresh feed
+      loadComments(postId); 
   };
 
   // 3. Load Comments into the new Feed
