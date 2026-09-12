@@ -2484,6 +2484,17 @@ function toggleSubNav(containerId, btnElement) {
     if (kioskBtn) kioskBtn.style.display = 'none';
   }
 
+  // RESTRICT TEST ACCOUNTS FROM FINANCE & SUBMISSIONS
+  if (emp.badge_id && emp.badge_id.startsWith('TEST-')) {
+    // Hide the Finance & Payroll accordion
+    const financeAccordion = document.getElementById('financeSubMenu')?.closest('.nav-accordion');
+    if (financeAccordion) financeAccordion.style.display = 'none';
+
+    // Hide the Submissions folder button
+    const submissionsBtn = document.querySelector('[onclick*="submissionsNav"]');
+    if (submissionsBtn) submissionsBtn.style.display = 'none';
+  }
+
   // Configure Finance Navigation Button
   const financeBtn = document.getElementById('navFinanceBtn');
   if (financeBtn) {
