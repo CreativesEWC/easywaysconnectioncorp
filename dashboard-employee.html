@@ -1727,14 +1727,26 @@ aside.sidebar.collapsed ~ main.main-content {
       }
   };
 
-  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (UPGRADED WITH STATUS LOCKING) ----
+  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (UPGRADED SCOPE FIX) ----
   window.loadOverallCommissionSheet = async function() {
       const container = document.getElementById('overallCommissionTracker');
-      if (!container || !activeCutoffStart || !activeCutoffEnd) return;
+      if (!container) return;
 
-      // 1. Generate the 15-day calendar array
-      let startDate = new Date(activeCutoffStart);
-      let endDate = new Date(activeCutoffEnd);
+      // 1. Fetch Cutoff Dates directly to avoid scope issues
+      const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
+      let cutoffStart = settings?.period_start;
+      let cutoffEnd = settings?.period_end;
+
+      // Fallback if database is empty
+      if (!cutoffStart || !cutoffEnd) {
+          const today = new Date();
+          cutoffStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+          cutoffEnd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+      }
+
+      // 2. Generate the 15-day calendar array
+      let startDate = new Date(cutoffStart);
+      let endDate = new Date(cutoffEnd);
       let dates = [];
       let d = new Date(startDate);
       while (d <= endDate) {
@@ -1742,20 +1754,20 @@ aside.sidebar.collapsed ~ main.main-content {
           d.setDate(d.getDate() + 1);
       }
 
-      // 2. Fetch the Live Seller's data (NOW INCLUDES STATUS)
+      // 3. Fetch the Live Seller's data (NOW INCLUDES STATUS)
       const { data: reports, error } = await supabaseClient
           .from('sales_reports')
           .select('report_date, buyers, actual_sales, lh_sold, lh_gmv, status')
           .eq('employee_id', emp.id)
-          .gte('report_date', activeCutoffStart)
-          .lte('report_date', activeCutoffEnd);
+          .gte('report_date', cutoffStart)
+          .lte('report_date', cutoffEnd);
 
       if (error) {
           container.innerHTML = `<div class="error-note" style="padding:20px;">Failed to load overall commission.</div>`;
           return;
       }
 
-      // 3. Group and sum the data by Date & Check Status
+      // 4. Group and sum the data by Date & Check Status
       const dailyTotals = {};
       dates.forEach(date => {
           const dateStr = date.toISOString().split('T')[0];
@@ -1781,7 +1793,7 @@ aside.sidebar.collapsed ~ main.main-content {
 
       // Determine UI state based on database status
       let statusHtml = '<span style="color: var(--amber-500); font-weight: bold;">PENDING (DRAFT)</span>';
-      let btnHtml = `<button class="btn primary" onclick="submitOverallCommission(event)" style="width: 100%; padding: 12px; font-size: 14px;">Sign & Submit to Admin</button>`;
+      let btnHtml = `<button class="btn primary" onclick="submitOverallCommission(event, '${cutoffStart}', '${cutoffEnd}')" style="width: 100%; padding: 12px; font-size: 14px;">Sign & Submit to Admin</button>`;
 
       if (!hasPending && hasSubmitted) {
           statusHtml = '<span style="color: var(--mint-500); font-weight: bold;">LOCKED & SUBMITTED</span>';
@@ -1790,7 +1802,7 @@ aside.sidebar.collapsed ~ main.main-content {
           btnHtml = `<button class="btn" disabled style="width: 100%; padding: 12px; font-size: 14px; background: var(--navy-800); color: var(--text-muted); border: 1px solid var(--line); cursor: not-allowed;">No Sales to Submit</button>`;
       }
 
-      // 4. Build the HTML Grid (Matching the Excel Layout)
+      // 5. Build the HTML Grid (Matching the Excel Layout)
       let thHtml = '<th style="text-align: left; background: #fcd34d; padding: 10px; width: 80px; border-right: 1px solid var(--line); color: var(--navy-950);">DATE:</th>';
       let buyersHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">BUYERS</td>';
       let soldHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SOLD</td>';
@@ -1846,7 +1858,7 @@ aside.sidebar.collapsed ~ main.main-content {
   };
 
   // ---- SUBMIT COMMISSION WORKFLOW ----
-  window.submitOverallCommission = async function(event) {
+  window.submitOverallCommission = async function(event, cutoffStart, cutoffEnd) {
       if (!confirm("Are you sure you want to submit this 15-day period? You will not be able to edit these daily reports once sent to Finance.")) return;
 
       const btn = event.currentTarget;
@@ -1858,8 +1870,8 @@ aside.sidebar.collapsed ~ main.main-content {
           .from('sales_reports')
           .update({ status: 'submitted' })
           .eq('employee_id', emp.id)
-          .gte('report_date', activeCutoffStart)
-          .lte('report_date', activeCutoffEnd);
+          .gte('report_date', cutoffStart)
+          .lte('report_date', cutoffEnd);
 
       if (error) {
           alert("Error submitting reports: " + error.message);
