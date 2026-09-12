@@ -1335,22 +1335,23 @@ aside.sidebar.collapsed ~ main.main-content {
     <section class="panel" style="border-color: var(--mint-500);">
       <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Live Commission Totals</h2>
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button class="btn2 primary" style="font-size: 12px; padding: 6px 12px;">Group by Shift Buddy</button>
-        <button class="btn2" style="font-size: 12px; padding: 6px 12px;">Group by Brand Team</button>
+        <button class="btn2 primary" onclick="loadFinanceLiveTracker()" style="font-size: 12px; padding: 6px 12px;">Refresh Totals</button>
       </div>
       <div style="overflow-x: auto;">
-        <table style="width:100%; border-collapse:collapse; min-width: 600px;">
+        <table style="width:100%; border-collapse:collapse; min-width: 800px; text-align: center;">
           <thead>
             <tr>
-              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Team / Buddies</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line); text-align: left;">Live Seller</th>
               <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total Buyers</th>
               <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total Sold</th>
               <th style="padding: 10px; border-bottom: 1px solid var(--line);">Total GMV</th>
-              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Base Commission</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Final Commission</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Status</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--line);">Action</th>
             </tr>
           </thead>
           <tbody id="liveCommiTable">
-            <tr class="empty-row"><td colspan="5">Loading live commissions...</td></tr>
+            <tr class="empty-row"><td colspan="7">Loading live commissions...</td></tr>
           </tbody>
         </table>
       </div>
@@ -5045,49 +5046,104 @@ if (saveScheduleBtn) {
   async function loadFinanceLiveTracker() {
     const tbody = document.getElementById('liveCommiTable');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" class="loading-note">Loading live commissions...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="loading-note">Loading live commissions...</td></tr>';
     
+    // 1. Get Active Cutoff Dates
     const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
     let firstDay = settings?.period_start;
     let lastDay = settings?.period_end;
 
     if (!firstDay || !lastDay) {
       const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-      lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+      firstDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+      lastDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
     }
     
+    // 2. Fetch the Data for this Cutoff
     const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').gte('report_date', firstDay).lte('report_date', lastDay);
+    
     if (!reps || reps.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No sales reported for this cutoff period.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No sales reported for this cutoff period.</td></tr>';
       return;
     }
     
+    // 3. Aggregate by Employee
     const aggregated = {};
     reps.forEach(r => {
+      const empId = r.employee_id;
       const name = r.employees ? r.employees.name : 'Unknown';
-      if (!aggregated[name]) aggregated[name] = { buyers: 0, sold: 0, gmv: 0, commi: 0 };
-      aggregated[name].buyers += (r.buyers || 0);
-      aggregated[name].sold += (r.sold || 0);
-      aggregated[name].gmv += (parseFloat(r.gmv) || 0);
-      aggregated[name].commi += (parseFloat(r.actual_sales) || 0);
+      
+      if (!aggregated[empId]) {
+          aggregated[empId] = { name: name, buyers: 0, sold: 0, gmv: 0, commi: 0, hasPending: false, hasSubmitted: false, isApproved: false };
+      }
+      
+      aggregated[empId].buyers += (parseInt(r.buyers) || 0);
+      aggregated[empId].sold += (parseInt(r.lh_sold) || 0);
+      aggregated[empId].gmv += (parseFloat(r.lh_gmv) || 0);
+      aggregated[empId].commi += (parseFloat(r.actual_sales) || 0);
+      
+      // Track the overall status of their 15-day records
+      if (r.status === 'pending' || !r.status) aggregated[empId].hasPending = true;
+      if (r.status === 'submitted') aggregated[empId].hasSubmitted = true;
+      if (r.status === 'approved') aggregated[empId].isApproved = true;
     });
     
-    tbody.innerHTML = Object.keys(aggregated).map(name => {
-      const a = aggregated[name];
+    // 4. Render the Finance Table
+    tbody.innerHTML = Object.keys(aggregated).map(empId => {
+      const a = aggregated[empId];
+      
+      let statusBadge = '<span class="pill pending">Drafting</span>';
+      let actionBtn = '<span style="color:#5c6d99; font-size:10px;">Waiting on Seller...</span>';
+
+      if (!a.hasPending && a.hasSubmitted) {
+          statusBadge = '<span class="pill pending" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: #38bdf8;">Submitted</span>';
+          actionBtn = `<button class="btn success" onclick="approveCommission('${empId}', '${firstDay}', '${lastDay}')" style="font-size: 11px; padding: 4px 8px;">Approve Payout</button>`;
+      } else if (!a.hasPending && !a.hasSubmitted && a.isApproved) {
+          statusBadge = '<span class="pill approved">Approved</span>';
+          actionBtn = '<span style="color: var(--mint-500); font-weight: bold; font-size: 11px;">✔️ Cleared</span>';
+      }
+
       return `
-        <tr>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line); font-weight: bold;">${escapeHtml(name)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line);">${a.buyers}</td>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line);">${a.sold}</td>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line);">₱${a.gmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-          <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-400); font-weight: bold;">₱${a.commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <tr style="border-bottom: 1px solid var(--line); font-size: 13px;">
+          <td style="padding: 12px 10px; text-align: left; font-weight: bold; color: var(--paper);">${escapeHtml(a.name)}</td>
+          <td style="padding: 12px 10px; font-family: var(--font-mono);">${a.buyers}</td>
+          <td style="padding: 12px 10px; font-family: var(--font-mono);">${a.sold}</td>
+          <td style="padding: 12px 10px; font-family: var(--font-mono);">₱${a.gmv.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td style="padding: 12px 10px; font-family: var(--font-mono); color: var(--mint-500); font-weight: bold; font-size: 14px;">₱${a.commi.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td style="padding: 12px 10px;">${statusBadge}</td>
+          <td style="padding: 12px 10px;">${actionBtn}</td>
         </tr>
       `;
     }).join('');
   }
+
+  // ---- APPROVE COMMISSION WORKFLOW ----
+  window.approveCommission = async function(employeeId, startDate, endDate) {
+      if (!confirm("Approve this 15-day commission for final payroll?")) return;
+
+      const { error } = await supabaseClient
+          .from('sales_reports')
+          .update({ status: 'approved' })
+          .eq('employee_id', employeeId)
+          .gte('report_date', startDate)
+          .lte('report_date', endDate);
+
+      if (error) {
+          alert("Error approving commission: " + error.message);
+          return;
+      }
+
+      // Notify the Live Seller that their pay is cleared
+      await supabaseClient.from('notifications').insert({
+          employee_id: employeeId,
+          title: '💸 Commission Approved',
+          message: 'Finance has approved your 15-day live sales commission. It will be included in the next payout.',
+          is_read: false
+      });
+
+      showThemedToast("Commission Approved", "The payout has been cleared for payroll.", "✅");
+      loadFinanceLiveTracker(); // Refresh the table
+  };
 
   // ==========================================================
   // ADMIN PAYROLL CUT-OFF MANAGER
