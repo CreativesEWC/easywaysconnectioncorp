@@ -49,6 +49,13 @@
   .r-icon:hover { 
     transform: scale(1.3) translateY(-3px); 
   }
+
+  /* FORCES TRAY OPEN ON MOBILE LONG PRESS */
+  .reaction-wrapper.active-tray .reaction-tray { 
+    opacity: 1 !important; 
+    visibility: visible !important; 
+    transform: translateY(0) !important; 
+  }
   
   /* STRICTLY WHITE THEME (No Dark Mode Variables) */
   :root {
@@ -427,8 +434,14 @@
           
           <div class="a-actions" style="display: flex !important; flex-direction: row !important; align-items: center; gap: 24px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text-muted); font-weight: 600; font-size: 14px;">
             <div class="reaction-wrapper" style="display: flex; align-items: center; position: relative;">
-              <!-- LIKES ACTION BUTTON -->
-              <div class="a-action-btn" onclick="toggleDefaultLike(this, event, '${p.id}')" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <!-- LIKES ACTION BUTTON (Now with Touch Support) -->
+              <div class="a-action-btn" 
+                   onclick="toggleDefaultLike(this, event, '${p.id}')" 
+                   ontouchstart="startReactionPress(event, this)" 
+                   ontouchend="cancelReactionPress()" 
+                   ontouchmove="cancelReactionPress()" 
+                   oncontextmenu="event.preventDefault();"
+                   style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
                 <span class="react-display" style="display: flex; align-items: center; gap: 6px; color: ${reactColor};" data-reacted="${isReacted}">
                   ${reactIcon}
                   <span class="react-count">${reactionTotal}</span>
@@ -596,7 +609,13 @@
             <div style="font-size: 12px; color: #65676b; margin-top: 4px; margin-left: 12px; display: flex; gap: 14px; align-items: center;">
               
               <div class="reaction-wrapper" style="position: relative; display: flex; align-items: center;">
-                <span data-reacted="${myReact ? 'true' : 'false'}" style="cursor: pointer; transition: color 0.2s; color: ${reactColor}; font-weight: ${reactWeight};" onclick="toggleDefaultCommentLike(this, event, '${c.id}')">${reactText}</span>
+                <span data-reacted="${myReact ? 'true' : 'false'}" 
+                      style="cursor: pointer; transition: color 0.2s; color: ${reactColor}; font-weight: ${reactWeight};" 
+                      onclick="toggleDefaultCommentLike(this, event, '${c.id}')"
+                      ontouchstart="startReactionPress(event, this)" 
+                      ontouchend="cancelReactionPress()" 
+                      ontouchmove="cancelReactionPress()"
+                      oncontextmenu="event.preventDefault();">${reactText}</span>
                 <div class="reaction-tray" style="bottom: 100%; left: -10px; padding-bottom: 5px;">
                   <div class="reaction-tray-inner">
                     <span class="r-icon" onclick="setCommentReaction('👍', event, '${c.id}')">👍</span>
@@ -716,6 +735,31 @@
     input.value = `@${authorName} `;
     input.focus();
   };
+
+  // --- MOBILE LONG PRESS LOGIC ---
+  let reactionTimer;
+
+  window.startReactionPress = function(event, el) {
+    if (event.type === 'touchstart') {
+      reactionTimer = setTimeout(() => {
+        // Close any other open trays first
+        document.querySelectorAll('.reaction-wrapper.active-tray').forEach(w => w.classList.remove('active-tray'));
+        // Open the one being held down
+        el.closest('.reaction-wrapper').classList.add('active-tray');
+      }, 400); // 400ms triggers the long-press
+    }
+  };
+
+  window.cancelReactionPress = function() {
+    clearTimeout(reactionTimer);
+  };
+
+  // Tap anywhere else on the screen to close open trays
+  document.addEventListener('touchstart', function(e) {
+    if (!e.target.closest('.reaction-wrapper')) {
+      document.querySelectorAll('.reaction-wrapper.active-tray').forEach(w => w.classList.remove('active-tray'));
+    }
+  });
 
   // Start the page
   init();
