@@ -532,7 +532,7 @@
     }
 
     feed.innerHTML = data.map(c => {
-      const author = c.employees ? c.employees.name : 'Unknown';
+      const author = c.employees ? c.employees.name.split(' ')[0] : 'Unknown';
       const avatar = (c.employees && c.employees.avatar_url) ? c.employees.avatar_url : 'easyway_icon.svg';
       const time = new Date(c.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
       
@@ -540,16 +540,22 @@
         <div style="display: flex; gap: 8px;">
           <img src="${avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line);">
           <div style="display: flex; flex-direction: column;">
-            <div style="background: #f0f2f5; padding: 8px 12px; border-radius: 18px; display: inline-block;">
+            <div style="background: #f0f2f5; padding: 8px 12px; border-radius: 18px; display: inline-block; width: fit-content;">
               <div style="font-weight: 600; font-size: 13px; color: #050505;">${escapeHtml(author)}</div>
               <div style="font-size: 14px; color: #050505; margin-top: 2px;">${escapeHtml(c.comment)}</div>
             </div>
-            <div style="font-size: 12px; color: #65676b; margin-top: 4px; margin-left: 12px; font-weight: 600;">Like · Reply · ${time}</div>
+            
+            <!-- INTERACTIVE COMMENT FOOTER -->
+            <div style="font-size: 12px; color: #65676b; margin-top: 4px; margin-left: 12px; font-weight: 600; display: flex; gap: 14px;">
+              <span style="cursor: pointer; transition: color 0.2s;" onclick="toggleCommentLike(this)">Like</span>
+              <span style="cursor: pointer; transition: color 0.2s;" onclick="replyToComment('${escapeHtml(author)}')">Reply</span>
+              <span style="font-weight: normal;">${time}</span>
+            </div>
+            
           </div>
         </div>
       `;
     }).join('');
-  }
 
   // 7. Post a new comment
   document.getElementById('postReplyBtn').addEventListener('click', async () => {
@@ -587,6 +593,24 @@
       document.getElementById('postReplyBtn').click();
     }
   });
+
+    // --- COMMENT INTERACTIONS ---
+  window.toggleCommentLike = function(el) {
+    // Toggles between standard grey and Facebook Blue
+    if (el.style.color === 'rgb(24, 119, 242)' || el.style.color === '#1877F2') {
+      el.style.color = '#65676b';
+      el.style.fontWeight = '600';
+    } else {
+      el.style.color = '#1877F2';
+      el.style.fontWeight = 'bold';
+    }
+  };
+
+  window.replyToComment = function(authorName) {
+    const input = document.getElementById('replyInput');
+    input.value = `@${authorName} `; // Automatically tags the person
+    input.focus(); // Pops open the mobile keyboard instantly
+  };
 
   // Start the page
   init();
