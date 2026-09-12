@@ -2476,6 +2476,14 @@ function toggleSubNav(containerId, btnElement) {
   // Dynamic Permission Check
   const canAccessFinance = isSuperAdmin || (isDeveloper && emp.finance_unlocked === true);
 
+  // Hide Parcel and Kiosk tabs specifically for Eden and Catherine
+  if (emp.name === 'Eden Rose R. De Leon' || emp.name === 'Catherine R. Cay') {
+    const parcelBtn = document.getElementById('navParcelsBtn');
+    const kioskBtn = document.getElementById('navKioskScannerBtn');
+    if (parcelBtn) parcelBtn.style.display = 'none';
+    if (kioskBtn) kioskBtn.style.display = 'none';
+  }
+
   // Configure Finance Navigation Button
   const financeBtn = document.getElementById('navFinanceBtn');
   if (financeBtn) {
