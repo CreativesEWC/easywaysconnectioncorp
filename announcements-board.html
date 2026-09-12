@@ -138,6 +138,36 @@
   .fb-comment-input input { flex: 1; background: transparent; border: none; outline: none; font-size: 14px; color: #050505; }
   .fb-comment-btn { border: none; background: transparent; color: #1877F2; font-weight: 600; cursor: pointer; padding: 4px; transition: 0.2s; }
   .fb-comment-btn:hover { color: #145dbf; }
+
+  /* MOBILE RESPONSIVENESS (Facebook App Layout) */
+  @media (max-width: 768px) {
+    .modal-overlay { padding: 0; }
+    
+    .modal-box { 
+      flex-direction: column; 
+      height: 100dvh; /* 100dvh prevents iOS Safari bottom-bar glitches */
+      max-height: 100dvh; 
+      border-radius: 0; 
+    }
+    
+    /* Image takes the top 35% of the screen */
+    .modal-left { 
+      width: 100%; 
+      height: 35vh; 
+      flex: none; 
+    }
+    
+    /* Comments take the bottom 65% */
+    .modal-right { 
+      width: 100%; 
+      flex: 1; 
+      border-left: none; 
+    }
+    
+    /* Text-only posts fill the whole screen */
+    .modal-box.no-image { height: 100dvh; max-height: 100dvh; }
+  }
+  
 </style>
 </head>
 <body>
@@ -168,7 +198,7 @@
     <div class="modal-right">
       
       <!-- Header (Sticky) -->
-      <div class="modal-right-header">
+      <div class="modal-right-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div class="a-header" style="margin-bottom: 0;">
           <img id="modalPosterAvatar" src="" class="a-avatar">
           <div class="a-header-info">
@@ -176,6 +206,9 @@
             <div class="a-post-time" id="modalPostTime">Time</div>
           </div>
         </div>
+        
+        <!-- NEW CLOSE BUTTON FOR MOBILE -->
+        <button onclick="closeModal()" style="background: transparent; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; padding: 0 5px; line-height: 1;">&times;</button>
       </div>
       
       <!-- Middle (Scrollable Body & Comments) -->
