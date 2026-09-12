@@ -1155,10 +1155,19 @@ aside.sidebar.collapsed ~ main.main-content {
 
       <!-- 2. LIVE COMMISSION TAB -->
       <div id="lh-live-commi" class="lh-tab-content">
-        <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
-          <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Submit Daily Sales Report</h2>
-          
-          <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
+        
+        <!-- INNER NAVIGATION FOR LIVE COMMISSION -->
+        <div style="display:flex; gap:8px; margin-bottom:16px; overflow-x:auto;">
+          <button class="btn2 primary" id="btn-live-daily" onclick="toggleLiveView('live-daily', this)">Daily Sales Report</button>
+          <button class="btn2" id="btn-live-overall" onclick="toggleLiveView('live-overall', this)">Overall Sales Report</button>
+        </div>
+
+        <!-- VIEW 1: DAILY SALES REPORT FORM -->
+        <div id="live-daily">
+          <section class="panel" style="margin-bottom: 24px; border-color: var(--mint-500);">
+            <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Submit Daily Sales Report</h2>
+            
+            <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
             
             <!-- GLOBAL BUDDY SELECTORS (For tracking purposes only) -->
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 10px;">
@@ -1252,7 +1261,16 @@ aside.sidebar.collapsed ~ main.main-content {
             <div id="dynamicSummaryContainer"></div>
           </form>
         </section>
-      </div>
+      </div> <!-- CLOSES VIEW 1: DAILY SALES REPORT -->
+
+        <!-- VIEW 2: OVERALL SPREADSHEET (HIDDEN BY DEFAULT) -->
+        <div id="live-overall" style="display: none;">
+          <section class="panel" style="margin-bottom: 24px; border-color: #fcd34d; padding: 0; overflow: hidden;" id="overallCommissionTracker">
+              <div class="loading-note" style="padding: 20px; text-align: center;">Loading Overall Commission Spreadsheet...</div>
+          </section>
+        </div>
+
+      </div> <!-- CLOSES THE ENTIRE LIVE COMMISSION TAB -->
 
       <!-- 3. MY REQUESTS TAB -->
       <div id="lh-requests" class="lh-tab-content" style="display: none;">
@@ -1689,8 +1707,181 @@ aside.sidebar.collapsed ~ main.main-content {
       // Show targeted tab
       document.getElementById(tabId).style.display = 'block';
       
-      // Add active class to clicked button
-      event.currentTarget.classList.add('active');
+     // Add active class to clicked button
+    event.currentTarget.classList.add('active');
+  };
+
+  // ---- LIVE COMMISSION INNER TOGGLE ----
+  window.toggleLiveView = function(targetId, clickedBtn) {
+      document.getElementById('live-daily').style.display = 'none';
+      document.getElementById('live-overall').style.display = 'none';
+      
+      document.getElementById('btn-live-daily').classList.remove('primary');
+      document.getElementById('btn-live-overall').classList.remove('primary');
+      
+      document.getElementById(targetId).style.display = 'block';
+      clickedBtn.classList.add('primary');
+      
+      if (targetId === 'live-overall' && typeof window.loadOverallCommissionSheet === 'function') {
+          window.loadOverallCommissionSheet();
+      }
+  };
+
+  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (UPGRADED WITH STATUS LOCKING) ----
+  window.loadOverallCommissionSheet = async function() {
+      const container = document.getElementById('overallCommissionTracker');
+      if (!container || !activeCutoffStart || !activeCutoffEnd) return;
+
+      // 1. Generate the 15-day calendar array
+      let startDate = new Date(activeCutoffStart);
+      let endDate = new Date(activeCutoffEnd);
+      let dates = [];
+      let d = new Date(startDate);
+      while (d <= endDate) {
+          dates.push(new Date(d));
+          d.setDate(d.getDate() + 1);
+      }
+
+      // 2. Fetch the Live Seller's data (NOW INCLUDES STATUS)
+      const { data: reports, error } = await supabaseClient
+          .from('sales_reports')
+          .select('report_date, buyers, actual_sales, lh_sold, lh_gmv, status')
+          .eq('employee_id', emp.id)
+          .gte('report_date', activeCutoffStart)
+          .lte('report_date', activeCutoffEnd);
+
+      if (error) {
+          container.innerHTML = `<div class="error-note" style="padding:20px;">Failed to load overall commission.</div>`;
+          return;
+      }
+
+      // 3. Group and sum the data by Date & Check Status
+      const dailyTotals = {};
+      dates.forEach(date => {
+          const dateStr = date.toISOString().split('T')[0];
+          dailyTotals[dateStr] = { buyers: 0, sold: 0, gmv: 0, commi: 0 };
+      });
+
+      let hasPending = false;
+      let hasSubmitted = false;
+
+      if (reports) {
+          reports.forEach(r => {
+              if (r.status === 'pending' || !r.status) hasPending = true;
+              if (r.status === 'submitted' || r.status === 'approved') hasSubmitted = true;
+
+              if (dailyTotals[r.report_date]) {
+                  dailyTotals[r.report_date].buyers += parseInt(r.buyers) || 0;
+                  dailyTotals[r.report_date].sold += parseInt(r.lh_sold) || 0;
+                  dailyTotals[r.report_date].gmv += parseFloat(r.lh_gmv) || 0;
+                  dailyTotals[r.report_date].commi += parseFloat(r.actual_sales) || 0;
+              }
+          });
+      }
+
+      // Determine UI state based on database status
+      let statusHtml = '<span style="color: var(--amber-500); font-weight: bold;">PENDING (DRAFT)</span>';
+      let btnHtml = `<button class="btn primary" onclick="submitOverallCommission(event)" style="width: 100%; padding: 12px; font-size: 14px;">Sign & Submit to Admin</button>`;
+
+      if (!hasPending && hasSubmitted) {
+          statusHtml = '<span style="color: var(--mint-500); font-weight: bold;">LOCKED & SUBMITTED</span>';
+          btnHtml = `<button class="btn" disabled style="width: 100%; padding: 12px; font-size: 14px; background: var(--navy-800); color: var(--text-muted); border: 1px solid var(--line); cursor: not-allowed;">Sent to Finance</button>`;
+      } else if (!hasPending && !hasSubmitted) {
+          btnHtml = `<button class="btn" disabled style="width: 100%; padding: 12px; font-size: 14px; background: var(--navy-800); color: var(--text-muted); border: 1px solid var(--line); cursor: not-allowed;">No Sales to Submit</button>`;
+      }
+
+      // 4. Build the HTML Grid (Matching the Excel Layout)
+      let thHtml = '<th style="text-align: left; background: #fcd34d; padding: 10px; width: 80px; border-right: 1px solid var(--line); color: var(--navy-950);">DATE:</th>';
+      let buyersHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">BUYERS</td>';
+      let soldHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SOLD</td>';
+      let gmvHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">GMV</td>';
+      let totalHtml = '<td style="text-align: left; background: #fcd34d; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">TOTAL</td>';
+
+      let grandTotalCommi = 0;
+
+      dates.forEach(date => {
+          const dateStr = date.toISOString().split('T')[0];
+          const dayNum = date.getDate();
+          const t = dailyTotals[dateStr];
+
+          grandTotalCommi += t.commi;
+
+          thHtml += `<th style="background: #fcd34d; color: var(--navy-950); padding: 8px; border-right: 1px solid var(--line);">${dayNum}</th>`;
+          buyersHtml += `<td style="border-right: 1px solid var(--line);">${t.buyers > 0 ? t.buyers : ''}</td>`;
+          soldHtml += `<td style="border-right: 1px solid var(--line);">${t.sold > 0 ? t.sold : ''}</td>`;
+          gmvHtml += `<td style="border-right: 1px solid var(--line);">${t.gmv > 0 ? t.gmv.toLocaleString() : ''}</td>`;
+          totalHtml += `<td style="background: #fcd34d; font-weight: bold; color: var(--navy-950); border-right: 1px solid var(--line);">${t.commi > 0 ? t.commi.toLocaleString() : ''}</td>`;
+      });
+
+      const startFmt = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+      const endFmt = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+
+      container.innerHTML = `
+          <div style="text-align: center; background: #fcd34d; color: #000; padding: 10px; font-weight: 800; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.5px; border-bottom: 1px solid var(--line);">
+              LIVE SELLERS DAILY SALES REPORT (${startFmt} TO ${endFmt})
+          </div>
+          <div style="overflow-x: auto; background: var(--paper);">
+              <table style="width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; font-family: var(--font-mono); font-size: 13px;">
+                  <thead><tr style="border-bottom: 1px solid var(--line);">${thHtml}</tr></thead>
+                  <tbody>
+                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${buyersHtml}</tr>
+                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${soldHtml}</tr>
+                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${gmvHtml}</tr>
+                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${totalHtml}</tr>
+                  </tbody>
+              </table>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--navy-900);">
+              <div style="font-family: var(--font-mono); font-size: 13px;">
+                  <div style="margin-bottom: 10px;">LIVE HOST NAME: <strong style="color: var(--paper); border-bottom: 1px solid var(--line); padding-bottom: 2px;">${emp.name.toUpperCase()}</strong></div>
+                  <div>STATUS: ${statusHtml}</div>
+              </div>
+              <div style="text-align: right;">
+                  <div style="font-size: 12px; color: #7488b6; margin-bottom: 4px; font-family: var(--font-mono);">PERIOD GRAND TOTAL</div>
+                  <div style="font-size: 26px; font-weight: 700; color: var(--mint-500); margin-bottom: 12px; font-family: var(--font-mono);">₱${grandTotalCommi.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                  ${btnHtml}
+              </div>
+          </div>
+      `;
+  };
+
+  // ---- SUBMIT COMMISSION WORKFLOW ----
+  window.submitOverallCommission = async function(event) {
+      if (!confirm("Are you sure you want to submit this 15-day period? You will not be able to edit these daily reports once sent to Finance.")) return;
+
+      const btn = event.currentTarget;
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      // 1. Lock all the daily reports for this cutoff
+      const { error } = await supabaseClient
+          .from('sales_reports')
+          .update({ status: 'submitted' })
+          .eq('employee_id', emp.id)
+          .gte('report_date', activeCutoffStart)
+          .lte('report_date', activeCutoffEnd);
+
+      if (error) {
+          alert("Error submitting reports: " + error.message);
+          btn.disabled = false;
+          btn.textContent = 'Sign & Submit to Admin';
+          return;
+      }
+
+      // 2. Notify the Admins/Finance
+      const { data: admins } = await supabaseClient.from('employees').select('id').in('role', ['admin', 'president']);
+      if (admins && admins.length > 0) {
+          const notifs = admins.map(a => ({
+              employee_id: a.id,
+              title: '💰 Commission Submission',
+              message: `${emp.name.split(' ')[0]} submitted their 15-day commission for review.`,
+              is_read: false
+          }));
+          await supabaseClient.from('notifications').insert(notifs);
+      }
+
+      alert("Successfully submitted to Admin for payroll processing!");
+      window.loadOverallCommissionSheet(); // Refresh the grid to show LOCKED state
   };
 
   // ---- AUTO-TALLY LOGIC (PREP FOR SUPABASE) ----
