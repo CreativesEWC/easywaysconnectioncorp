@@ -1727,12 +1727,11 @@ aside.sidebar.collapsed ~ main.main-content {
       }
   };
 
-  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (UPGRADED SCOPE FIX) ----
+  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (UPGRADED SCOPE & SHOPS FIX) ----
   window.loadOverallCommissionSheet = async function() {
       const container = document.getElementById('overallCommissionTracker');
       if (!container) return;
 
-      // FIX: Fetch the employee record locally so it doesn't rely on the wrapper scope
       const emp = await getMyEmployeeRecord();
       if (!emp) return;
 
@@ -1741,7 +1740,6 @@ aside.sidebar.collapsed ~ main.main-content {
       let cutoffStart = settings?.period_start;
       let cutoffEnd = settings?.period_end;
 
-      // Fallback if database is empty
       if (!cutoffStart || !cutoffEnd) {
           const today = new Date();
           cutoffStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
@@ -1758,10 +1756,10 @@ aside.sidebar.collapsed ~ main.main-content {
           d.setDate(d.getDate() + 1);
       }
 
-      // 3. Fetch the Live Seller's data (NOW INCLUDES STATUS)
+      // 3. Fetch the Live Seller's data (NOW INCLUDES SHOP_NAME)
       const { data: reports, error } = await supabaseClient
           .from('sales_reports')
-          .select('report_date, buyers, actual_sales, lh_sold, lh_gmv, status')
+          .select('report_date, buyers, actual_sales, lh_sold, lh_gmv, status, shop_name')
           .eq('employee_id', emp.id)
           .gte('report_date', cutoffStart)
           .lte('report_date', cutoffEnd);
@@ -1771,11 +1769,11 @@ aside.sidebar.collapsed ~ main.main-content {
           return;
       }
 
-      // 4. Group and sum the data by Date & Check Status
+      // 4. Group and sum the data by Date, and collect unique shop names
       const dailyTotals = {};
       dates.forEach(date => {
           const dateStr = date.toISOString().split('T')[0];
-          dailyTotals[dateStr] = { buyers: 0, sold: 0, gmv: 0, commi: 0 };
+          dailyTotals[dateStr] = { buyers: 0, sold: 0, gmv: 0, commi: 0, shops: new Set() };
       });
 
       let hasPending = false;
@@ -1791,6 +1789,9 @@ aside.sidebar.collapsed ~ main.main-content {
                   dailyTotals[r.report_date].sold += parseInt(r.lh_sold) || 0;
                   dailyTotals[r.report_date].gmv += parseFloat(r.lh_gmv) || 0;
                   dailyTotals[r.report_date].commi += parseFloat(r.actual_sales) || 0;
+                  
+                  // Add the shop name to the daily tracking list
+                  if (r.shop_name) dailyTotals[r.report_date].shops.add(r.shop_name.trim());
               }
           });
       }
@@ -1806,8 +1807,9 @@ aside.sidebar.collapsed ~ main.main-content {
           btnHtml = `<button class="btn" disabled style="width: 100%; padding: 12px; font-size: 14px; background: var(--navy-800); color: var(--text-muted); border: 1px solid var(--line); cursor: not-allowed;">No Sales to Submit</button>`;
       }
 
-      // 5. Build the HTML Grid (Matching the Excel Layout)
+      // 5. Build the HTML Grid
       let thHtml = '<th style="text-align: left; background: #fcd34d; padding: 10px; width: 80px; border-right: 1px solid var(--line); color: var(--navy-950);">DATE:</th>';
+      let shopsHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SHOPS</td>';
       let buyersHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">BUYERS</td>';
       let soldHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SOLD</td>';
       let gmvHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">GMV</td>';
@@ -1822,7 +1824,14 @@ aside.sidebar.collapsed ~ main.main-content {
 
           grandTotalCommi += t.commi;
 
+          // Convert the Set of shops into a comma-separated string
+          const shopList = Array.from(t.shops).join(', ');
+
           thHtml += `<th style="background: #fcd34d; color: var(--navy-950); padding: 8px; border-right: 1px solid var(--line);">${dayNum}</th>`;
+          
+          // Truncate long shop names so they don't break the table width, but allow hover to see all of them
+          shopsHtml += `<td style="border-right: 1px solid var(--line); font-size: 10px; color: #6b7280; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${shopList}">${shopList}</td>`;
+          
           buyersHtml += `<td style="border-right: 1px solid var(--line);">${t.buyers > 0 ? t.buyers : ''}</td>`;
           soldHtml += `<td style="border-right: 1px solid var(--line);">${t.sold > 0 ? t.sold : ''}</td>`;
           gmvHtml += `<td style="border-right: 1px solid var(--line);">${t.gmv > 0 ? t.gmv.toLocaleString() : ''}</td>`;
@@ -1840,6 +1849,7 @@ aside.sidebar.collapsed ~ main.main-content {
               <table style="width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; font-family: var(--font-mono); font-size: 13px;">
                   <thead><tr style="border-bottom: 1px solid var(--line);">${thHtml}</tr></thead>
                   <tbody>
+                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${shopsHtml}</tr>
                       <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${buyersHtml}</tr>
                       <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${soldHtml}</tr>
                       <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${gmvHtml}</tr>
