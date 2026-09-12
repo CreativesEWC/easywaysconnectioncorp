@@ -160,36 +160,62 @@
 <script src="supabase-config.js"></script>
 <script>
 
-  // --- FRONTEND REACTION LOGIC (Visual Only) ---
-  window.setReaction = function(el, emoji, event) {
-    event.stopPropagation(); // Stop the modal from opening when reacting
+  // --- DATABASE-CONNECTED REACTION LOGIC ---
+  window.setReaction = async function(el, emoji, event, postId) {
+    event.stopPropagation(); 
     const wrapper = el.closest('.reaction-wrapper');
     const display = wrapper.querySelector('.react-display');
     const color = el.getAttribute('data-color');
     
-    // Replace the default icon with the chosen emoji and change the color
-    display.innerHTML = `<span style="font-size: 18px;">${emoji}</span> <span class="react-count">1</span>`;
+    let currentCount = parseInt(display.querySelector('.react-count').textContent) || 0;
+    let newCount = display.dataset.reacted === 'true' ? currentCount : currentCount + 1;
+    
+    // 1. Instant Visual Update
+    display.innerHTML = `<span style="font-size: 18px;">${emoji}</span> <span class="react-count">${newCount}</span>`;
     display.style.color = color;
     display.dataset.reacted = 'true';
+
+    // 2. Save to Supabase (Upsert handles updates automatically)
+    await supabaseClient.from('announcement_reactions').upsert({
+        announcement_id: postId,
+        employee_id: emp.id,
+        reaction_type: emoji
+    }, { onConflict: 'announcement_id, employee_id' });
   };
 
-  window.toggleDefaultLike = function(btn, event) {
-    event.stopPropagation(); // Stop the modal from opening
+  window.toggleDefaultLike = async function(btn, event, postId) {
+    event.stopPropagation(); 
     const display = btn.querySelector('.react-display');
+    let currentCount = parseInt(display.querySelector('.react-count').textContent) || 0;
     
-    // If they click the main button and it's already reacted, reset it back to 0
     if (display.dataset.reacted === 'true') {
-      display.innerHTML = `<svg class="default-thumb" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> <span class="react-count">0</span>`;
+      // 1. Instant Visual UNLIKE
+      let newCount = Math.max(0, currentCount - 1);
+      display.innerHTML = `<svg class="default-thumb" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> <span class="react-count">${newCount}</span>`;
       display.style.color = 'var(--text-muted)';
       display.dataset.reacted = 'false';
+
+      // 2. Delete from Supabase
+      await supabaseClient.from('announcement_reactions')
+        .delete()
+        .eq('announcement_id', postId)
+        .eq('employee_id', emp.id);
+
     } else {
-      // If they just click the button directly, default to a standard "Like"
-      display.innerHTML = `<span style="font-size: 18px;">👍</span> <span class="react-count">1</span>`;
-      display.style.color = '#3b5998'; // Facebook Blue
+      // 1. Instant Visual LIKE
+      display.innerHTML = `<span style="font-size: 18px;">👍</span> <span class="react-count">${currentCount + 1}</span>`;
+      display.style.color = '#3b5998'; 
       display.dataset.reacted = 'true';
+
+      // 2. Save to Supabase
+      await supabaseClient.from('announcement_reactions').upsert({
+          announcement_id: postId,
+          employee_id: emp.id,
+          reaction_type: '👍'
+      }, { onConflict: 'announcement_id, employee_id' });
     }
   };
-  
+
   let emp = null;
 
   // 1. Escape HTML to prevent formatting breaks
@@ -297,7 +323,7 @@
           
           <div class="a-actions" style="display: flex !important; flex-direction: row !important; align-items: center; gap: 24px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text-muted); font-weight: 600; font-size: 14px;">
             <div class="reaction-wrapper" style="display: flex; align-items: center; position: relative;">
-              <!-- ADDED '${p.id}' HERE SO THE DATABASE KNOWS WHICH POST WAS LIKED -->
+              <!-- LIKES ACTION BUTTON -->
               <div class="a-action-btn" onclick="toggleDefaultLike(this, event, '${p.id}')" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
                 <span class="react-display" style="display: flex; align-items: center; gap: 6px; color: ${reactColor};" data-reacted="${isReacted}">
                   ${reactIcon}
@@ -305,9 +331,9 @@
                 </span>
               </div>
               
+              <!-- HOVER REACTION TRAY -->
               <div class="reaction-tray">
                 <div class="reaction-tray-inner">
-                  <!-- ADDED '${p.id}' HERE TOO -->
                   <span class="r-icon" data-color="#3b5998" onclick="setReaction(this, '👍', event, '${p.id}')">👍</span>
                   <span class="r-icon" data-color="#e0245e" onclick="setReaction(this, '❤️', event, '${p.id}')">❤️</span>
                   <span class="r-icon" data-color="#f5c33b" onclick="setReaction(this, '😂', event, '${p.id}')">😂</span>
@@ -318,6 +344,7 @@
               </div>
             </div>
             
+            <!-- COMMENTS BUTTON -->
             <div class="a-action-btn" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               <span>${commentTotal}</span>
@@ -360,7 +387,7 @@
     document.getElementById('announcementModal').classList.remove('open');
   };
 
-  // 6. Fetch Comments (Using correct table: announcement_comments)
+  // 6. Fetch Comments
   async function loadComments(postId) {
     const feed = document.getElementById('commentFeed');
     feed.innerHTML = '<div style="color: #6b7280; font-size: 13px; font-style: italic;">Loading comments...</div>';
