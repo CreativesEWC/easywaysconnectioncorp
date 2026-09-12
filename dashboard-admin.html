@@ -1334,9 +1334,13 @@ aside.sidebar.collapsed ~ main.main-content {
   <div id="finance-live" class="finance-tab-content" style="display:none;">
     <section class="panel" style="border-color: var(--mint-500);">
       <h2 style="color: var(--mint-500); margin-top: 0; margin-bottom: 15px;">Live Commission Totals</h2>
+      
+      <!-- ADDED EXPORT BUTTON HERE -->
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
         <button class="btn2 primary" onclick="loadFinanceLiveTracker()" style="font-size: 12px; padding: 6px 12px;">Refresh Totals</button>
+        <button class="btn2 primary" onclick="exportFinanceLiveCSV()" style="font-size: 12px; padding: 6px 12px; background: var(--mint-500); border: none; color: #000; font-weight: bold;">📥 Export CSV</button>
       </div>
+      
       <div style="overflow-x: auto;">
         <table style="width:100%; border-collapse:collapse; min-width: 800px; text-align: center;">
           <thead>
@@ -5043,7 +5047,7 @@ if (saveScheduleBtn) {
     }).join('');
   }
   
-  async function loadFinanceLiveTracker() {
+  window.loadFinanceLiveTracker = async function() {
     const tbody = document.getElementById('liveCommiTable');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="7" class="loading-note">Loading live commissions...</td></tr>';
@@ -5059,10 +5063,15 @@ if (saveScheduleBtn) {
       lastDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
     }
     
+    // Cache dates globally for the CSV filename
+    window.currentFinanceCutoffStart = firstDay;
+    window.currentFinanceCutoffEnd = lastDay;
+    
     // 2. Fetch the Data for this Cutoff
     const { data: reps } = await supabaseClient.from('sales_reports').select('*, employees(name)').gte('report_date', firstDay).lte('report_date', lastDay);
     
     if (!reps || reps.length === 0) {
+      window.cachedFinanceLiveCommissions = {};
       tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No sales reported for this cutoff period.</td></tr>';
       return;
     }
@@ -5087,6 +5096,9 @@ if (saveScheduleBtn) {
       if (r.status === 'submitted') aggregated[empId].hasSubmitted = true;
       if (r.status === 'approved') aggregated[empId].isApproved = true;
     });
+
+    // Cache the aggregated totals globally for the CSV export
+    window.cachedFinanceLiveCommissions = aggregated;
     
     // 4. Render the Finance Table
     tbody.innerHTML = Object.keys(aggregated).map(empId => {
@@ -5115,7 +5127,47 @@ if (saveScheduleBtn) {
         </tr>
       `;
     }).join('');
-  }
+  };
+
+  // ---- EXPORT FINANCE LIVE CSV ----
+  window.exportFinanceLiveCSV = function() {
+      const aggregated = window.cachedFinanceLiveCommissions;
+      if (!aggregated || Object.keys(aggregated).length === 0) {
+          alert("No commission data available to export.");
+          return;
+      }
+
+      const headers = ["Live Seller", "Total Buyers", "Total Sold", "Total GMV", "Final Commission", "Approval Status"];
+      
+      const rows = Object.values(aggregated).map(a => {
+          let statusText = "Drafting";
+          if (!a.hasPending && a.hasSubmitted) statusText = "Submitted (Pending Approval)";
+          if (!a.hasPending && !a.hasSubmitted && a.isApproved) statusText = "Approved";
+
+          return [
+              `"${a.name.replace(/"/g, '""')}"`,
+              a.buyers,
+              a.sold,
+              a.gmv.toFixed(2),
+              a.commi.toFixed(2),
+              `"${statusText}"`
+          ];
+      });
+
+      const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      const start = window.currentFinanceCutoffStart || 'start';
+      const end = window.currentFinanceCutoffEnd || 'end';
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Live_Commission_Payout_${start}_to_${end}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
 
   // ---- APPROVE COMMISSION WORKFLOW ----
   window.approveCommission = async function(employeeId, startDate, endDate) {
