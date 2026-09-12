@@ -2764,7 +2764,14 @@ function toggleSubNav(containerId, btnElement) {
       document.getElementById('rosterLoading').className = 'error-note';
       return;
     }
-    allEmployees = data || [];
+    
+    // STRICT FILTER: Hide [DEV] accounts from normal admins
+    const isDev = emp.badge_id === 'CREATIVES-01';
+    allEmployees = (data || []).filter(e => {
+        if (isDev) return true; // Developers see everyone
+        return !(e.badge_id && String(e.badge_id).startsWith('TEST-')) && !(e.name && e.name.includes('[DEV]'));
+    });
+
     document.getElementById('rosterTable').style.display = 'table';
     renderRoster();
   }
@@ -4319,7 +4326,14 @@ async function reviewTicket(ticketId, status, approverName) {
     document.getElementById('monLoading').style.display = 'none';
     if (!emps) return;
 
-    window.monitoringData = emps.map(e => {
+    // STRICT FILTER: Hide [DEV] accounts from normal admins
+    const isDev = emp.badge_id === 'CREATIVES-01';
+    const validEmps = emps.filter(e => {
+        if (isDev) return true; // Developers see everyone
+        return !(e.badge_id && String(e.badge_id).startsWith('TEST-')) && !(e.name && e.name.includes('[DEV]'));
+    });
+
+    window.monitoringData = validEmps.map(e => {
       let statusCat = 'offline';
       let statusText = 'Time out / Offline';
       let dotColor = 'gray';
@@ -5071,6 +5085,10 @@ if (saveScheduleBtn) {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="7" class="loading-note">Loading live commissions...</td></tr>';
     
+    // CHECK IF CURRENT USER IS THE DEVELOPER
+    const currentEmp = await getMyEmployeeRecord();
+    const isDev = currentEmp?.badge_id === 'CREATIVES-01';
+
     // 1. Get Active Cutoff Dates
     const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
     let firstDay = settings?.period_start;
@@ -5100,6 +5118,9 @@ if (saveScheduleBtn) {
     reps.forEach(r => {
       const empId = r.employee_id;
       const name = r.employees ? r.employees.name : 'Unknown';
+      
+      // STRICT FILTER: Hide test accounts from normal admins
+      if (!isDev && name.includes('[DEV]')) return;
       
       if (!aggregated[empId]) {
           aggregated[empId] = { name: name, buyers: 0, sold: 0, gmv: 0, commi: 0, hasPending: false, hasSubmitted: false, isApproved: false };
