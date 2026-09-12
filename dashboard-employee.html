@@ -1732,6 +1732,10 @@ aside.sidebar.collapsed ~ main.main-content {
       const container = document.getElementById('overallCommissionTracker');
       if (!container) return;
 
+      // FIX: Fetch the employee record locally so it doesn't rely on the wrapper scope
+      const emp = await getMyEmployeeRecord();
+      if (!emp) return;
+
       // 1. Fetch Cutoff Dates directly to avoid scope issues
       const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
       let cutoffStart = settings?.period_start;
@@ -1864,6 +1868,10 @@ aside.sidebar.collapsed ~ main.main-content {
       const btn = event.currentTarget;
       btn.disabled = true;
       btn.textContent = 'Submitting...';
+      
+      // FIX: Fetch the employee record locally so it doesn't rely on the wrapper scope
+      const emp = await getMyEmployeeRecord();
+      if (!emp) return;
 
       // 1. Lock all the daily reports for this cutoff
       const { error } = await supabaseClient
