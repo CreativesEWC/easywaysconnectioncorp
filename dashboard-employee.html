@@ -1727,7 +1727,7 @@ aside.sidebar.collapsed ~ main.main-content {
       }
   };
 
-  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (UPGRADED SCOPE & SHOPS FIX) ----
+  // ---- OVERALL COMMISSION SPREADSHEET BUILDER (SEPARATED BY SHOP) ----
   window.loadOverallCommissionSheet = async function() {
       const container = document.getElementById('overallCommissionTracker');
       if (!container) return;
@@ -1735,7 +1735,7 @@ aside.sidebar.collapsed ~ main.main-content {
       const emp = await getMyEmployeeRecord();
       if (!emp) return;
 
-      // 1. Fetch Cutoff Dates directly to avoid scope issues
+      // 1. Fetch Cutoff Dates
       const { data: settings } = await supabaseClient.from('payroll_settings').select('period_start, period_end').limit(1).maybeSingle();
       let cutoffStart = settings?.period_start;
       let cutoffEnd = settings?.period_end;
@@ -1756,7 +1756,7 @@ aside.sidebar.collapsed ~ main.main-content {
           d.setDate(d.getDate() + 1);
       }
 
-      // 3. Fetch the Live Seller's data (NOW INCLUDES SHOP_NAME)
+      // 3. Fetch the Live Seller's data
       const { data: reports, error } = await supabaseClient
           .from('sales_reports')
           .select('report_date, buyers, actual_sales, lh_sold, lh_gmv, status, shop_name')
@@ -1769,102 +1769,118 @@ aside.sidebar.collapsed ~ main.main-content {
           return;
       }
 
-      // 4. Group and sum the data by Date, and collect unique shop names
-      const dailyTotals = {};
-      dates.forEach(date => {
-          const dateStr = date.toISOString().split('T')[0];
-          dailyTotals[dateStr] = { buyers: 0, sold: 0, gmv: 0, commi: 0, shops: new Set() };
-      });
-
       let hasPending = false;
       let hasSubmitted = false;
 
-      if (reports) {
+      // 4. Group data by Shop, then by Date
+      const shopsData = {};
+
+      if (reports && reports.length > 0) {
           reports.forEach(r => {
               if (r.status === 'pending' || !r.status) hasPending = true;
               if (r.status === 'submitted' || r.status === 'approved') hasSubmitted = true;
 
-              if (dailyTotals[r.report_date]) {
-                  dailyTotals[r.report_date].buyers += parseInt(r.buyers) || 0;
-                  dailyTotals[r.report_date].sold += parseInt(r.lh_sold) || 0;
-                  dailyTotals[r.report_date].gmv += parseFloat(r.lh_gmv) || 0;
-                  dailyTotals[r.report_date].commi += parseFloat(r.actual_sales) || 0;
-                  
-                  // Add the shop name to the daily tracking list
-                  if (r.shop_name) dailyTotals[r.report_date].shops.add(r.shop_name.trim());
+              const sName = (r.shop_name || 'UNASSIGNED SHOP').trim().toUpperCase();
+              
+              if (!shopsData[sName]) {
+                  shopsData[sName] = {};
+                  // Pre-fill the 15-day structure for this specific shop
+                  dates.forEach(date => {
+                      const dateStr = date.toISOString().split('T')[0];
+                      shopsData[sName][dateStr] = { buyers: 0, sold: 0, gmv: 0, commi: 0 };
+                  });
+              }
+
+              // Aggregate values into the specific shop's specific day
+              if (shopsData[sName][r.report_date]) {
+                  shopsData[sName][r.report_date].buyers += parseInt(r.buyers) || 0;
+                  shopsData[sName][r.report_date].sold += parseInt(r.lh_sold) || 0;
+                  shopsData[sName][r.report_date].gmv += parseFloat(r.lh_gmv) || 0;
+                  shopsData[sName][r.report_date].commi += parseFloat(r.actual_sales) || 0;
               }
           });
       }
 
-      // Determine UI state based on database status
+      // Determine UI state
       let statusHtml = '<span style="color: var(--amber-500); font-weight: bold;">PENDING (DRAFT)</span>';
       let btnHtml = `<button class="btn primary" onclick="submitOverallCommission(event, '${cutoffStart}', '${cutoffEnd}')" style="width: 100%; padding: 12px; font-size: 14px;">Sign & Submit to Admin</button>`;
 
       if (!hasPending && hasSubmitted) {
           statusHtml = '<span style="color: var(--mint-500); font-weight: bold;">LOCKED & SUBMITTED</span>';
           btnHtml = `<button class="btn" disabled style="width: 100%; padding: 12px; font-size: 14px; background: var(--navy-800); color: var(--text-muted); border: 1px solid var(--line); cursor: not-allowed;">Sent to Finance</button>`;
-      } else if (!hasPending && !hasSubmitted) {
+      } else if (!hasPending && !hasSubmitted && Object.keys(shopsData).length === 0) {
           btnHtml = `<button class="btn" disabled style="width: 100%; padding: 12px; font-size: 14px; background: var(--navy-800); color: var(--text-muted); border: 1px solid var(--line); cursor: not-allowed;">No Sales to Submit</button>`;
       }
 
-      // 5. Build the HTML Grid
-      let thHtml = '<th style="text-align: left; background: #fcd34d; padding: 10px; width: 80px; border-right: 1px solid var(--line); color: var(--navy-950);">DATE:</th>';
-      let shopsHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SHOPS</td>';
-      let buyersHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">BUYERS</td>';
-      let soldHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SOLD</td>';
-      let gmvHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">GMV</td>';
-      let totalHtml = '<td style="text-align: left; background: #fcd34d; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">TOTAL</td>';
-
-      let grandTotalCommi = 0;
-
-      dates.forEach(date => {
-          const dateStr = date.toISOString().split('T')[0];
-          const dayNum = date.getDate();
-          const t = dailyTotals[dateStr];
-
-          grandTotalCommi += t.commi;
-
-          // Convert the Set of shops into a comma-separated string
-          const shopList = Array.from(t.shops).join(', ');
-
-          thHtml += `<th style="background: #fcd34d; color: var(--navy-950); padding: 8px; border-right: 1px solid var(--line);">${dayNum}</th>`;
-          
-          // Truncate long shop names so they don't break the table width, but allow hover to see all of them
-          shopsHtml += `<td style="border-right: 1px solid var(--line); font-size: 10px; color: #6b7280; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${shopList}">${shopList}</td>`;
-          
-          buyersHtml += `<td style="border-right: 1px solid var(--line);">${t.buyers > 0 ? t.buyers : ''}</td>`;
-          soldHtml += `<td style="border-right: 1px solid var(--line);">${t.sold > 0 ? t.sold : ''}</td>`;
-          gmvHtml += `<td style="border-right: 1px solid var(--line);">${t.gmv > 0 ? t.gmv.toLocaleString() : ''}</td>`;
-          totalHtml += `<td style="background: #fcd34d; font-weight: bold; color: var(--navy-950); border-right: 1px solid var(--line);">${t.commi > 0 ? t.commi.toLocaleString() : ''}</td>`;
-      });
-
       const startFmt = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
       const endFmt = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+
+      let globalGrandTotal = 0;
+      let allTablesHtml = '';
+
+      if (Object.keys(shopsData).length === 0) {
+          allTablesHtml = `<div style="padding: 30px; text-align: center; color: #7488b6; background: var(--navy-800);">No shop reports submitted for this period.</div>`;
+      } else {
+          // Loop through each unique shop and build an individual matrix
+          Object.keys(shopsData).forEach(shopName => {
+              let thHtml = '<th style="text-align: left; background: #fcd34d; padding: 10px; width: 80px; border-right: 1px solid var(--line); color: var(--navy-950);">DATE:</th>';
+              let buyersHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">BUYERS</td>';
+              let soldHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">SOLD</td>';
+              let gmvHtml = '<td style="text-align: left; background: #f9fafb; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">GMV</td>';
+              let totalHtml = '<td style="text-align: left; background: #fcd34d; font-weight: bold; padding: 10px; border-right: 1px solid var(--line); color: var(--navy-950);">TOTAL</td>';
+
+              dates.forEach(date => {
+                  const dateStr = date.toISOString().split('T')[0];
+                  const dayNum = date.getDate();
+                  const t = shopsData[shopName][dateStr];
+
+                  globalGrandTotal += t.commi;
+
+                  thHtml += `<th style="background: #fcd34d; color: var(--navy-950); padding: 8px; border-right: 1px solid var(--line);">${dayNum}</th>`;
+                  buyersHtml += `<td style="border-right: 1px solid var(--line);">${t.buyers > 0 ? t.buyers : ''}</td>`;
+                  soldHtml += `<td style="border-right: 1px solid var(--line);">${t.sold > 0 ? t.sold : ''}</td>`;
+                  gmvHtml += `<td style="border-right: 1px solid var(--line);">${t.gmv > 0 ? t.gmv.toLocaleString() : ''}</td>`;
+                  totalHtml += `<td style="background: #fcd34d; font-weight: bold; color: var(--navy-950); border-right: 1px solid var(--line);">${t.commi > 0 ? t.commi.toLocaleString() : ''}</td>`;
+              });
+
+              allTablesHtml += `
+                  <div style="margin-bottom: 20px;">
+                      <div style="background: var(--navy-900); color: var(--amber-400); padding: 8px 15px; font-weight: bold; font-family: var(--font-display); font-size: 14px; border-bottom: 1px solid var(--line); text-transform: uppercase; display: inline-block; border-top-right-radius: 8px; border-top-left-radius: 8px;">
+                          SHOP: ${escapeHtml(shopName)}
+                      </div>
+                      <div style="overflow-x: auto; background: var(--paper);">
+                          <table style="width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; font-family: var(--font-mono); font-size: 13px;">
+                              <thead><tr style="border-bottom: 1px solid var(--line);">${thHtml}</tr></thead>
+                              <tbody>
+                                  <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${buyersHtml}</tr>
+                                  <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${soldHtml}</tr>
+                                  <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${gmvHtml}</tr>
+                                  <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${totalHtml}</tr>
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              `;
+          });
+      }
 
       container.innerHTML = `
           <div style="text-align: center; background: #fcd34d; color: #000; padding: 10px; font-weight: 800; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.5px; border-bottom: 1px solid var(--line);">
               LIVE SELLERS DAILY SALES REPORT (${startFmt} TO ${endFmt})
           </div>
-          <div style="overflow-x: auto; background: var(--paper);">
-              <table style="width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; font-family: var(--font-mono); font-size: 13px;">
-                  <thead><tr style="border-bottom: 1px solid var(--line);">${thHtml}</tr></thead>
-                  <tbody>
-                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${shopsHtml}</tr>
-                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${buyersHtml}</tr>
-                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${soldHtml}</tr>
-                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${gmvHtml}</tr>
-                      <tr style="border-bottom: 1px solid var(--line); color: var(--navy-950);">${totalHtml}</tr>
-                  </tbody>
-              </table>
+          
+          <div style="padding: 15px 0;">
+              ${allTablesHtml}
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--navy-900);">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--navy-900); border-top: 1px solid var(--line);">
               <div style="font-family: var(--font-mono); font-size: 13px;">
                   <div style="margin-bottom: 10px;">LIVE HOST NAME: <strong style="color: var(--paper); border-bottom: 1px solid var(--line); padding-bottom: 2px;">${emp.name.toUpperCase()}</strong></div>
                   <div>STATUS: ${statusHtml}</div>
               </div>
               <div style="text-align: right;">
-                  <div style="font-size: 12px; color: #7488b6; margin-bottom: 4px; font-family: var(--font-mono);">PERIOD GRAND TOTAL</div>
-                  <div style="font-size: 26px; font-weight: 700; color: var(--mint-500); margin-bottom: 12px; font-family: var(--font-mono);">₱${grandTotalCommi.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                  <div style="font-size: 12px; color: #7488b6; margin-bottom: 4px; font-family: var(--font-mono);">PERIOD GRAND TOTAL (ALL SHOPS)</div>
+                  <div style="font-size: 26px; font-weight: 700; color: var(--mint-500); margin-bottom: 12px; font-family: var(--font-mono);">₱${globalGrandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                   ${btnHtml}
               </div>
           </div>
