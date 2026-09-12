@@ -506,16 +506,18 @@
     loadComments(post.id);
   };
 
+  let activeParentCommentId = null; // Remembers which comment you are replying to
+
   window.closeModal = function() {
     document.getElementById('announcementModal').classList.remove('open');
+    activeParentCommentId = null; // Clear memory when closing the modal
   };
 
-  // 6. Fetch Comments (Now with Database Reactions!)
+  // 6. Fetch Comments (Now with Threading & Blue Tags!)
   async function loadComments(postId) {
     const feed = document.getElementById('commentFeed');
     feed.innerHTML = '<div style="color: #6b7280; font-size: 13px; font-style: italic;">Loading comments...</div>';
 
-    // A. Fetch the actual comments
     const { data: comments, error: commentError } = await supabaseClient
       .from('announcement_comments')
       .select('*, employees(name, avatar_url)')
@@ -528,7 +530,6 @@
       return;
     }
 
-    // B. Fetch the reactions for these specific comments
     const commentIds = comments.map(c => c.id);
     const { data: reactionsData } = await supabaseClient
       .from('comment_reactions')
@@ -544,8 +545,12 @@
       });
     }
 
-    // C. Render the comments
-    feed.innerHTML = comments.map(c => {
+    // Separate Parents from Replies
+    const parents = comments.filter(c => !c.parent_id);
+    const replies = comments.filter(c => c.parent_id);
+
+    // Reusable HTML generator
+    const renderCommentHTML = (c, isReply = false) => {
       const author = c.employees ? c.employees.name.split(' ')[0] : 'Unknown';
       const avatar = (c.employees && c.employees.avatar_url) ? c.employees.avatar_url : 'easyway_icon.svg';
       const time = new Date(c.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -558,35 +563,40 @@
       let reactWeight = '600';
       
       if (myReact) {
-          reactText = myReact; // Swap the word "Like" for the emoji they chose
+          reactText = myReact; 
           reactWeight = 'bold';
           if (myReact === '👍') reactColor = '#1877F2';
           else if (myReact === '❤️' || myReact === '😡') reactColor = '#e0245e';
           else reactColor = '#f5c33b';
       }
 
-      // The classic Facebook overlapping reaction count on the bottom right of the bubble
       const bubbleCounter = reactionTotal > 0 
         ? `<div style="position: absolute; bottom: -8px; right: -12px; background: white; border-radius: 10px; padding: 2px 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); display: flex; align-items: center; font-size: 11px; gap: 4px;"><span style="font-size: 12px;">${myReact || '👍'}</span><span style="color: #65676b; font-weight: 600;">${reactionTotal}</span></div>` 
         : '';
 
+      // HIGHLIGHT MENTIONS IN BLUE
+      const formattedComment = escapeHtml(c.comment).replace(/@([a-zA-Z0-9_]+)/g, '<span style="color: #1877F2; font-weight: 600;">@$1</span>');
+      
+      // Indent replies and make their avatars smaller
+      const marginLeft = isReply ? '44px' : '0';
+      const avatarSize = isReply ? '24px' : '32px';
+      const parentIdTarget = isReply ? c.parent_id : c.id; // Replies target the main parent comment
+
       return `
-        <div style="display: flex; gap: 8px;">
-          <img src="${avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line);">
+        <div style="display: flex; gap: 8px; margin-left: ${marginLeft}; margin-bottom: 4px;">
+          <img src="${avatar}" style="width: ${avatarSize}; height: ${avatarSize}; border-radius: 50%; object-fit: cover; border: 1px solid var(--line);">
           <div style="display: flex; flex-direction: column;">
             
             <div style="background: #f0f2f5; padding: 8px 12px; border-radius: 18px; display: inline-block; width: fit-content; position: relative;">
               <div style="font-weight: 600; font-size: 13px; color: #050505;">${escapeHtml(author)}</div>
-              <div style="font-size: 14px; color: #050505; margin-top: 2px;">${escapeHtml(c.comment)}</div>
+              <div style="font-size: 14px; color: #050505; margin-top: 2px;">${formattedComment}</div>
               ${bubbleCounter}
             </div>
             
-            <!-- INTERACTIVE COMMENT FOOTER WITH REACTION TRAY -->
             <div style="font-size: 12px; color: #65676b; margin-top: 4px; margin-left: 12px; display: flex; gap: 14px; align-items: center;">
               
               <div class="reaction-wrapper" style="position: relative; display: flex; align-items: center;">
                 <span data-reacted="${myReact ? 'true' : 'false'}" style="cursor: pointer; transition: color 0.2s; color: ${reactColor}; font-weight: ${reactWeight};" onclick="toggleDefaultCommentLike(this, event, '${c.id}')">${reactText}</span>
-                
                 <div class="reaction-tray" style="bottom: 100%; left: -10px; padding-bottom: 5px;">
                   <div class="reaction-tray-inner">
                     <span class="r-icon" onclick="setCommentReaction('👍', event, '${c.id}')">👍</span>
@@ -599,13 +609,19 @@
                 </div>
               </div>
 
-              <span style="cursor: pointer; font-weight: 600;" onclick="replyToComment('${escapeHtml(author)}')">Reply</span>
+              <span style="cursor: pointer; font-weight: 600;" onclick="replyToComment('${escapeHtml(author)}', '${parentIdTarget}')">Reply</span>
               <span style="font-weight: normal;">${time}</span>
             </div>
             
           </div>
         </div>
       `;
+    };
+
+    // Render parents, followed immediately by their nested replies
+    feed.innerHTML = parents.map(parent => {
+      const children = replies.filter(r => r.parent_id === parent.id);
+      return renderCommentHTML(parent, false) + children.map(child => renderCommentHTML(child, true)).join('');
     }).join('');
   }
 
@@ -619,13 +635,20 @@
 
     document.getElementById('postReplyBtn').disabled = true;
 
+    const payload = {
+      announcement_id: postId,
+      employee_id: emp.id,
+      comment: text
+    };
+    
+    // Attach the thread parent if this is a reply
+    if (activeParentCommentId) {
+      payload.parent_id = activeParentCommentId;
+    }
+
     const { error } = await supabaseClient
       .from('announcement_comments')
-      .insert({
-        announcement_id: postId,
-        employee_id: emp.id,
-        comment: text
-      });
+      .insert(payload);
 
     document.getElementById('postReplyBtn').disabled = false;
 
@@ -635,8 +658,9 @@
     }
 
     input.value = '';
+    activeParentCommentId = null; // Reset the memory so the next comment isn't accidentally threaded!
     loadComments(postId);
-    loadFeed(); // Refreshes the main board silently to update the counter
+    loadFeed();
   });
 
   // Enable pressing "Enter" to submit a comment instantly
@@ -686,10 +710,11 @@
     loadComments(postId);
   };
 
-  window.replyToComment = function(authorName) {
+  window.replyToComment = function(authorName, commentId) {
+    activeParentCommentId = commentId; // Lock on to the parent ID
     const input = document.getElementById('replyInput');
     input.value = `@${authorName} `;
-    input.focus(); // Opens mobile keyboard instantly
+    input.focus();
   };
 
   // Start the page
