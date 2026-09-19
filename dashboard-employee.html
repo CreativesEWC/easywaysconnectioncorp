@@ -1195,7 +1195,22 @@ aside.sidebar.collapsed ~ main.main-content {
                 <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                    <div>
                       <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shop / Brand Name</label>
-                      <input type="text" class="sales-shop" required placeholder="e.g., Momom Food" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                      <select class="sales-shop" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;" onchange="this.nextElementSibling.style.display = this.value === 'Other' ? 'block' : 'none';">
+                          <option value="">Select Shop...</option>
+                          <option value="MWOW TK">MWOW TK</option>
+                          <option value="MWOW SP">MWOW SP</option>
+                          <option value="SEOUL TK">SEOUL TK</option>
+                          <option value="SEOUL SP">SEOUL SP</option>
+                          <option value="OMO SP">OMO SP</option>
+                          <option value="MOMOM SP">MOMOM SP</option>
+                          <option value="MOMOM TK">MOMOM TK</option>
+                          <option value="HAPPY CORNER">HAPPY CORNER</option>
+                          <option value="PERPECT PICKS">PERPECT PICKS</option>
+                          <option value="FOODIE">FOODIE</option>
+                          <option value="FOODTREND">FOODTREND</option>
+                          <option value="Other">Other</option>
+                      </select>
+                      <input type="text" class="sales-shop-other" placeholder="Type outside shop name..." style="display: none; width: 100%; background: var(--navy-950); border: 1px solid var(--amber-500); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; margin-top: 8px;">
                    </div>
                    <div>
                       <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
@@ -2478,7 +2493,6 @@ aside.sidebar.collapsed ~ main.main-content {
     loadingNote.textContent = 'Loading team status...';
     container.innerHTML = '';
     
-    // Inject grid styling dynamically
     container.style.display = 'grid';
     container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
     container.style.gap = '12px';
@@ -2487,63 +2501,66 @@ aside.sidebar.collapsed ~ main.main-content {
     try {
         const todayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
 
-        // 1. Fetch all employees to map out the team
+        // 1. Fetch all employees
         const { data: allEmps, error: empErr } = await supabaseClient
             .from('employees')
             .select('id, name, avatar_url, brand_id, positions(name)')
             .order('name');
-
         if (empErr) throw empErr;
 
-        // 2. Filter for fellow teammates strictly by assignment
+        // 2. Fetch today's attendance logs
+        const { data: todayLogs, error: logErr } = await supabaseClient
+            .from('attendance_logs')
+            .select('employee_id, time_in, time_out')
+            .eq('log_date', todayStr);
+        if (logErr) throw logErr;
+
+        // 3. NEW: Fetch today's sales reports to capture the active shop!
+        const { data: todaySales } = await supabaseClient
+            .from('sales_reports')
+            .select('employee_id, shop_name')
+            .eq('report_date', todayStr)
+            .order('created_at', { ascending: false }); // Grabs their most recent submission first
+
+        // 4. Filter for fellow teammates
         let team = [];
         const myPos = emp.positions ? emp.positions.name : '';
         
         if (myPos === 'Multimedia Artist' || myPos === 'RTS Admin') {
-            // Admins and MAs see each other
             team = allEmps.filter(e => e.positions && (e.positions.name === 'Multimedia Artist' || e.positions.name === 'RTS Admin'));
-            
         } else {
             if (emp.brand_id && emp.brand_id !== null && emp.brand_id !== '') {
-                // FIXED LIVE SELLERS: They see their assigned shop mates
                 team = allEmps.filter(e => e.brand_id === emp.brand_id);
-                
             } else if (myPos === 'Live Seller') {
-                // ---- NEW: INSIDE FREELANCERS ----
-                // Floating Live Sellers with no fixed brand see the other floaters!
                 team = allEmps.filter(e => e.positions && e.positions.name === 'Live Seller' && (!e.brand_id || e.brand_id === ''));
-                
             } else {
-                // Unassigned non-sellers (like the Kiosk) stay at 0
                 team = [];
             }
         }
 
-        // 3. Fetch today's attendance logs for the team
-        const teamIds = team.map(t => t.id);
-        const { data: todayLogs, error: logErr } = await supabaseClient
-            .from('attendance_logs')
-            .select('employee_id, time_in, time_out')
-            .eq('log_date', todayStr)
-            .in('employee_id', teamIds);
-
-        if (logErr) throw logErr;
-
-        // 4. Build the UI Status Cards & Populate Buddy Dropdowns
+        // 5. Build the UI Status Cards
         let html = '';
-        
-        // Grab BOTH buddy dropdowns and clear them out
         const buddy1Dropdown = document.getElementById('buddy1NameInput');
         const buddy2Dropdown = document.getElementById('buddy2NameInput');
         if (buddy1Dropdown) buddy1Dropdown.innerHTML = '<option value="">None (Solo)</option>';
         if (buddy2Dropdown) buddy2Dropdown.innerHTML = '<option value="">None</option>';
+
+        // GLOBAL BUDDIES: Fetch ALL Live Sellers
+        const allSellers = allEmps.filter(e => e.positions && e.positions.name.toLowerCase().includes('live seller'));
+        
+        allSellers.forEach(seller => {
+            if (seller.id !== emp.id) {
+                if (buddy1Dropdown) buddy1Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
+                if (buddy2Dropdown) buddy2Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
+            }
+        });
 
         team.forEach(member => {
             const log = todayLogs?.find(l => l.employee_id === member.id);
             let statusColor = '#5c6d99'; 
             let statusText = 'Not Timed In';
             let timeText = '—';
-            let dotColor = '#2a3a63'; // Default border line
+            let dotColor = '#2a3a63'; 
 
             if (log) {
                 if (log.time_in && !log.time_out) {
@@ -2559,7 +2576,12 @@ aside.sidebar.collapsed ~ main.main-content {
                 }
             }
 
-            // Fallback avatar if they haven't uploaded a photo yet
+            // ADDED: Extract the latest shop from today's sales reports
+            const latestSale = todaySales?.find(s => s.employee_id === member.id);
+            const activeShopTag = latestSale && latestSale.shop_name 
+                ? `<div style="font-size: 10px; color: var(--amber-400); font-family: var(--font-mono); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;">📍 ${escapeHtml(latestSale.shop_name)}</div>` 
+                : '';
+
             const avatar = member.avatar_url 
                 ? `<img src="${member.avatar_url}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid ${dotColor}; flex-shrink: 0;">`
                 : `<div style="width: 42px; height: 42px; border-radius: 50%; background: var(--navy-950); border: 2px solid ${dotColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: var(--font-display); color: ${dotColor}; flex-shrink: 0;">${member.name.charAt(0)}</div>`;
@@ -2568,28 +2590,13 @@ aside.sidebar.collapsed ~ main.main-content {
                 <div style="background: var(--navy-900); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
                     ${avatar}
                     <div style="flex: 1; min-width: 0;">
+                        ${activeShopTag}
                         <div style="font-size: 13px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${member.name}">${member.name}</div>
                         <div style="font-size: 11px; color: ${statusColor}; font-family: var(--font-mono); margin-top: 3px; letter-spacing: 0.05em; text-transform: uppercase;">${statusText}</div>
                         <div style="font-size: 10px; color: #7488b6; margin-top: 2px;">${timeText}</div>
                     </div>
                 </div>
             `;
-
-            // NEW: Add this teammate to BOTH shift buddy dropdowns (skipping the logged-in user)
-            if (member.id !== emp.id) {
-                if (buddy1Dropdown) {
-                    const opt1 = document.createElement('option');
-                    opt1.value = member.name;
-                    opt1.textContent = member.name;
-                    buddy1Dropdown.appendChild(opt1);
-                }
-                if (buddy2Dropdown) {
-                    const opt2 = document.createElement('option');
-                    opt2.value = member.name;
-                    opt2.textContent = member.name;
-                    buddy2Dropdown.appendChild(opt2);
-                }
-            }
         });
 
         loadingNote.style.display = 'none';
@@ -2601,7 +2608,7 @@ aside.sidebar.collapsed ~ main.main-content {
         loadingNote.textContent = 'Error loading team status.';
         loadingNote.className = 'empty-note';
     }
-}
+  }
   
   // ==========================================================
   // NOTIFICATION SYSTEM (FIXED LOADER & SAFE PARCEL MODAL)
@@ -4329,12 +4336,33 @@ window.loadTodayOverallTotal = async function() {
   const addSalesRowBtn = document.getElementById('addSalesRowBtn');
   const salesRowsContainer = document.getElementById('salesRowsContainer');
 
-  // --- 1. Add New Shop Block Logic ---
+  // --- 1. Add New Shop Block Logic (With Last-Insert Memory) ---
   if (addSalesRowBtn && salesRowsContainer) {
       addSalesRowBtn.addEventListener('click', () => {
-          const firstRow = salesRowsContainer.querySelector('.sales-upload-row');
-          const newRow = firstRow.cloneNode(true);
-          newRow.querySelectorAll('input').forEach(inp => inp.value = '');
+          const rows = salesRowsContainer.querySelectorAll('.sales-upload-row');
+          const lastRow = rows[rows.length - 1]; // Target the most recent row
+          const newRow = lastRow.cloneNode(true);
+          
+          // Clear all the typed numbers and file uploads
+          newRow.querySelector('.sales-buyers').value = '';
+          newRow.querySelector('.sales-total-sold').value = '';
+          newRow.querySelector('.sales-total-gmv').value = '';
+          newRow.querySelector('.inp-me-commi').value = '';
+          newRow.querySelector('.inp-me-sold').value = '';
+          newRow.querySelector('.inp-me-gmv').value = '';
+          newRow.querySelector('.sales-screenshot').value = '';
+          
+          // SMART MEMORY: Inherit the exact Shop, Date, and Time from the row above!
+          newRow.querySelector('.sales-shop').value = lastRow.querySelector('.sales-shop').value;
+          newRow.querySelector('.sales-date').value = lastRow.querySelector('.sales-date').value;
+          newRow.querySelector('.sales-time').value = lastRow.querySelector('.sales-time').value;
+          
+          // Check if "Other" was selected and carry over the custom text
+          const otherInput = newRow.querySelector('.sales-shop-other');
+          if (otherInput) {
+              otherInput.value = lastRow.querySelector('.sales-shop-other').value;
+              otherInput.style.display = newRow.querySelector('.sales-shop').value === 'Other' ? 'block' : 'none';
+          }
           
           const removeBtn = newRow.querySelector('.remove-sales-row');
           removeBtn.style.display = 'block';
@@ -4344,7 +4372,7 @@ window.loadTodayOverallTotal = async function() {
           });
 
           salesRowsContainer.appendChild(newRow);
-          attachSalesListeners(newRow); // <--- Make sure this is here!
+          attachSalesListeners(newRow); 
       });
   }
 
