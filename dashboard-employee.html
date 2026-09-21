@@ -2493,9 +2493,8 @@ aside.sidebar.collapsed ~ main.main-content {
     loadingNote.textContent = 'Loading team status...';
     container.innerHTML = '';
     
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
-    container.style.gap = '12px';
+    // Reset container to block so we can stack multiple grids inside
+    container.style.display = 'block';
     container.style.marginTop = '15px';
 
     try {
@@ -2515,93 +2514,103 @@ aside.sidebar.collapsed ~ main.main-content {
             .eq('log_date', todayStr);
         if (logErr) throw logErr;
 
-        // 3. NEW: Fetch today's sales reports to capture the active shop!
+        // 3. Fetch today's sales reports to capture the active shop!
         const { data: todaySales } = await supabaseClient
             .from('sales_reports')
             .select('employee_id, shop_name')
             .eq('report_date', todayStr)
-            .order('created_at', { ascending: false }); // Grabs their most recent submission first
+            .order('created_at', { ascending: false });
 
-        // 4. Filter for fellow teammates
-        let team = [];
-        const myPos = emp.positions ? emp.positions.name : '';
+        // 4. Partition Employees into the two specific groups using flexible text matching
+        const officeTeam = allEmps.filter(e => {
+            if (!e.positions) return false;
+            const p = e.positions.name.toLowerCase();
+            return p.includes('rts') || p.includes('multimedia') || p.includes('customer service') || p.includes('secretary');
+        });
         
-        if (myPos === 'Multimedia Artist' || myPos === 'RTS Admin') {
-            team = allEmps.filter(e => e.positions && (e.positions.name === 'Multimedia Artist' || e.positions.name === 'RTS Admin'));
-        } else {
-            if (emp.brand_id && emp.brand_id !== null && emp.brand_id !== '') {
-                team = allEmps.filter(e => e.brand_id === emp.brand_id);
-            } else if (myPos === 'Live Seller') {
-                team = allEmps.filter(e => e.positions && e.positions.name === 'Live Seller' && (!e.brand_id || e.brand_id === ''));
-            } else {
-                team = [];
-            }
-        }
+        const sellerTeam = allEmps.filter(e => {
+            if (!e.positions) return false;
+            return e.positions.name.toLowerCase().includes('live seller');
+        });
 
-        // 5. Build the UI Status Cards
-        let html = '';
+        // GLOBAL BUDDIES: Update dropdowns with all live sellers
         const buddy1Dropdown = document.getElementById('buddy1NameInput');
         const buddy2Dropdown = document.getElementById('buddy2NameInput');
         if (buddy1Dropdown) buddy1Dropdown.innerHTML = '<option value="">None (Solo)</option>';
         if (buddy2Dropdown) buddy2Dropdown.innerHTML = '<option value="">None</option>';
-
-        // GLOBAL BUDDIES: Fetch ALL Live Sellers
-        const allSellers = allEmps.filter(e => e.positions && e.positions.name.toLowerCase().includes('live seller'));
         
-        allSellers.forEach(seller => {
+        sellerTeam.forEach(seller => {
             if (seller.id !== emp.id) {
                 if (buddy1Dropdown) buddy1Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
                 if (buddy2Dropdown) buddy2Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
             }
         });
 
-        team.forEach(member => {
-            const log = todayLogs?.find(l => l.employee_id === member.id);
-            let statusColor = '#5c6d99'; 
-            let statusText = 'Not Timed In';
-            let timeText = '—';
-            let dotColor = '#2a3a63'; 
+        // 5. Helper function to build the grid HTML for a specific group
+        const buildGridHTML = (teamArray) => {
+            if (teamArray.length === 0) return '<div style="color: #7488b6; font-size: 12px; margin-bottom: 15px;">No employees found for this group.</div>';
+            
+            let gridHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px;">';
+            
+            teamArray.forEach(member => {
+                const log = todayLogs?.find(l => l.employee_id === member.id);
+                let statusColor = '#5c6d99'; 
+                let statusText = 'Not Timed In';
+                let timeText = '—';
+                let dotColor = '#2a3a63'; 
 
-            if (log) {
-                if (log.time_in && !log.time_out) {
-                    statusColor = 'var(--mint-500)';
-                    statusText = 'Active Now';
-                    dotColor = 'var(--mint-500)';
-                    timeText = 'In: ' + new Date(log.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                } else if (log.time_in && log.time_out) {
-                    statusColor = '#7488b6';
-                    statusText = 'Shift Complete';
-                    dotColor = 'var(--amber-500)';
-                    timeText = 'Out: ' + new Date(log.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                if (log) {
+                    if (log.time_in && !log.time_out) {
+                        statusColor = 'var(--mint-500)';
+                        statusText = 'Active Now';
+                        dotColor = 'var(--mint-500)';
+                        timeText = 'In: ' + new Date(log.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } else if (log.time_in && log.time_out) {
+                        statusColor = '#7488b6';
+                        statusText = 'Shift Complete';
+                        dotColor = 'var(--amber-500)';
+                        timeText = 'Out: ' + new Date(log.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    }
                 }
-            }
 
-            // ADDED: Extract the latest shop from today's sales reports
-            const latestSale = todaySales?.find(s => s.employee_id === member.id);
-            const activeShopTag = latestSale && latestSale.shop_name 
-                ? `<div style="font-size: 10px; color: var(--amber-400); font-family: var(--font-mono); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;">📍 ${escapeHtml(latestSale.shop_name)}</div>` 
-                : '';
+                const latestSale = todaySales?.find(s => s.employee_id === member.id);
+                const activeShopTag = latestSale && latestSale.shop_name 
+                    ? `<div style="font-size: 10px; color: var(--amber-400); font-family: var(--font-mono); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;">📍 ${escapeHtml(latestSale.shop_name)}</div>` 
+                    : '';
 
-            const avatar = member.avatar_url 
-                ? `<img src="${member.avatar_url}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid ${dotColor}; flex-shrink: 0;">`
-                : `<div style="width: 42px; height: 42px; border-radius: 50%; background: var(--navy-950); border: 2px solid ${dotColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: var(--font-display); color: ${dotColor}; flex-shrink: 0;">${member.name.charAt(0)}</div>`;
+                const avatar = member.avatar_url 
+                    ? `<img src="${member.avatar_url}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid ${dotColor}; flex-shrink: 0;">`
+                    : `<div style="width: 42px; height: 42px; border-radius: 50%; background: var(--navy-950); border: 2px solid ${dotColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: var(--font-display); color: ${dotColor}; flex-shrink: 0;">${member.name.charAt(0)}</div>`;
 
-            html += `
-                <div style="background: var(--navy-900); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                    ${avatar}
-                    <div style="flex: 1; min-width: 0;">
-                        ${activeShopTag}
-                        <div style="font-size: 13px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${member.name}">${member.name}</div>
-                        <div style="font-size: 11px; color: ${statusColor}; font-family: var(--font-mono); margin-top: 3px; letter-spacing: 0.05em; text-transform: uppercase;">${statusText}</div>
-                        <div style="font-size: 10px; color: #7488b6; margin-top: 2px;">${timeText}</div>
+                gridHtml += `
+                    <div style="background: var(--navy-900); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        ${avatar}
+                        <div style="flex: 1; min-width: 0;">
+                            ${activeShopTag}
+                            <div style="font-size: 13px; font-weight: 600; color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${member.name}">${member.name}</div>
+                            <div style="font-size: 11px; color: ${statusColor}; font-family: var(--font-mono); margin-top: 3px; letter-spacing: 0.05em; text-transform: uppercase;">${statusText}</div>
+                            <div style="font-size: 10px; color: #7488b6; margin-top: 2px;">${timeText}</div>
+                        </div>
                     </div>
-                </div>
-            `;
-        });
+                `;
+            });
+            
+            gridHtml += '</div>';
+            return gridHtml;
+        };
+
+        // 6. Assemble the Final Split UI
+        let finalHtml = '';
+        
+        finalHtml += `<div style="font-size: 11px; color: var(--amber-400); font-family: var(--font-mono); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px;">🏢 Office Employees</div>`;
+        finalHtml += buildGridHTML(officeTeam);
+        
+        finalHtml += `<div style="font-size: 11px; color: var(--mint-500); font-family: var(--font-mono); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px;">🎙️ Live Sellers</div>`;
+        finalHtml += buildGridHTML(sellerTeam);
 
         loadingNote.style.display = 'none';
-        if (countSpan) countSpan.textContent = `(${team.length})`;
-        container.innerHTML = html;
+        if (countSpan) countSpan.textContent = `(${officeTeam.length + sellerTeam.length})`;
+        container.innerHTML = finalHtml;
 
     } catch (err) {
         console.error("Failed to load team status:", err);
