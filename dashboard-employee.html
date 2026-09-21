@@ -2493,35 +2493,36 @@ aside.sidebar.collapsed ~ main.main-content {
     loadingNote.textContent = 'Loading team status...';
     container.innerHTML = '';
     
-    // Reset container to block so we can stack multiple grids inside
     container.style.display = 'block';
     container.style.marginTop = '15px';
 
     try {
         const todayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
 
-        // 1. Fetch all employees
         const { data: allEmps, error: empErr } = await supabaseClient
             .from('employees')
             .select('id, name, avatar_url, brand_id, positions(name)')
             .order('name');
         if (empErr) throw empErr;
 
-        // 2. Fetch today's attendance logs
         const { data: todayLogs, error: logErr } = await supabaseClient
             .from('attendance_logs')
             .select('employee_id, time_in, time_out')
             .eq('log_date', todayStr);
         if (logErr) throw logErr;
 
-        // 3. Fetch today's sales reports to capture the active shop!
         const { data: todaySales } = await supabaseClient
             .from('sales_reports')
             .select('employee_id, shop_name')
             .eq('report_date', todayStr)
             .order('created_at', { ascending: false });
 
-        // 4. Partition Employees into the two specific groups using flexible text matching
+        // Identify the current user's role
+        const myPositionName = emp.positions ? emp.positions.name.toLowerCase() : (emp.position || '').toLowerCase();
+        const amIOffice = myPositionName.includes('rts') || myPositionName.includes('multimedia') || myPositionName.includes('customer service') || myPositionName.includes('secretary');
+        const amISeller = myPositionName.includes('live seller');
+
+        // Partition Employees
         const officeTeam = allEmps.filter(e => {
             if (!e.positions) return false;
             const p = e.positions.name.toLowerCase();
@@ -2546,7 +2547,7 @@ aside.sidebar.collapsed ~ main.main-content {
             }
         });
 
-        // 5. Helper function to build the grid HTML for a specific group
+        // Helper function to build the grid HTML
         const buildGridHTML = (teamArray) => {
             if (teamArray.length === 0) return '<div style="color: #7488b6; font-size: 12px; margin-bottom: 15px;">No employees found for this group.</div>';
             
@@ -2599,17 +2600,25 @@ aside.sidebar.collapsed ~ main.main-content {
             return gridHtml;
         };
 
-        // 6. Assemble the Final Split UI
+        // Render STRICTLY based on the current user's role
         let finalHtml = '';
+        let totalCount = 0;
         
-        finalHtml += `<div style="font-size: 11px; color: var(--amber-400); font-family: var(--font-mono); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px;">🏢 Office Employees</div>`;
-        finalHtml += buildGridHTML(officeTeam);
-        
-        finalHtml += `<div style="font-size: 11px; color: var(--mint-500); font-family: var(--font-mono); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px;">🎙️ Live Sellers</div>`;
-        finalHtml += buildGridHTML(sellerTeam);
+        if (amIOffice) {
+            finalHtml += `<div style="font-size: 11px; color: var(--amber-400); font-family: var(--font-mono); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px;">🏢 Office Employees</div>`;
+            finalHtml += buildGridHTML(officeTeam);
+            totalCount = officeTeam.length;
+        } else if (amISeller) {
+            finalHtml += `<div style="font-size: 11px; color: var(--mint-500); font-family: var(--font-mono); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px;">🎙️ Live Sellers</div>`;
+            finalHtml += buildGridHTML(sellerTeam);
+            totalCount = sellerTeam.length;
+        } else {
+            // Fallback for developers or unassigned roles
+            finalHtml = '<div style="color: #7488b6; font-size: 12px; margin-bottom: 15px;">Your role is not assigned to a specific shift group.</div>';
+        }
 
         loadingNote.style.display = 'none';
-        if (countSpan) countSpan.textContent = `(${officeTeam.length + sellerTeam.length})`;
+        if (countSpan) countSpan.textContent = `(${totalCount})`;
         container.innerHTML = finalHtml;
 
     } catch (err) {
