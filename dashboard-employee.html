@@ -1151,6 +1151,29 @@ aside.sidebar.collapsed ~ main.main-content {
             <button type="submit" id="vidSubmitBtn" class="btn2 primary" style="width: 100%; padding: 12px; font-size: 14px;">Upload & Submit Videos</button>
           </form>
         </section>
+        <!-- LIVE SELLER VIDEO SUBMISSION & AI AUDIT HISTORY -->
+        <section class="panel" style="border-color: var(--line); margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="color: var(--paper); margin: 0;">My Submitted Videos & AI Audits</h2>
+            <button type="button" class="btn2" onclick="loadMyVideoSubmissions()" style="font-size: 11px; padding: 4px 8px;">🔄 Refresh Feed</button>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; min-width: 650px;">
+              <thead>
+                <tr>
+                  <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Upload Date</th>
+                  <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Link</th>
+                  <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Status</th>
+                  <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Score</th>
+                  <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">AI Feedback (For Future Improvement)</th>
+                </tr>
+              </thead>
+              <tbody id="myVideoHistoryBody">
+                <tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Loading video records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
 
       <!-- 2. LIVE COMMISSION TAB -->
@@ -4314,9 +4337,10 @@ window.loadTodayOverallTotal = async function() {
                       .from('video_submissions')
                       .insert({
                           employee_id: emp.id,
-                          upload_date: rowDate,  // Pulled strictly from this specific row!
+                          upload_date: rowDate,
                           video_link: linkInput,
-                          video_file_url: publicUrlData.publicUrl
+                          video_file_url: publicUrlData.publicUrl,
+                          status: 'pending'
                       });
 
                   if (dbErr) throw dbErr;
@@ -4325,6 +4349,8 @@ window.loadTodayOverallTotal = async function() {
 
               alert(`Successfully uploaded ${successCount} videos!`);
               videoSubmitForm.reset();
+              loadMyVideoSubmissions();
+            
               
               // Reset the form back to a single empty row layout
               videoRowsContainer.innerHTML = `
@@ -4346,6 +4372,69 @@ window.loadTodayOverallTotal = async function() {
           }
       });
   }
+
+  // ==========================================================
+  // LIVE SELLER VIDEO COMMISSION HISTORY & AI AUDIT FEED
+  // ==========================================================
+  window.loadMyVideoSubmissions = async function() {
+      const tbody = document.getElementById('myVideoHistoryBody');
+      if (!tbody || !emp || !emp.id) return;
+
+      try {
+          const { data: vids, error } = await supabaseClient
+              .from('video_submissions')
+              .select('id, upload_date, video_link, status, ai_score, ai_notes, created_at')
+              .eq('employee_id', emp.id)
+              .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          if (!vids || vids.length === 0) {
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No video submissions logged yet.</td></tr>';
+              return;
+          }
+
+          tbody.innerHTML = vids.map(v => {
+              const dateStr = v.upload_date || (v.created_at ? v.created_at.split('T')[0] : '—');
+              const linkBtn = v.video_link 
+                  ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Link</a>` 
+                  : '—';
+
+              let statusBadge = '<span class="status-pill pending">Pending Review</span>';
+              if (v.status === 'approved') {
+                  statusBadge = '<span class="status-pill complete">Passed</span>';
+              } else if (v.status === 'rejected') {
+                  statusBadge = '<span class="status-pill" style="background: rgba(217, 97, 79, 0.15); color: var(--coral-500); border: 1px solid var(--coral-500);">Failed</span>';
+              }
+
+              const scoreDisplay = (v.ai_score !== null && v.ai_score !== undefined) 
+                  ? `<strong style="font-family: var(--font-mono); font-size: 13px; color: ${v.ai_score >= 5 ? 'var(--mint-500)' : 'var(--coral-500)'};">${v.ai_score}/10</strong>` 
+                  : '<span style="color: var(--text-muted); font-size: 11px;">Pending</span>';
+
+              const feedbackText = v.ai_notes 
+                  ? `<div style="font-size: 12px; color: var(--paper); line-height: 1.4; background: var(--navy-800); padding: 8px 12px; border-radius: 6px; border-left: 3px solid ${v.status === 'approved' ? 'var(--mint-500)' : 'var(--coral-500)'};">${escapeHtml(v.ai_notes)}</div>`
+                  : '<span style="color: var(--text-muted); font-size: 11px; font-style: italic;">Awaiting audit feedback...</span>';
+
+              return `
+              <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+                  <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtml(dateStr)}</td>
+                  <td style="padding: 10px 8px;">${linkBtn}</td>
+                  <td style="padding: 10px 8px;">${statusBadge}</td>
+                  <td style="padding: 10px 8px;">${scoreDisplay}</td>
+                  <td style="padding: 10px 8px; max-width: 320px;">${feedbackText}</td>
+              </tr>`;
+          }).join('');
+
+      } catch (err) {
+          console.error("Error loading video history:", err);
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load history: ${err.message}</td></tr>`;
+      }
+  };
+
+  // Initial load
+  setTimeout(() => {
+      if (typeof loadMyVideoSubmissions === 'function') loadMyVideoSubmissions();
+  }, 1200);
 
   // ==========================================================
   // DAILY SALES REPORT (PER-EMPLOYEE ENGINE)
