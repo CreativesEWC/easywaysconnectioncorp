@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Video Matrix QA | EWC Dev</title>
+<link rel="icon" type="image/svg+xml" href="easyway_icon.svg">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --navy-950: #050812;
+    --navy-900: #0a0f25;
+    --navy-800: #121b3a;
+    --navy-700: #1a2752;
+    --line: #2a3b5c;       
+    --paper: #ffffff;      
+    --text-muted: #7488b6; 
+    --amber-500: #e8a13a; --amber-400: #f2b854; 
+    --mint-500: #4fb286; --mint-700: #2f7a58; 
+    --coral-500: #d9614f; --coral-700: #a63e2f;
+    --font-display: 'Rockwell', Georgia, serif; 
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: var(--navy-950); color: var(--paper); font-family: var(--font-body); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  
+  header { background: var(--navy-900); padding: 15px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .header-brand { font-family: var(--font-display); font-size: 20px; color: var(--mint-500); display: flex; align-items: center; gap: 10px; }
+  .btn { background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn:hover { border-color: var(--amber-500); }
+  .btn.primary { background: var(--mint-500); color: var(--navy-950); border: none; font-weight: bold; }
+
+  /* 3-Column Workspace Layout */
+  .workspace { display: flex; flex: 1; overflow: hidden; }
+  
+  /* Col 1: Inbox */
+  .col-inbox { width: 320px; background: var(--navy-900); border-right: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; }
+  .inbox-header { padding: 15px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; color: var(--amber-400); text-transform: uppercase; letter-spacing: 0.1em; display: flex; justify-content: space-between; }
+  .inbox-list { flex: 1; overflow-y: auto; }
+  .vid-item { padding: 15px; border-bottom: 1px solid var(--line); cursor: pointer; transition: 0.2s; display: flex; gap: 12px; align-items: center; }
+  .vid-item:hover { background: var(--navy-800); }
+  .vid-item.active { background: var(--navy-800); border-left: 4px solid var(--mint-500); }
+  .vid-thumb { width: 48px; height: 48px; border-radius: 6px; background: #000; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid var(--line); }
+  .vid-info { flex: 1; min-width: 0; }
+  .vid-name { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vid-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Col 2: Video Player */
+  .col-player { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+  video { max-width: 100%; max-height: 100%; outline: none; }
+  .no-video-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); font-family: var(--font-mono); }
+
+  /* Col 3: QA Matrix */
+  .col-qa { width: 400px; background: var(--navy-900); border-left: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; }
+  .qa-scroll { flex: 1; overflow-y: auto; padding: 20px; }
+  .rule-card { display: flex; align-items: flex-start; gap: 10px; background: var(--navy-800); padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
+  .rule-card:hover { border-color: var(--amber-500); }
+  .rule-cb { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--mint-500); cursor: pointer; }
+  .rule-text { font-size: 13px; color: var(--paper); line-height: 1.3; cursor: pointer; }
+  
+  .qa-footer { padding: 20px; background: var(--navy-950); border-top: 1px solid var(--line); }
+  .score-display { font-family: var(--font-display); font-size: 32px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+  .score-status { font-family: var(--font-mono); font-size: 14px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7v5h-2v-5a5 5 0 0 0-5-5h-1v1.27a2 2 0 1 1-2 0V7H8a5 5 0 0 0-5 5v5H1v-5a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 12 2z"/></svg>
+    AI Video Matrix QA
+  </div>
+  <button class="btn" onclick="window.location.href='dashboard-admin.html'">Return to Admin Dashboard</button>
+</header>
+
+<div class="workspace">
+  <!-- INBOX -->
+  <div class="col-inbox">
+    <div class="inbox-header">
+      Pending Audits <span id="pendingCount">0</span>
+    </div>
+    <div class="inbox-list" id="videoInbox">
+      <div style="padding: 20px; text-align: center; color: var(--text-muted); font-style: italic;">Loading queue...</div>
+    </div>
+  </div>
+
+  <!-- PLAYER -->
+  <div class="col-player">
+    <div id="noVideoMsg" class="no-video-overlay">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 10px; opacity: 0.5;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+      Select a video from the queue
+    </div>
+    <video id="mainPlayer" controls autoplay style="display: none;"></video>
+  </div>
+
+  <!-- SCORECARD -->
+  <div class="col-qa">
+    <div style="padding: 15px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; color: var(--amber-400); text-transform: uppercase; letter-spacing: 0.1em; display: flex; justify-content: space-between; align-items: center;">
+      <span>Evaluation Matrix</span>
+      <button class="btn" onclick="resetForm()" style="padding: 4px 8px; font-size: 10px;">Clear</button>
+    </div>
+    
+    <div class="qa-scroll">
+      <div id="qaChecklist"></div>
+      
+      <div style="margin-top: 20px;">
+        <label style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase;">AI / Admin Feedback</label>
+        <textarea id="qaNotes" placeholder="Explain flagged rules for the seller's future reference..." style="width: 100%; height: 100px; margin-top: 8px; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 10px; font-family: var(--font-body); font-size: 13px; resize: vertical;"></textarea>
+      </div>
+    </div>
+    
+    <div class="qa-footer">
+      <div class="score-display">
+        <div><span id="liveScore">0</span><span style="font-size: 16px; color: var(--text-muted);">/10</span></div>
+        <div id="liveStatus" class="score-status" style="color: var(--coral-500);">Unusable</div>
+      </div>
+      <button class="btn primary" id="submitQaBtn" style="width: 100%; padding: 14px;" disabled>Submit Evaluation</button>
+    </div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+<script>
+  let activeVideoId = null;
+  let activeEmployeeId = null;
+  let activeUploadDate = null;
+
+  const qaRules = [
+      "1. Clear Product Explanation",
+      "2. Active Product Demonstration",
+      "3. Food Product Requirement (or N/A)",
+      "4. Clean Packaging & Presentation",
+      "5. Product Spotlight",
+      "6. Strong 3-Second Hook",
+      "7. Energy & Authenticity",
+      "8. Full Potential Demonstrated",
+      "9. Outcome-Focused Affiliate Style",
+      "10. Audio & Visual Quality"
+  ];
+
+  // 1. Initialize Form
+  const checklistContainer = document.getElementById('qaChecklist');
+  checklistContainer.innerHTML = qaRules.map((rule, idx) => `
+      <label class="rule-card">
+          <input type="checkbox" class="rule-cb" onchange="calculateScore()">
+          <span class="rule-text">${rule}</span>
+      </label>
+  `).join('');
+
+  // 2. Score Calculator
+  function calculateScore() {
+      const checked = document.querySelectorAll('.rule-cb:checked').length;
+      document.getElementById('liveScore').textContent = checked;
+      
+      const statusEl = document.getElementById('liveStatus');
+      if (checked >= 9) { statusEl.textContent = "✅ EXCELLENT"; statusEl.style.color = "var(--mint-500)"; }
+      else if (checked >= 7) { statusEl.textContent = "✅ GOOD"; statusEl.style.color = "var(--mint-500)"; }
+      else if (checked >= 5) { statusEl.textContent = "⚠️ ACCEPTABLE"; statusEl.style.color = "var(--amber-400)"; }
+      else if (checked >= 3) { statusEl.textContent = "❌ NEEDS WORK"; statusEl.style.color = "var(--coral-500)"; }
+      else { statusEl.textContent = "❌ UNUSABLE"; statusEl.style.color = "var(--coral-500)"; }
+  }
+
+  // 3. Load Pending Videos
+  async function loadPendingQueue() {
+      const inbox = document.getElementById('videoInbox');
+      const { data: vids, error } = await supabaseClient
+          .from('video_submissions')
+          .select('id, upload_date, video_file_url, created_at, employee_id, employees(name, badge_id)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: true });
+
+      if (error || !vids) {
+          inbox.innerHTML = `<div style="padding: 20px; color: var(--coral-500);">Error: ${error?.message}</div>`;
+          return;
+      }
+
+      document.getElementById('pendingCount').textContent = vids.length;
+
+      if (vids.length === 0) {
+          inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Queue is empty! 🎉</div>`;
+          return;
+      }
+
+      inbox.innerHTML = vids.map(v => {
+          const empName = v.employees?.name || 'Unknown Seller';
+          const dateFmt = new Date(v.created_at).toLocaleDateString([], {month:'short', day:'numeric'});
+          return `
+          <div class="vid-item" id="vid-${v.id}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
+              <div class="vid-thumb">▶</div>
+              <div class="vid-info">
+                  <div class="vid-name">${empName}</div>
+                  <div class="vid-meta">Uploaded: ${dateFmt}</div>
+              </div>
+          </div>`;
+      }).join('');
+  }
+
+  // 4. Load Video to Main View
+  window.loadVideoToPlayer = function(vidId, fileUrl, empId, upDate) {
+      // Highlight active in sidebar
+      document.querySelectorAll('.vid-item').forEach(el => el.classList.remove('active'));
+      document.getElementById(`vid-${vidId}`).classList.add('active');
+
+      activeVideoId = vidId;
+      activeEmployeeId = empId;
+      activeUploadDate = upDate;
+      
+      resetForm();
+
+      const player = document.getElementById('mainPlayer');
+      document.getElementById('noVideoMsg').style.display = 'none';
+      player.style.display = 'block';
+      player.src = fileUrl;
+      document.getElementById('submitQaBtn').disabled = false;
+  };
+
+  function resetForm() {
+      document.querySelectorAll('.rule-cb').forEach(cb => cb.checked = false);
+      document.getElementById('qaNotes').value = '';
+      calculateScore();
+  }
+
+  // 5. Submit QA Evaluation
+  document.getElementById('submitQaBtn').addEventListener('click', async () => {
+      if (!activeVideoId) return;
+
+      const score = parseInt(document.getElementById('liveScore').textContent);
+      const notes = document.getElementById('qaNotes').value.trim();
+      const finalStatus = score >= 5 ? 'approved' : 'rejected';
+      
+      const btn = document.getElementById('submitQaBtn');
+      btn.disabled = true; btn.textContent = 'Saving...';
+
+      // 1. Update Video Record
+      const { error: dbErr } = await supabaseClient
+          .from('video_submissions')
+          .update({ status: finalStatus }) // AI Columns will be added here in Phase 2
+          .eq('id', activeVideoId);
+
+      if (dbErr) {
+          alert('Error saving record: ' + dbErr.message);
+          btn.disabled = false; btn.textContent = 'Submit Evaluation';
+          return;
+      }
+
+      // 2. Ping Employee
+      let notifMessage = `Your video from ${activeUploadDate} scored ${score}/10. Status: ${finalStatus.toUpperCase()}.`;
+      if (notes) notifMessage += ` AI/QA Feedback: "${notes}"`;
+
+      await supabaseClient.from('notifications').insert({
+          employee_id: activeEmployeeId,
+          title: `📊 Video Matrix Result (${score}/10)`,
+          message: notifMessage,
+          is_read: false
+      });
+
+      // 3. Clear workspace and load next
+      activeVideoId = null;
+      document.getElementById('mainPlayer').src = '';
+      document.getElementById('mainPlayer').style.display = 'none';
+      document.getElementById('noVideoMsg').style.display = 'flex';
+      btn.textContent = 'Submit Evaluation';
+      resetForm();
+      
+      loadPendingQueue();
+  });
+
+  // Security Gate & Initialization
+  (async function init() {
+      const emp = await getMyEmployeeRecord();
+      if (!emp || emp.badge_id !== 'CREATIVES-01') {
+          window.location.href = 'dashboard-admin.html';
+          return;
+      }
+      loadPendingQueue();
+  })();
+
+</script>
+</body>
+</html>
