@@ -221,60 +221,102 @@
       calculateScore();
   }
 
-  // 5. Submit QA Evaluation
+  // 5. Submit to Google AI & Save Evaluation
   document.getElementById('submitQaBtn').addEventListener('click', async () => {
       if (!activeVideoId) return;
 
-      const score = parseInt(document.getElementById('liveScore').textContent);
-      const notes = document.getElementById('qaNotes').value.trim();
-      const finalStatus = score >= 5 ? 'approved' : 'rejected';
-      
       const btn = document.getElementById('submitQaBtn');
-      btn.disabled = true; btn.textContent = 'Saving...';
+      btn.disabled = true; 
+      btn.textContent = '🤖 AI is analyzing video...';
 
-      // 1. Update Video Record
-      const { error: dbErr } = await supabaseClient
-          .from('video_submissions')
-          .update({ status: finalStatus }) // AI Columns will be added here in Phase 2
-          .eq('id', activeVideoId);
+      // YOUR GOOGLE AI API KEY
+      const GEMINI_API_KEY = "AIzaSyAR7k1nXXMEeS0qHlMAJSB156HxCW1nCnQ";
+      const videoUrlToAnalyze = document.getElementById('mainPlayer').src;
 
-      if (dbErr) {
-          alert('Error saving record: ' + dbErr.message);
-          btn.disabled = false; btn.textContent = 'Submit Evaluation';
-          return;
+      const SYSTEM_PROMPT = `
+      You are the QA Matrix Auditor for EWC Creatives. Analyze the video at this URL: ${videoUrlToAnalyze}
+      Score it based on our 10-point rubric. Return your evaluation strictly in JSON format.
+
+      ### BRAND STANDARDS
+      - SEOUL SECRETS: Premium, trustworthy. Show full potential/results. Polished, clean.
+      - MOMOM FOOD: Warm, authentic. Focus on taste/appetite. Natural presentation.
+
+      ### THE 10-POINT RUBRIC (Pass = true, Fail = false)
+      1. Clear Product Explanation
+      2. Active Product Demonstration
+      3. Food Product Requirement (Auto-pass if non-food)
+      4. Clean Packaging & Presentation
+      5. Product Spotlight
+      6. Strong 3-Second Hook
+      7. Energy & Authenticity
+      8. Full Potential Demonstrated
+      9. Outcome-Focused Affiliate Style
+      10. Audio & Visual Quality
+
+      ### JSON OUTPUT FORMAT
+      {
+        "rules": {
+          "rule_1": true, "rule_2": false, "rule_3": true, "rule_4": true, "rule_5": true,
+          "rule_6": false, "rule_7": true, "rule_8": true, "rule_9": true, "rule_10": true
+        },
+        "final_score": 8,
+        "status": "approved",
+        "feedback_notes": "Rule 2 Failed: No active lather shown. Rule 6 Failed: Started with silence."
       }
+      `;
 
-      // 2. Ping Employee
-      let notifMessage = `Your video from ${activeUploadDate} scored ${score}/10. Status: ${finalStatus.toUpperCase()}.`;
-      if (notes) notifMessage += ` AI/QA Feedback: "${notes}"`;
+      try {
+          // 1. Send to Google Gemini
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  contents: [{ parts: [{ text: SYSTEM_PROMPT }] }],
+                  generationConfig: { response_mime_type: "application/json" }
+              })
+          });
 
-      await supabaseClient.from('notifications').insert({
-          employee_id: activeEmployeeId,
-          title: `📊 Video Matrix Result (${score}/10)`,
-          message: notifMessage,
-          is_read: false
-      });
+          const aiData = await response.json();
+          const rawJsonString = aiData.candidates[0].content.parts[0].text;
+          const analysis = JSON.parse(rawJsonString);
 
-      // 3. Clear workspace and load next
-      activeVideoId = null;
-      document.getElementById('mainPlayer').src = '';
-      document.getElementById('mainPlayer').style.display = 'none';
-      document.getElementById('noVideoMsg').style.display = 'flex';
-      btn.textContent = 'Submit Evaluation';
-      resetForm();
-      
-      loadPendingQueue();
+          btn.textContent = 'Saving AI Results...';
+
+          // 2. Update Supabase Database
+          const { error: dbErr } = await supabaseClient
+              .from('video_submissions')
+              .update({ 
+                  status: analysis.status,
+                  ai_score: analysis.final_score,
+                  ai_notes: analysis.feedback_notes
+              })
+              .eq('id', activeVideoId);
+
+          if (dbErr) throw dbErr;
+
+          // 3. Ping Employee with AI Feedback
+          await supabaseClient.from('notifications').insert({
+              employee_id: activeEmployeeId,
+              title: `AI Video Audit Complete (${analysis.final_score}/10)`,
+              message: `Your video scored ${analysis.final_score}/10. Status: ${analysis.status.toUpperCase()}. AI Feedback: "${analysis.feedback_notes}"`,
+              is_read: false
+          });
+
+          // 4. Clear workspace and load next
+          activeVideoId = null;
+          document.getElementById('mainPlayer').src = '';
+          document.getElementById('mainPlayer').style.display = 'none';
+          document.getElementById('noVideoMsg').style.display = 'flex';
+          resetForm();
+          loadPendingQueue();
+
+      } catch (err) {
+          alert('AI Audit Error: ' + err.message);
+      } finally {
+          btn.disabled = false; 
+          btn.textContent = 'Run AI Evaluation';
+      }
   });
-
-  // Security Gate & Initialization
-  (async function init() {
-      const emp = await getMyEmployeeRecord();
-      if (!emp || emp.badge_id !== 'CREATIVES-01') {
-          window.location.href = 'dashboard-admin.html';
-          return;
-      }
-      loadPendingQueue();
-  })();
 
 </script>
 </body>
