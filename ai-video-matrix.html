@@ -283,6 +283,17 @@
           });
 
           const aiData = await response.json();
+
+          // Catch Google's exact error message
+          if (aiData.error) {
+              throw new Error(`Google API Error: ${aiData.error.message}`);
+          }
+          
+          // Safety check in case the response was blocked by safety settings
+          if (!aiData.candidates || aiData.candidates.length === 0) {
+              throw new Error("Gemini blocked the response or returned no data.");
+          }
+
           const rawJsonString = aiData.candidates[0].content.parts[0].text;
           const analysis = JSON.parse(rawJsonString);
 
@@ -317,13 +328,13 @@
           loadPendingQueue();
 
       } catch (err) {
-          alert('AI Audit Error: ' + err.message);
+          alert('AI Audit Failed:\n\n' + err.message);
       } finally {
           btn.disabled = false; 
           btn.textContent = 'Run AI Evaluation';
       }
-  });
 
+    });
 
   // 6. Helpers & Initialization
   function escapeHtml(str) {
