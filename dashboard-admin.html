@@ -305,6 +305,22 @@ aside.sidebar.collapsed .nav-group-btn .chevron {
     overflow-y: auto;
     flex-grow: 1;
   }
+
+  /* Custom Dark Mode Scrollbar for the Navigation List */
+  .sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--navy-700);
+    border-radius: 10px;
+  }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--amber-500);
+  }
+  
   .sidebar-nav button {
     display: flex;
     align-items: center;
