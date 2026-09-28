@@ -324,6 +324,19 @@
       }
   });
 
+
+  // 6. Helpers & Initialization
+  function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+  }
+
+  // Boot up the queue a split-second after the page loads
+  setTimeout(() => {
+      loadPendingQueue();
+  }, 500);
+  
 </script>
 </body>
 </html>
