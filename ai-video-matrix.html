@@ -164,36 +164,42 @@
   // 3. Load Pending Videos
   async function loadPendingQueue() {
       const inbox = document.getElementById('videoInbox');
-      const { data: vids, error } = await supabaseClient
-          .from('video_submissions')
-          .select('id, upload_date, video_file_url, created_at, employee_id, employees(name, badge_id)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: true });
+      inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Loading queue...</div>`;
+      
+      try {
+          // Fetch videos that are explicitly 'pending' OR have no status yet
+          const { data: vids, error } = await supabaseClient
+              .from('video_submissions')
+              .select('id, upload_date, video_file_url, created_at, employee_id, status, employees(name, badge_id)')
+              .or('status.eq.pending,status.is.null')
+              .order('created_at', { ascending: false });
 
-      if (error || !vids) {
-          inbox.innerHTML = `<div style="padding: 20px; color: var(--coral-500);">Error: ${error?.message}</div>`;
-          return;
+          if (error) throw error;
+
+          const queueCount = vids ? vids.length : 0;
+          document.getElementById('pendingCount').textContent = queueCount;
+
+          if (queueCount === 0) {
+              inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Queue is empty! 🎉</div>`;
+              return;
+          }
+
+          inbox.innerHTML = vids.map(v => {
+              const empName = v.employees?.name || 'Unknown Seller';
+              const dateFmt = new Date(v.created_at).toLocaleDateString([], {month:'short', day:'numeric'});
+              return `
+              <div class="vid-item" id="vid-${v.id}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
+                  <div class="vid-thumb">▶</div>
+                  <div class="vid-info">
+                      <div class="vid-name">${escapeHtml(empName)}</div>
+                      <div class="vid-meta">Uploaded: ${dateFmt}</div>
+                  </div>
+              </div>`;
+          }).join('');
+      } catch (err) {
+          console.error("Queue load error:", err);
+          inbox.innerHTML = `<div style="padding: 20px; color: var(--coral-500);">Error: ${err.message}</div>`;
       }
-
-      document.getElementById('pendingCount').textContent = vids.length;
-
-      if (vids.length === 0) {
-          inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Queue is empty! 🎉</div>`;
-          return;
-      }
-
-      inbox.innerHTML = vids.map(v => {
-          const empName = v.employees?.name || 'Unknown Seller';
-          const dateFmt = new Date(v.created_at).toLocaleDateString([], {month:'short', day:'numeric'});
-          return `
-          <div class="vid-item" id="vid-${v.id}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
-              <div class="vid-thumb">▶</div>
-              <div class="vid-info">
-                  <div class="vid-name">${empName}</div>
-                  <div class="vid-meta">Uploaded: ${dateFmt}</div>
-              </div>
-          </div>`;
-      }).join('');
   }
 
   // 4. Load Video to Main View
