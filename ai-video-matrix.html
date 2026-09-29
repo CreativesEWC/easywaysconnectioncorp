@@ -115,10 +115,11 @@
         <div><span id="liveScore">0</span><span style="font-size: 16px; color: var(--text-muted);">/10</span></div>
         <div id="liveStatus" class="score-status" style="color: var(--coral-500);">Unusable</div>
       </div>
-      <button class="btn primary" id="submitQaBtn" style="width: 100%; padding: 14px;" disabled>Submit Evaluation</button>
+      <div style="display: flex; gap: 10px; width: 100%;">
+        <button class="btn" id="manualCheckBtn" style="flex: 1; padding: 14px; background: var(--navy-800); border-color: var(--line);" disabled>Manual Check</button>
+        <button class="btn primary" id="autoCheckBtn" style="flex: 1; padding: 14px;" disabled>Auto AI Check</button>
+      </div>
     </div>
-  </div>
-</div>
 
 <script src="supabase-config.js"></script>
 <script>
@@ -203,7 +204,6 @@
 
   // 4. Load Video to Main View
   window.loadVideoToPlayer = function(vidId, fileUrl, empId, upDate) {
-      // Highlight active in sidebar
       document.querySelectorAll('.vid-item').forEach(el => el.classList.remove('active'));
       document.getElementById(`vid-${vidId}`).classList.add('active');
 
@@ -217,7 +217,10 @@
       document.getElementById('noVideoMsg').style.display = 'none';
       player.style.display = 'block';
       player.src = fileUrl;
-      document.getElementById('submitQaBtn').disabled = false;
+      
+      // Enable both buttons
+      document.getElementById('autoCheckBtn').disabled = false;
+      document.getElementById('manualCheckBtn').disabled = false;
   };
 
   function resetForm() {
@@ -227,10 +230,14 @@
   }
 
  // 5. Submit to Groq API (Two-Step Pipeline) & Save Evaluation
-  document.getElementById('submitQaBtn').addEventListener('click', async () => {
-      if (!activeVideoId) return;
+  document.getElementById('autoCheckBtn').addEventListener('click', async () => {
+    if (!activeVideoId) return;
 
-      const btn = document.getElementById('submitQaBtn');
+    const btn = document.getElementById('autoCheckBtn');
+    const manBtn = document.getElementById('manualCheckBtn');
+    
+      btn.disabled = true;
+      manBtn.disabled = true;
       btn.disabled = true;
 
       try {
@@ -413,11 +420,65 @@
           alert('AI Audit Failed:\n\n' + err.message);
       } finally {
           btn.disabled = false; 
-          btn.textContent = 'Run AI Evaluation';
+          manBtn.disabled = false;
+          btn.textContent = 'Auto (AI) Check';
       }
   });
 
-  // 6. Helpers & Initialization
+  // 6. Manual Check Submit Logic
+  document.getElementById('manualCheckBtn').addEventListener('click', async () => {
+      if (!activeVideoId) return;
+      const btn = document.getElementById('manualCheckBtn');
+      const autoBtn = document.getElementById('autoCheckBtn');
+      
+      btn.disabled = true;
+      autoBtn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const finalScore = document.querySelectorAll('.rule-cb:checked').length;
+      const status = finalScore >= 6 ? 'approved' : 'rejected';
+      const feedbackNotes = document.getElementById('qaNotes').value.trim() || '[Manual Audit] Evaluation completed.';
+
+      try {
+          const { error: dbErr } = await supabaseClient
+              .from('video_submissions')
+              .update({ 
+                  status: status,
+                  ai_score: finalScore, 
+                  ai_notes: feedbackNotes
+              })
+              .eq('id', activeVideoId);
+
+          if (dbErr) throw dbErr;
+
+          await supabaseClient.from('notifications').insert({
+              employee_id: activeEmployeeId,
+              title: `Manual Video Audit Complete (${finalScore}/10)`,
+              message: `Your video scored ${finalScore}/10. Status: ${status.toUpperCase()}. Feedback: "${feedbackNotes}"`,
+              is_read: false
+          });
+
+          btn.textContent = 'Saved Successfully!';
+          
+          setTimeout(() => {
+              activeVideoId = null;
+              document.getElementById('mainPlayer').src = '';
+              document.getElementById('mainPlayer').style.display = 'none';
+              document.getElementById('noVideoMsg').style.display = 'flex';
+              resetForm();
+              loadPendingQueue();
+              btn.textContent = 'Manual Check';
+          }, 2000);
+
+      } catch (err) {
+          alert('Manual Audit Failed:\n\n' + err.message);
+          btn.textContent = 'Manual Check';
+          btn.disabled = false;
+          autoBtn.disabled = false;
+      }
+  });
+
+  // 7. Helpers & Initialization
   function escapeHtml(str) {
       return String(str ?? '').replace(/[&<>"']/g, c => ({
           '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
