@@ -284,10 +284,9 @@
           btn.textContent = 'EWC AI is grading script...';
 
           const SYSTEM_PROMPT = `
-          You are a balanced and supportive QA Auditor for EWC Creatives. 
-          Read the following exact audio transcript from the creator's video. 
-          Evaluate their spoken hooks, energy, and explanations against the rubric. 
-          Return your evaluation strictly in JSON format.
+          You are a Fair but Firm QA Manager for EWC Creatives.
+          Your job is to objectively evaluate the creator's video transcript. 
+          Do not auto-pass or auto-fail. Grade strictly based on actual merit and impact.
 
           VIDEO TRANSCRIPT:
           "${actualTranscript}"
@@ -296,40 +295,31 @@
           - SEOUL SECRETS: Premium, trustworthy. Show results. Polished, clean.
           - MOMOM FOOD: Warm, authentic. Focus on taste/appetite. Natural presentation.
 
-          ### THE 10-POINT RUBRIC (Pass = true, Fail = false)
-          1. Clear Product Explanation
-          2. Active Product Demonstration
-          3. Food Product Requirement (Auto-pass if non-food)
-          4. Clean Packaging & Presentation
-          5. Product Spotlight
-          6. Strong 3-Second Hook
-          7. Energy & Authenticity
-          8. Full Potential Demonstrated
-          9. Outcome-Focused Affiliate Style
-          10. Audio & Visual Quality
-
-          ### BALANCED GRADING PROTOCOL
-          Evaluate the overall impact. Do not fail a video for minor conversational flaws if the core message is clear and engaging.
-          - RULE 6 (Hook): Pass if they introduce the product's value within the first 3-5 seconds. A quick greeting ("Hi guys") is acceptable as long as they do not ramble before showing the item.
-          - RULE 7 (Energy): Pass if the energy is positive and natural. Minor filler words or conversational pauses are acceptable. Only fail if the delivery is completely monotone, lifeless, or heavily unscripted and confusing.
-          - RULE 9 (Affiliate Style): Pass if they clearly state a benefit and tell the viewer what to do next (e.g., "i-click ang yellow basket"). Intense urgency/scarcity is encouraged but not strictly required to pass.
+          ### THE 10-POINT RUBRIC (Evaluate each independently: Pass = true, Fail = false)
+          1. Clear Product Explanation: Do they explain what it is and its benefits?
+          2. Active Product Demonstration: Do they actively use/show it (not just hold it)?
+          3. Food Product Requirement: (Auto-pass true if non-food, otherwise must show/taste food).
+          4. Clean Packaging & Presentation: Is the visual setup neat?
+          5. Product Spotlight: Is the product clearly visible and centered?
+          6. Strong Hook: Do they get to the point within 5 seconds? (A quick "hi" is fine, but long rambling fails).
+          7. Energy & Authenticity: Do they sound natural and upbeat? (Occasional filler words are okay; robotic or dead monotone fails).
+          8. Full Potential Demonstrated: Do they highlight the best possible result?
+          9. Outcome-Focused: Do they explicitly tell the viewer what to do next? (e.g., must say "click the yellow basket" or "buy now").
+          10. Audio & Visual Quality: Is the audio clear and understandable?
 
           CRITICAL FEEDBACK INSTRUCTION: 
-          For the "feedback_notes" field, act as a supportive creative coach speaking directly to the creator. Do NOT use internal jargon, rule numbers, or mention the rubric. 
-          CRITICAL: NEVER use marketing acronyms like "FOMO", "CTA", or "pattern interrupt". Explain your advice in plain, everyday Taglish. 
-          - Instead of "Use a CTA", tell them to say "i-click ang yellow basket". 
-          - Instead of "Use FOMO", tell them to say "ipaalala na paubos na ang stock". 
-          Write a short, direct note highlighting what they did well, followed by actionable, gentle advice on how to improve for their next video.
+          Act as a supportive coach. DO NOT use marketing jargon ("CTA", "FOMO", "pattern interrupt"). Explain in plain, everyday Taglish. If they passed, encourage them. If they failed a rule, tell them exactly how to fix it next time.
 
           ### JSON OUTPUT FORMAT
+          IMPORTANT: Grade honestly based on the transcript. Do NOT just copy this example score. Evaluate each rule uniquely.
           {
             "rules": {
-              "rule_1": true, "rule_2": false, "rule_3": true, "rule_4": true, "rule_5": true,
-              "rule_6": true, "rule_7": true, "rule_8": true, "rule_9": true, "rule_10": true
+              "rule_1": true, "rule_2": true, "rule_3": true, "rule_4": true, "rule_5": true,
+              "rule_6": false, "rule_7": true, "rule_8": true, "rule_9": false, "rule_10": true
             },
-            "final_score": 9,
+            "final_score": 8,
             "status": "approved",
-            "feedback_notes": "[Insert your original Taglish coaching feedback here based STRICTLY on the provided transcript. Do not use generic placeholder examples.]"
+            "feedback_notes": "Yung energy mo is very natural at clear ang explanation! Next time, i-make sure na wag masyadong mahaba ang intro, at sabihan ang viewers na i-click ang yellow basket sa dulo para mas dumami ang sales natin."
           }
           `;
 
