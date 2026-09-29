@@ -291,36 +291,37 @@
           VIDEO TRANSCRIPT:
           "${actualTranscript}"
 
-          ### BRAND STANDARDS
+          ### BRAND STANDARDS & FORMATS
           - SEOUL SECRETS (Skincare/Cosmetics): Premium, trustworthy. Show results. Polished, clean.
-          - MOMOM FOOD (Food/Beverage): Warm, authentic. Focus on taste/appetite. Natural presentation.
-          - HOUSEHOLD: Practical, clear, demonstrating utility.
+          - MOMOM FOOD (Food/Beverage): Warm, authentic. Focus on taste/appetite.
+          - CONTENT STYLES: Videos may be "Direct Pitches" (talking directly to camera) OR "Narrative/Stories" (skits, vlogs, soft-selling where the product is woven into a plot).
 
           ### THE 10-POINT RUBRIC (Evaluate each independently: Pass = true, Fail = false)
-          1. Clear Product Explanation: For skincare/household, do they explain the specific benefits? For food, do they explicitly describe how it tastes?
-          2. Active Product Demonstration: Is the product actively handled or shown on camera?
-          3. Packaging & Preparation: Is the actual packaging prepared neatly? For food/skincare, does the presentation look highly appealing (fail if messy, dirty, or unappetizing).
-          4. Dynamic Background: Is the surrounding background natural, dynamic, or appropriate? (Fail if they are shooting in front of a repetitive, generic foam wall).
-          5. Product Spotlight: Is the product the clear, centered focus of the shot?
-          6. The 3-Second Rule: Does the opening hook instantly grab attention? If you were the viewer, would the first 3 seconds make you want to stay or buy?
-          7. Energy & Delivery: Are they highly energetic, speaking straight to the camera, with NO filler words or rambling?
-          8. Physical Usage Demonstrated: For skincare, do they physically apply it to their skin? For food, do they show exactly what is inside the packaging and eat/taste it on camera?
-          9. Viewer Retention & Interest: Is the overall content genuinely interesting enough to keep the viewer focused without getting bored?
-          10. Production & Design Quality: Is the audio clear, video stable, and is the overall design quality (like text overlays) highly presentable?
+          1. Clear Product Value: For direct pitches, do they explain the specific benefits/taste? For narrative stories, is the product's value or purpose clearly woven into the plot?
+          2. Active Demonstration: Is the product actively handled on camera, OR naturally integrated into the scene of the story/skit?
+          3. Packaging & Preparation: Is the actual packaging prepared neatly? For food/skincare, does the presentation look highly appealing (fail if messy or dirty).
+          4. Dynamic Background: Is the surrounding background natural, dynamic, or appropriate for the skit? (Fail if they are shooting in front of a repetitive, generic foam wall).
+          5. Product Spotlight: Is the product clearly visible and a focal point when it is finally introduced?
+          6. The 3-Second Rule: Does the opening hook instantly grab attention? (This can be a bold claim OR a compelling story setup that makes you want to stay).
+          7. Energy & Delivery: Are they highly engaging, with NO filler words or rambling? (For stories, the acting/voiceover must feel natural and captivating).
+          8. Physical Usage / Narrative Payoff: For direct videos, do they physically apply the skincare or taste the food? For story videos, is the product actually used in a way that resolves the narrative or proves its worth?
+          9. Viewer Retention & Interest: Is the overall content genuinely interesting or entertaining enough to keep the viewer focused without getting bored?
+          10. Production & Design Quality: Is the audio clear, video stable, and is the overall design quality highly presentable?
 
           CRITICAL FEEDBACK INSTRUCTION: 
-          Act as a supportive coach. DO NOT use marketing jargon. Explain in plain, everyday Taglish. If they passed, encourage them. If they failed a rule, tell them exactly how to fix it next time.
+          Act as a supportive coach. DO NOT use marketing jargon. Explain in plain, everyday Taglish. 
+          STRICT LENGTH LIMIT: Your feedback MUST NOT exceed 500 characters. Be concise, punchy, and direct. No long essays. Tell them what worked and exactly what to fix.
 
           ### JSON OUTPUT FORMAT
           IMPORTANT: Grade honestly based on the transcript. Do NOT just copy this example score. Evaluate each rule uniquely.
           {
             "rules": {
-              "rule_1": true, "rule_2": true, "rule_3": true, "rule_4": false, "rule_5": true,
-              "rule_6": false, "rule_7": false, "rule_8": true, "rule_9": true, "rule_10": true
+              "rule_1": true, "rule_2": true, "rule_3": true, "rule_4": true, "rule_5": true,
+              "rule_6": true, "rule_7": false, "rule_8": true, "rule_9": true, "rule_10": true
             },
-            "final_score": 7,
+            "final_score": 9,
             "status": "approved",
-            "feedback_notes": "Ang ganda ng pag-explain mo kung ano ang lasa ng candies! Pero next time, i-try mong ibahin ang background at wag lang gumamit ng same foam wall para mas fresh. Make sure din na straight to the point ka agad sa first 3 seconds at iwasan ang mga filler words para hindi ma-boring ang viewers."
+            "feedback_notes": "Ganda ng story concept! Nakaka-hook yung first 3 seconds dahil sa kwento. Kaso, naging medyo mabagal yung pacing sa gitna. Next time, bilisan ang kwento para tuloy-tuloy ang panonood ng viewers hanggang sa lumabas yung Momom candies."
           }
           `;
 
