@@ -309,6 +309,9 @@
           9. Outcome-Focused Affiliate Style
           10. Audio & Visual Quality
 
+          CRITICAL FEEDBACK INSTRUCTION: 
+          For the "feedback_notes" field, act as a supportive creative coach speaking directly to the creator. Do NOT use internal jargon, rule numbers, or mention the rubric (e.g., never say "Rule 2 Failed"). Instead, write a short, encouraging note highlighting what they did well, followed by actionable advice on how to improve the missing elements for their next video. Write naturally and use conversational Taglish if it fits the creator's delivery.
+
           ### JSON OUTPUT FORMAT
           {
             "rules": {
@@ -317,7 +320,7 @@
             },
             "final_score": 8,
             "status": "approved",
-            "feedback_notes": "Rule 2 Failed: No active lather shown. Rule 6 Failed: Started with silence."
+            "feedback_notes": "Ang ganda ng energy mo at clear yung explanation ng SPF benefits! Next time, make sure to actually squeeze the lotion onto your skin to show the texture, and show us a quick before-and-after of the instant glow so buyers can see the full potential."
           }
           `;
 
@@ -339,6 +342,23 @@
 
           const rawJsonString = aiData.choices[0].message.content;
           const analysis = JSON.parse(rawJsonString);
+
+        // Visually tick the checkboxes on screen
+          const checkboxes = document.querySelectorAll('.rule-cb');
+          if (analysis.rules) {
+              Object.keys(analysis.rules).forEach((ruleKey, idx) => {
+                  if (checkboxes[idx]) {
+                      checkboxes[idx].checked = Boolean(analysis.rules[ruleKey]);
+                  }
+              });
+          }
+          if (typeof calculateScore === 'function') calculateScore();
+
+          // Populate the feedback textarea on screen
+          const feedbackEl = document.getElementById('qaNotes');
+          if (feedbackEl && analysis.feedback_notes) {
+              feedbackEl.value = analysis.feedback_notes;
+          }
 
           // ==========================================
           // STEP 3: SAVE TO DATABASE & CLEANUP
@@ -367,12 +387,15 @@
               is_read: false
           });
 
-          activeVideoId = null;
-          document.getElementById('mainPlayer').src = '';
-          document.getElementById('mainPlayer').style.display = 'none';
-          document.getElementById('noVideoMsg').style.display = 'flex';
-          resetForm();
-          loadPendingQueue();
+          // Delay cleanup for 5 seconds to allow UI review
+          setTimeout(() => {
+              activeVideoId = null;
+              document.getElementById('mainPlayer').src = '';
+              document.getElementById('mainPlayer').style.display = 'none';
+              document.getElementById('noVideoMsg').style.display = 'flex';
+              resetForm();
+              loadPendingQueue();
+          }, 5000);
 
       } catch (err) {
           alert('AI Audit Failed:\n\n' + err.message);
