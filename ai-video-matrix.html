@@ -341,18 +341,26 @@
           if (aiData.error) throw new Error(`Groq Evaluation Error: ${aiData.error.message}`);
 
           const rawJsonString = aiData.choices[0].message.content;
-          const analysis = JSON.parse(rawJsonString);
+          // Strip out rogue markdown formatting before parsing
+          const cleanJson = rawJsonString.replace(/```json|```/gi, '').trim();
+          const analysis = JSON.parse(cleanJson);
 
-        // Visually tick the checkboxes on screen
+          // Visually tick the checkboxes on screen robustly
           const checkboxes = document.querySelectorAll('.rule-cb');
           if (analysis.rules) {
-              Object.keys(analysis.rules).forEach((ruleKey, idx) => {
+              // Handle whether AI returns rules as an array or an object
+              const ruleValues = Array.isArray(analysis.rules) 
+                  ? analysis.rules 
+                  : Object.values(analysis.rules);
+
+              ruleValues.forEach((passed, idx) => {
                   if (checkboxes[idx]) {
-                      checkboxes[idx].checked = Boolean(analysis.rules[ruleKey]);
+                      checkboxes[idx].checked = Boolean(passed);
+                      // Force the browser to trigger calculateScore() and update UI colors instantly
+                      checkboxes[idx].dispatchEvent(new Event('change')); 
                   }
               });
           }
-          if (typeof calculateScore === 'function') calculateScore();
 
           // Populate the feedback textarea on screen
           const feedbackEl = document.getElementById('qaNotes');
@@ -365,7 +373,8 @@
           // ==========================================
           btn.textContent = 'Saving AI Results...';
 
-          const finalScore = analysis.final_score ?? analysis.score ?? 0;
+          // Force the database score to perfectly match the counted checkmarks on screen
+          const finalScore = document.querySelectorAll('.rule-cb:checked').length;
           const status = (analysis.status || (finalScore >= 7 ? 'approved' : 'rejected')).toString();
           const feedbackNotes = analysis.feedback_notes || analysis.notes || analysis.feedback || 'Evaluation completed.';
 
