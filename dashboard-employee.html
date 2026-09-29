@@ -4400,26 +4400,40 @@ window.loadTodayOverallTotal = async function() {
                   ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Link</a>` 
                   : '—';
 
-              let statusBadge = '<span class="status-pill pending">Pending Review</span>';
-              if (v.status === 'approved') {
-                  statusBadge = '<span class="status-pill complete">Passed</span>';
-              } else if (v.status === 'rejected') {
-                  statusBadge = '<span class="status-pill" style="background: rgba(217, 97, 79, 0.15); color: var(--coral-500); border: 1px solid var(--coral-500);">Failed</span>';
+              const rawStatus = (v.status || '').toLowerCase();
+              const score = v.ai_score !== null ? v.ai_score : '-';
+              
+              // NEW LOGIC: Any score 6 or higher is automatically a PASS
+              let badgeClass = 'pending';
+              let badgeHtml = '<span class="status-pill pending">Pending Review</span>';
+              let scoreColor = 'var(--text-muted)';
+              let feedbackBorder = 'var(--amber-500)';
+
+              if (rawStatus === 'approved' || score >= 6) {
+                  badgeClass = 'complete';
+                  badgeHtml = '<span class="status-pill complete">Passed</span>';
+                  scoreColor = 'var(--mint-500)';
+                  feedbackBorder = 'var(--mint-500)';
+              } else if (rawStatus === 'rejected' || (score !== '-' && score < 6)) {
+                  badgeClass = 'danger';
+                  badgeHtml = '<span class="status-pill" style="background: rgba(217, 97, 79, 0.15); color: var(--coral-500); border: 1px solid var(--coral-500);">Failed</span>';
+                  scoreColor = 'var(--coral-500)';
+                  feedbackBorder = 'var(--coral-500)';
               }
 
-              const scoreDisplay = (v.ai_score !== null && v.ai_score !== undefined) 
-                  ? `<strong style="font-family: var(--font-mono); font-size: 13px; color: ${v.ai_score >= 5 ? 'var(--mint-500)' : 'var(--coral-500)'};">${v.ai_score}/10</strong>` 
+              const scoreDisplay = (score !== '-') 
+                  ? `<strong style="font-family: var(--font-mono); font-size: 13px; color: ${scoreColor};">${score}/10</strong>` 
                   : '<span style="color: var(--text-muted); font-size: 11px;">Pending</span>';
 
               const feedbackText = v.ai_notes 
-                  ? `<div style="font-size: 12px; color: var(--paper); line-height: 1.4; background: var(--navy-800); padding: 8px 12px; border-radius: 6px; border-left: 3px solid ${v.status === 'approved' ? 'var(--mint-500)' : 'var(--coral-500)'};">${escapeHtml(v.ai_notes)}</div>`
+                  ? `<div style="font-size: 12px; color: var(--paper); line-height: 1.4; background: var(--navy-800); padding: 8px 12px; border-radius: 6px; border-left: 3px solid ${feedbackBorder};">${escapeHtml(v.ai_notes)}</div>`
                   : '<span style="color: var(--text-muted); font-size: 11px; font-style: italic;">Awaiting audit feedback...</span>';
 
               return `
               <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
                   <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtml(dateStr)}</td>
                   <td style="padding: 10px 8px;">${linkBtn}</td>
-                  <td style="padding: 10px 8px;">${statusBadge}</td>
+                  <td style="padding: 10px 8px;">${badgeHtml}</td>
                   <td style="padding: 10px 8px;">${scoreDisplay}</td>
                   <td style="padding: 10px 8px; max-width: 320px;">${feedbackText}</td>
               </tr>`;
@@ -4430,6 +4444,18 @@ window.loadTodayOverallTotal = async function() {
           tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load history: ${err.message}</td></tr>`;
       }
   };
+
+  // Real-Time Listener: Auto-refreshes the creator's view the moment you click check on your Admin panel
+  supabaseClient
+      .channel('my-video-qa-updates')
+      .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'video_submissions', filter: `employee_id=eq.${emp.id}` },
+          (payload) => {
+              if (typeof loadMyVideoSubmissions === 'function') loadMyVideoSubmissions();
+          }
+      )
+      .subscribe();
 
   // Initial load
   setTimeout(() => {
