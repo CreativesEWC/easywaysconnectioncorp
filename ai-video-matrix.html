@@ -486,6 +486,18 @@
       }[c]));
   }
 
+  // Listen for real-time database changes
+  supabaseClient
+      .channel('video-qa-updates')
+      .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'video_submissions' },
+          (payload) => {
+              loadPendingQueue(); 
+          }
+      )
+      .subscribe();
+
   // Boot up the queue a split-second after the page loads
   setTimeout(() => {
       loadPendingQueue();
