@@ -100,6 +100,21 @@
       <span>Evaluation Matrix</span>
       <button class="btn" onclick="resetForm()" style="padding: 4px 8px; font-size: 10px;">Clear</button>
     </div>
+
+    <div style="padding: 15px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; color: var(--amber-400); text-transform: uppercase; letter-spacing: 0.1em; display: flex; justify-content: space-between; align-items: center;">
+      <span>Evaluation Matrix</span>
+      <button class="btn" onclick="resetForm()" style="padding: 4px 8px; font-size: 10px;">Clear</button>
+    </div>
+    
+    <!-- NEW: AI Grading Mode Selector -->
+    <div style="padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--navy-950);">
+      <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">AI Grading Mode</div>
+      <div style="display: flex; gap: 15px; font-size: 13px;">
+        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="strict"> Strict</label>
+        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="creative" checked> Creative</label>
+        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="combined"> Combined</label>
+      </div>
+    </div>
     
     <div class="qa-scroll">
       <div id="qaChecklist"></div>
@@ -292,10 +307,20 @@
           // ==========================================
           btn.textContent = 'EWC AI is grading script...';
 
+          // Read the selected radio button mode
+          const aiMode = document.querySelector('input[name="aiMode"]:checked').value;
+          
+          let personaInstruction = "";
+          if (aiMode === 'strict') {
+              personaInstruction = `You are a Strict QA Manager. Enforce perfect brand standards. Penalize filler words, messy setups, and unprofessional delivery. Do NOT forgive mistakes. Technical perfection is required.`;
+          } else if (aiMode === 'creative') {
+              personaInstruction = `You are a Viral Content Strategist. Authentic, engaging, and creative videos MUST PASS. Forgive technical flaws, casual setups, or slang if the energy is authentic and highly creative (e.g., stacking boxes).`;
+          } else {
+              personaInstruction = `You are a Balanced Brand Reviewer. You want high virality and authentic energy, but the product must still be clearly visible and respectfully presented. Balance rules with creativity.`;
+          }
+
           const SYSTEM_PROMPT = `
-          You are a Viral Content Strategist for EWC Creatives evaluating TikTok videos.
-          Your goal is to identify videos with high viral potential. Authentic, engaging, and creative videos MUST PASS, even if they aren't "perfect." 
-          Do not be overly strict. If a video feels natural, highly relatable, or could get millions of views, pass it.
+          ${personaInstruction}
 
           VIDEO TRANSCRIPT:
           "${actualTranscript}"
@@ -312,25 +337,25 @@
           4. Acceptable Background: Is the background acceptable? (Pass if it's natural, creative, or neat. Only fail if it is extremely messy or completely uninspired).
           5. Product Spotlight: Can the viewer clearly see what is being sold?
           6. The Hook: Does the start of the video grab attention? (Casual, relatable, or highly visual hooks all pass).
-          7. Authentic Energy: Do they sound natural and engaging? (PASS occasional filler words, slang, or casual delivery if the vibe is authentic! ONLY FAIL if they sound like a boring, dead robot reading a script).
-          8. Visual/Narrative Payoff: Do they eat the food, apply the skincare, or show off a satisfying visual (like packing a massive stack of orders)?
-          9. Viral/Retention Potential: Does this feel like a natural, interesting TikTok that real people would actually watch? (If yes, PASS).
+          7. Authentic Energy: Do they sound natural and engaging? (ONLY FAIL if they sound like a boring, dead robot reading a script).
+          8. Visual/Narrative Payoff: Do they eat the food, apply the skincare, or show off a satisfying visual?
+          9. Viral/Retention Potential: Does this feel like a natural, interesting TikTok that real people would actually watch?
           10. Basic Quality: Is the audio understandable and the video clear?
 
           CRITICAL FEEDBACK INSTRUCTION: 
           Act as a supportive coach. DO NOT use marketing jargon. Explain in plain, everyday Taglish. 
-          STRICT LENGTH LIMIT: Max 500 characters. Tell them what worked and how to improve. Focus on helping them go viral.
+          STRICT LENGTH LIMIT: Max 500 characters. Tell them what worked and how to improve.
 
           ### JSON OUTPUT FORMAT
-          IMPORTANT: Grade honestly based on the transcript.
+          IMPORTANT: Grade honestly based on the transcript and your assigned persona.
           {
             "rules": {
-              "rule_1": true, "rule_2": true, "rule_3": true, "rule_4": true, "rule_5": true,
-              "rule_6": true, "rule_7": true, "rule_8": true, "rule_9": true, "rule_10": true
+              "rule_1": true, "rule_2": true, "rule_3": false, "rule_4": true, "rule_5": false,
+              "rule_6": true, "rule_7": false, "rule_8": true, "rule_9": true, "rule_10": true
             },
-            "final_score": 10,
+            "final_score": 7,
             "status": "approved",
-            "feedback_notes": "Ang ganda ng energy mo dito! Super natural at mukhang mag-vaviral ito. Keep up the good work sa pagiging authentic. Next time, pwede mo pa mas ilapit sa camera yung product para mas kitang-kita."
+            "feedback_notes": "Okay yung hook mo sa simula, pero madilim yung ilaw kaya hindi kita yung product. Next time lakasan mo ang boses mo para mas engaging."
           }
           `;
 
