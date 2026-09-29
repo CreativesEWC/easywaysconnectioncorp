@@ -105,10 +105,12 @@
       <div id="qaChecklist"></div>
       
       <div style="margin-top: 20px;">
-        <label style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase;">AI / Admin Feedback</label>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <label style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase;">AI / Admin Feedback</label>
+            <button class="btn" id="generateFeedbackBtn" style="padding: 4px 8px; font-size: 10px; background: var(--navy-800); color: var(--mint-500); border-color: var(--mint-500);">🤖 Auto-Write Feedback</button>
+        </div>
         <textarea id="qaNotes" placeholder="Explain flagged rules for the seller's future reference..." style="width: 100%; height: 100px; margin-top: 8px; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 10px; font-family: var(--font-body); font-size: 13px; resize: vertical;"></textarea>
       </div>
-    </div>
     
     <div class="qa-footer">
       <div class="score-display">
@@ -377,55 +379,34 @@
           }
 
           // ==========================================
-          // STEP 3: SAVE TO DATABASE & CLEANUP
+          // STEP 3: PRE-FILL FORM FOR HUMAN VERIFICATION (NO AUTO-SAVE)
           // ==========================================
-          btn.textContent = 'Saving AI Results...';
+          btn.textContent = 'AI Draft Ready! Please Review.';
 
-          // Force the database score to perfectly match the counted checkmarks on screen
-          const finalScore = document.querySelectorAll('.rule-cb:checked').length;
+          // We intentionally STOP here. No database saving or auto-clearing.
+          // The admin can now review the screen, uncheck incorrect rules, edit the AI's notes, 
+          // and finalize the score manually.
           
-          // LOWERED THRESHOLD: 6 is now a pass
-          const status = (analysis.status || (finalScore >= 6 ? 'approved' : 'rejected')).toString();
-          const feedbackNotes = analysis.feedback_notes || analysis.notes || analysis.feedback || 'Evaluation completed.';
-
-          const { error: dbErr } = await supabaseClient
-              .from('video_submissions')
-              .update({ 
-                  status: status.toLowerCase(),
-                  ai_score: finalScore,
-                  ai_notes: feedbackNotes
-              })
-              .eq('id', activeVideoId);
-
-          if (dbErr) throw dbErr;
-
-          await supabaseClient.from('notifications').insert({
-              employee_id: activeEmployeeId,
-              title: `AI Video Audit Complete (${finalScore}/10)`,
-              message: `Your video scored ${finalScore}/10. Status: ${status.toUpperCase()}. AI Feedback: "${feedbackNotes}"`,
-              is_read: false
-          });
-
-          // Delay cleanup for 5 seconds to allow UI review
           setTimeout(() => {
-              activeVideoId = null;
-              document.getElementById('mainPlayer').src = '';
-              document.getElementById('mainPlayer').style.display = 'none';
-              document.getElementById('noVideoMsg').style.display = 'flex';
-              resetForm();
-              loadPendingQueue();
-          }, 5000);
+              btn.textContent = 'Re-Run AI Check';
+              btn.disabled = false; 
+              manBtn.disabled = false;
+              
+              // Highlight the manual save button so the admin knows it's their turn
+              manBtn.textContent = '💾 Save Final Verification';
+              manBtn.classList.add('primary'); 
+              btn.classList.remove('primary');
+          }, 1500);
 
       } catch (err) {
           alert('AI Audit Failed:\n\n' + err.message);
-      } finally {
           btn.disabled = false; 
           manBtn.disabled = false;
           btn.textContent = 'Auto (AI) Check';
       }
   });
 
-  // 6. Manual Check Submit Logic
+  // 6. Universal Save Logic (Human Verification)
   document.getElementById('manualCheckBtn').addEventListener('click', async () => {
       if (!activeVideoId) return;
       const btn = document.getElementById('manualCheckBtn');
@@ -433,11 +414,12 @@
       
       btn.disabled = true;
       autoBtn.disabled = true;
-      btn.textContent = 'Saving...';
+      btn.textContent = 'Saving Verified Score...';
 
+      // Reads whatever is CURRENTLY checked on the screen (including human edits)
       const finalScore = document.querySelectorAll('.rule-cb:checked').length;
       const status = finalScore >= 6 ? 'approved' : 'rejected';
-      const feedbackNotes = document.getElementById('qaNotes').value.trim() || '[Manual Audit] Evaluation completed.';
+      const feedbackNotes = document.getElementById('qaNotes').value.trim() || 'Evaluation completed.';
 
       try {
           const { error: dbErr } = await supabaseClient
@@ -453,28 +435,97 @@
 
           await supabaseClient.from('notifications').insert({
               employee_id: activeEmployeeId,
-              title: `Manual Video Audit Complete (${finalScore}/10)`,
+              title: `Video Audit Complete (${finalScore}/10)`,
               message: `Your video scored ${finalScore}/10. Status: ${status.toUpperCase()}. Feedback: "${feedbackNotes}"`,
               is_read: false
           });
 
           btn.textContent = 'Saved Successfully!';
           
+          // Clear screen and load next video
           setTimeout(() => {
               activeVideoId = null;
               document.getElementById('mainPlayer').src = '';
               document.getElementById('mainPlayer').style.display = 'none';
               document.getElementById('noVideoMsg').style.display = 'flex';
+              
+              // Reset buttons back to default UI state
+              btn.textContent = 'Manual Check';
+              btn.classList.remove('primary');
+              autoBtn.textContent = 'Auto AI Check';
+              autoBtn.classList.add('primary');
+              
               resetForm();
               loadPendingQueue();
-              btn.textContent = 'Manual Check';
           }, 2000);
 
       } catch (err) {
-          alert('Manual Audit Failed:\n\n' + err.message);
-          btn.textContent = 'Manual Check';
+          alert('Audit Save Failed:\n\n' + err.message);
+          btn.textContent = 'Save Final Verification';
           btn.disabled = false;
           autoBtn.disabled = false;
+      }
+  });
+
+  // 6.5 Auto-Generate Feedback based on Checkboxes
+  document.getElementById('generateFeedbackBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('generateFeedbackBtn');
+      const feedbackEl = document.getElementById('qaNotes');
+      btn.textContent = 'Writing...';
+      btn.disabled = true;
+
+      // Build a summary of what the Human Checker flagged on the screen
+      const checkboxes = document.querySelectorAll('.rule-cb');
+      let passedRules = [];
+      let failedRules = [];
+
+      qaRules.forEach((rule, index) => {
+          if (checkboxes[index].checked) {
+              passedRules.push(rule);
+          } else {
+              failedRules.push(rule);
+          }
+      });
+
+      const PROMPT = `
+      You are a supportive QA Coach for EWC Creatives. 
+      A video was just graded. 
+      PASSED CRITERIA: ${passedRules.length > 0 ? passedRules.join(', ') : 'None'}
+      FAILED CRITERIA: ${failedRules.length > 0 ? failedRules.join(', ') : 'None'}
+
+      Write a short feedback note (Max 400 characters) in conversational Taglish.
+      If they got 10/10, praise them.
+      If they failed anything, gently explain what they need to fix based ONLY on the FAILED CRITERIA listed above.
+      DO NOT include markdown, greetings, or JSON. Just write the direct message.
+      `;
+
+      try {
+          let GROQ_API_KEY = localStorage.getItem('ewc_groq_key');
+          if (!GROQ_API_KEY) throw new Error("Missing Groq API Key.");
+
+          const evalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${GROQ_API_KEY}`
+              },
+              body: JSON.stringify({
+                  model: "openai/gpt-oss-20b", 
+                  messages: [{ role: "user", content: PROMPT }]
+              })
+          });
+
+          const aiData = await evalRes.json();
+          if (aiData.error) throw new Error(aiData.error.message);
+
+          // Inject the AI's explanation directly into the text box
+          feedbackEl.value = aiData.choices[0].message.content.trim();
+          
+      } catch (err) {
+          alert('Failed to generate feedback: ' + err.message);
+      } finally {
+          btn.textContent = 'Auto-Write Feedback';
+          btn.disabled = false;
       }
   });
 
