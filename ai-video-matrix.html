@@ -155,9 +155,8 @@
       
       const statusEl = document.getElementById('liveStatus');
       if (checked >= 9) { statusEl.textContent = "✅ EXCELLENT"; statusEl.style.color = "var(--mint-500)"; }
-      else if (checked >= 7) { statusEl.textContent = "✅ GOOD"; statusEl.style.color = "var(--mint-500)"; }
-      else if (checked >= 5) { statusEl.textContent = "⚠️ ACCEPTABLE"; statusEl.style.color = "var(--amber-400)"; }
-      else if (checked >= 3) { statusEl.textContent = "❌ NEEDS WORK"; statusEl.style.color = "var(--coral-500)"; }
+      else if (checked >= 6) { statusEl.textContent = "✅ APPROVED"; statusEl.style.color = "var(--mint-500)"; }
+      else if (checked >= 4) { statusEl.textContent = "⚠️ NEEDS WORK"; statusEl.style.color = "var(--amber-400)"; }
       else { statusEl.textContent = "❌ UNUSABLE"; statusEl.style.color = "var(--coral-500)"; }
   }
 
@@ -285,7 +284,7 @@
           btn.textContent = 'EWC AI is grading script...';
 
           const SYSTEM_PROMPT = `
-          You are a ruthless, high-standards affiliate marketing QA Auditor for EWC Creatives. 
+          You are a balanced and supportive QA Auditor for EWC Creatives. 
           Read the following exact audio transcript from the creator's video. 
           Evaluate their spoken hooks, energy, and explanations against the rubric. 
           Return your evaluation strictly in JSON format.
@@ -294,7 +293,7 @@
           "${actualTranscript}"
 
           ### BRAND STANDARDS
-          - SEOUL SECRETS: Premium, trustworthy. Show full potential/results. Polished, clean.
+          - SEOUL SECRETS: Premium, trustworthy. Show results. Polished, clean.
           - MOMOM FOOD: Warm, authentic. Focus on taste/appetite. Natural presentation.
 
           ### THE 10-POINT RUBRIC (Pass = true, Fail = false)
@@ -309,27 +308,27 @@
           9. Outcome-Focused Affiliate Style
           10. Audio & Visual Quality
 
-          ### STRICT GRADING PROTOCOL
-          Default to FAILING the creator if a rule is only marginally met. Videos must be highly engaging, fast-paced, and conversion-optimized. 
-          - RULE 6 (Hook): Fail instantly if they start with small talk ("Hi guys", "Today I have"). Must be an immediate pattern interrupt, bold claim, or severe pain point.
-          - RULE 7 (Energy): Fail if the transcript contains meandering sentences, repetitive filler words, or lacks concise, punchy pacing.
-          - RULE 9 (Affiliate Style): Fail if they just list features. They MUST use sensory/craving language (Momom Food) or trigger FOMO/urgency/strong Call-to-Action (Seoul Secrets).
+          ### BALANCED GRADING PROTOCOL
+          Evaluate the overall impact. Do not fail a video for minor conversational flaws if the core message is clear and engaging.
+          - RULE 6 (Hook): Pass if they introduce the product's value within the first 3-5 seconds. A quick greeting ("Hi guys") is acceptable as long as they do not ramble before showing the item.
+          - RULE 7 (Energy): Pass if the energy is positive and natural. Minor filler words or conversational pauses are acceptable. Only fail if the delivery is completely monotone, lifeless, or heavily unscripted and confusing.
+          - RULE 9 (Affiliate Style): Pass if they clearly state a benefit and tell the viewer what to do next (e.g., "i-click ang yellow basket"). Intense urgency/scarcity is encouraged but not strictly required to pass.
 
           CRITICAL FEEDBACK INSTRUCTION: 
-          For the "feedback_notes" field, act as a strict but supportive creative coach speaking directly to the creator. Do NOT use internal jargon, rule numbers, or mention the rubric. 
+          For the "feedback_notes" field, act as a supportive creative coach speaking directly to the creator. Do NOT use internal jargon, rule numbers, or mention the rubric. 
           CRITICAL: NEVER use marketing acronyms like "FOMO", "CTA", or "pattern interrupt". Explain your advice in plain, everyday Taglish. 
           - Instead of "Use a CTA", tell them to say "i-click ang yellow basket". 
           - Instead of "Use FOMO", tell them to say "ipaalala na paubos na ang stock". 
-          Write a short, direct note highlighting what they did well, followed by actionable, demanding advice on how to fix the weak hooks or missing urgency for their next video.
+          Write a short, direct note highlighting what they did well, followed by actionable, gentle advice on how to improve for their next video.
 
           ### JSON OUTPUT FORMAT
           {
             "rules": {
               "rule_1": true, "rule_2": false, "rule_3": true, "rule_4": true, "rule_5": true,
-              "rule_6": false, "rule_7": false, "rule_8": true, "rule_9": false, "rule_10": true
+              "rule_6": true, "rule_7": true, "rule_8": true, "rule_9": true, "rule_10": true
             },
-            "final_score": 6,
-            "status": "rejected",
+            "final_score": 9,
+            "status": "approved",
             "feedback_notes": "[Insert your original Taglish coaching feedback here based STRICTLY on the provided transcript. Do not use generic placeholder examples.]"
           }
           `;
@@ -385,7 +384,9 @@
 
           // Force the database score to perfectly match the counted checkmarks on screen
           const finalScore = document.querySelectorAll('.rule-cb:checked').length;
-          const status = (analysis.status || (finalScore >= 7 ? 'approved' : 'rejected')).toString();
+          
+          // LOWERED THRESHOLD: 6 is now a pass
+          const status = (analysis.status || (finalScore >= 6 ? 'approved' : 'rejected')).toString();
           const feedbackNotes = analysis.feedback_notes || analysis.notes || analysis.feedback || 'Evaluation completed.';
 
           const { error: dbErr } = await supabaseClient
