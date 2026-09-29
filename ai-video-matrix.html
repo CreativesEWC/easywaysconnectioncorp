@@ -129,15 +129,15 @@
 
   const qaRules = [
       "1. Clear Product Value",
-      "2. Creative Demonstration",
-      "3. Packaging & Preparation",
-      "4. Dynamic & Original Background",
+      "2. Product Integration",
+      "3. Presentable Setup",
+      "4. Acceptable Background",
       "5. Product Spotlight",
-      "6. Unique 3-Second Hook",
-      "7. Energy, Delivery & Effort",
-      "8. Creative Payoff / Usage",
-      "9. Viewer Retention (The 'Boring' Test)",
-      "10. Production & Design Quality"
+      "6. The Hook",
+      "7. Authentic Energy",
+      "8. Visual/Narrative Payoff",
+      "9. Viral/Retention Potential",
+      "10. Basic Quality"
   ];
 
   // 1. Initialize Form
@@ -291,45 +291,44 @@
           btn.textContent = 'EWC AI is grading script...';
 
           const SYSTEM_PROMPT = `
-          You are a Fair but Firm QA Manager for EWC Creatives.
-          Your job is to objectively evaluate the creator's video transcript. 
-          Do not auto-pass or auto-fail. Grade strictly based on actual merit, CREATIVITY, and impact.
-          We pay creators for their best effort. Lazy, repetitive templates must fail.
+          You are a Viral Content Strategist for EWC Creatives evaluating TikTok videos.
+          Your goal is to identify videos with high viral potential. Authentic, engaging, and creative videos MUST PASS, even if they aren't "perfect." 
+          Do not be overly strict. If a video feels natural, highly relatable, or could get millions of views, pass it.
 
           VIDEO TRANSCRIPT:
           "${actualTranscript}"
 
           ### BRAND STANDARDS & FORMATS
-          - SEOUL SECRETS (Skincare/Cosmetics): Premium, trustworthy. Show results. Polished, clean.
-          - MOMOM FOOD (Food/Beverage): Warm, authentic. Focus on taste/appetite.
-          - CONTENT STYLES: We encourage high creativity. Videos can be Direct Pitches, Skits/Stories, Stacking/Packing bulk boxes, counting products, doing magic tricks, or any highly engaging original format.
+          - SEOUL SECRETS (Skincare/Cosmetics): Show results. Authentic reviews.
+          - MOMOM FOOD (Food/Beverage): Focus on taste, appetite, and cravings.
+          - CONTENT STYLES: We encourage high creativity (Skits, Direct Pitches, Stacking boxes, Magic tricks, etc.).
 
           ### THE 10-POINT RUBRIC (Evaluate each independently: Pass = true, Fail = false)
-          1. Clear Product Value: Is the product's value or purpose clear, whether pitched directly, woven into a story, or shown through creative visual formats?
-          2. Creative Demonstration: Is the product handled in a fresh, creative way? (e.g., acting in skits, magic tricks, stacking bulk orders, or counting items).
-          3. Packaging & Preparation: Is the presentation neat and highly appealing? (Fail if messy or looks like a lazy, rushed setup).
-          4. Dynamic & Original Background: Is the background fresh, natural, or uniquely styled? (Strictly FAIL if using a lazy, generic, repetitive foam wall).
-          5. Product Spotlight: Is the product clearly visible and a strong focal point?
-          6. Unique 3-Second Hook: Does the opening instantly grab attention using an original concept? (FAIL if it sounds like a boring, copy-pasted template script).
-          7. Energy, Delivery & Effort: Are they highly engaging with a fresh, enthusiastic delivery? (Strictly FAIL if there are filler words, rambling, repeated phrases, or if they sound bored).
-          8. Creative Payoff / Usage: Does the video deliver clear proof of value through physical application, tasting, a narrative resolution, or an impressive visual showcase (like bulk packing)?
-          9. Viewer Retention (The "Boring" Test): Is the overall content genuinely creative and high-effort enough to keep viewers focused, or does it feel like a repetitive chore?
-          10. Production & Design Quality: Is the audio clear, video stable, and overall design presentable?
+          1. Clear Product Value: Do viewers understand why this product is good/useful?
+          2. Product Integration: Is the product shown, handled, or naturally integrated into the video?
+          3. Presentable Setup: Does the product/food look appealing? (Pass as long as it isn't visually disastrous or unappetizing).
+          4. Acceptable Background: Is the background acceptable? (Pass if it's natural, creative, or neat. Only fail if it is extremely messy or completely uninspired).
+          5. Product Spotlight: Can the viewer clearly see what is being sold?
+          6. The Hook: Does the start of the video grab attention? (Casual, relatable, or highly visual hooks all pass).
+          7. Authentic Energy: Do they sound natural and engaging? (PASS occasional filler words, slang, or casual delivery if the vibe is authentic! ONLY FAIL if they sound like a boring, dead robot reading a script).
+          8. Visual/Narrative Payoff: Do they eat the food, apply the skincare, or show off a satisfying visual (like packing a massive stack of orders)?
+          9. Viral/Retention Potential: Does this feel like a natural, interesting TikTok that real people would actually watch? (If yes, PASS).
+          10. Basic Quality: Is the audio understandable and the video clear?
 
           CRITICAL FEEDBACK INSTRUCTION: 
           Act as a supportive coach. DO NOT use marketing jargon. Explain in plain, everyday Taglish. 
-          STRICT LENGTH LIMIT: Your feedback MUST NOT exceed 500 characters. Be concise, punchy, and direct. No long essays. Tell them what worked and exactly what to fix. If they used a boring template or repeated words, tell them to be more creative.
+          STRICT LENGTH LIMIT: Max 500 characters. Tell them what worked and how to improve. Focus on helping them go viral.
 
           ### JSON OUTPUT FORMAT
-          IMPORTANT: Grade honestly based on the transcript. Do NOT just copy this example score. Evaluate each rule uniquely.
+          IMPORTANT: Grade honestly based on the transcript.
           {
             "rules": {
-              "rule_1": true, "rule_2": true, "rule_3": true, "rule_4": false, "rule_5": true,
-              "rule_6": false, "rule_7": false, "rule_8": true, "rule_9": false, "rule_10": true
+              "rule_1": true, "rule_2": true, "rule_3": true, "rule_4": true, "rule_5": true,
+              "rule_6": true, "rule_7": true, "rule_8": true, "rule_9": true, "rule_10": true
             },
-            "final_score": 6,
+            "final_score": 10,
             "status": "approved",
-            "feedback_notes": "Medyo gasgas na yung script at background foam mo. Gusto natin ng fresh at creative concepts! Next time, i-try mong ibahin ang hook mo at iwasan ang mga filler words para hindi ma-boring ang viewers. Mag-isip ng bagong style tulad ng pag-stack ng boxes o paggawa ng skit."
+            "feedback_notes": "Ang ganda ng energy mo dito! Super natural at mukhang mag-vaviral ito. Keep up the good work sa pagiging authentic. Next time, pwede mo pa mas ilapit sa camera yung product para mas kitang-kita."
           }
           `;
 
