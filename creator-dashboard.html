@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creator Dashboard | EWC</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --navy-950: #050812;
+    --navy-900: #0a0f25;
+    --navy-800: #121b3a;
+    --line: #2a3b5c;       
+    --paper: #ffffff;      
+    --text-muted: #7488b6; 
+    --amber-500: #e8a13a; --amber-900: #4a3311; 
+    --mint-500: #4fb286;  --mint-900: #173b2a;
+    --coral-500: #d9614f; --coral-900: #4a211a;
+    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  body { 
+    margin: 0; padding: 20px; 
+    background: var(--navy-950); 
+    color: var(--paper); 
+    font-family: var(--font-body); 
+  }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th { 
+    text-align: left; 
+    padding: 15px; 
+    font-family: var(--font-mono); 
+    font-size: 11px; 
+    color: var(--text-muted); 
+    text-transform: uppercase; 
+    letter-spacing: 0.1em; 
+    border-bottom: 1px solid var(--line);
+  }
+  td { 
+    padding: 20px 15px; 
+    border-bottom: 1px solid var(--line); 
+    vertical-align: top;
+    font-size: 14px;
+  }
+  
+  .link-btn { color: var(--amber-500); text-decoration: underline; font-family: var(--font-mono); font-size: 12px; }
+  .score-text { font-family: var(--font-mono); font-weight: bold; }
+  
+  .badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+  }
+  
+  .status-passed { background: var(--mint-900); color: var(--mint-500); border: 1px solid var(--mint-500); }
+  .status-failed { background: var(--coral-900); color: var(--coral-500); border: 1px solid var(--coral-500); }
+  .status-pending { background: var(--amber-900); color: var(--amber-500); border: 1px solid var(--amber-500); }
+
+  .feedback-box {
+    background: var(--navy-900);
+    padding: 15px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    border-left: 4px solid var(--line);
+  }
+  
+  .feedback-box.passed { border-left-color: var(--mint-500); }
+  .feedback-box.failed { border-left-color: var(--coral-500); }
+  .feedback-box.pending { border-left-color: var(--amber-500); color: var(--text-muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<h2 style="font-family: var(--font-mono); color: var(--mint-500);">My Video Submissions</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 120px;">Upload Date</th>
+      <th style="width: 100px;">Link</th>
+      <th style="width: 120px;">Status</th>
+      <th style="width: 80px;">Score</th>
+      <th>AI Feedback (For Future Improvement)</th>
+    </tr>
+  </thead>
+  <tbody id="dashboardTableBody">
+    <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading dashboard...</td></tr>
+  </tbody>
+</table>
+
+<script src="supabase-config.js"></script>
+<script>
+  // Assume employee ID is known (e.g., from login session)
+  const CURRENT_EMPLOYEE_ID = 'emp-123'; 
+
+  async function fetchSubmissions() {
+      try {
+          const { data: vids, error } = await supabaseClient
+              .from('video_submissions')
+              .select('*')
+              .eq('employee_id', CURRENT_EMPLOYEE_ID)
+              .order('created_at', { ascending: false });
+
+          if (error) throw error;
+          
+          const tbody = document.getElementById('dashboardTableBody');
+          
+          if (!vids || vids.length === 0) {
+              tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No videos uploaded yet.</td></tr>`;
+              return;
+          }
+
+          tbody.innerHTML = vids.map(v => {
+              const dateFmt = new Date(v.created_at).toISOString().split('T')[0];
+              
+              // NEW LOGIC: Map the 'approved' / 'rejected' database strings to UI Badges
+              let badgeClass = 'status-pending';
+              let badgeText = 'Pending Review';
+              let feedbackClass = 'pending';
+              let scoreColor = 'var(--text-muted)';
+              
+              const rawStatus = (v.status || '').toLowerCase();
+              const score = v.ai_score !== null ? v.ai_score : '-';
+              
+              // Use the new 6/10 passing threshold explicitly in the UI fallback
+              if (rawStatus === 'approved' || score >= 6) {
+                  badgeClass = 'status-passed';
+                  badgeText = 'Passed';
+                  feedbackClass = 'passed';
+                  scoreColor = 'var(--mint-500)';
+              } else if (rawStatus === 'rejected' || (score !== '-' && score < 6)) {
+                  badgeClass = 'status-failed';
+                  badgeText = 'Failed';
+                  feedbackClass = 'failed';
+                  scoreColor = 'var(--coral-500)';
+              }
+              
+              const feedbackText = v.ai_notes || 'Waiting for AI / Admin evaluation...';
+
+              return `
+              <tr>
+                  <td style="font-family: var(--font-mono); font-size: 12px;">${dateFmt}</td>
+                  <td><a href="${v.video_file_url}" target="_blank" class="link-btn">Open<br>Link</a></td>
+                  <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                  <td><span class="score-text" style="color: ${scoreColor};">${score}/10</span></td>
+                  <td><div class="feedback-box ${feedbackClass}">${escapeHtml(feedbackText)}</div></td>
+              </tr>`;
+          }).join('');
+
+      } catch (err) {
+          console.error("Dashboard error:", err);
+          document.getElementById('dashboardTableBody').innerHTML = `<tr><td colspan="5" style="color: var(--coral-500);">Error loading data.</td></tr>`;
+      }
+  }
+
+  function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+  }
+
+  // 1. Initial Data Load
+  fetchSubmissions();
+
+  // 2. Realtime Listener (Auto-updates UI when QA completes)
+  supabaseClient
+      .channel('creator-dashboard-updates')
+      .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'video_submissions', filter: `employee_id=eq.${CURRENT_EMPLOYEE_ID}` },
+          (payload) => {
+              console.log('Realtime DB update detected:', payload);
+              fetchSubmissions(); 
+          }
+      )
+      .subscribe();
+</script>
+</body>
+</html>
