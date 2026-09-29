@@ -139,27 +139,70 @@
   let activeEmployeeId = null;
   let activeUploadDate = null;
 
-  const qaRules = [
-      "1. Clear Product Value",
-      "2. Product Integration",
-      "3. Presentable Setup",
-      "4. Acceptable Background",
-      "5. Product Spotlight",
-      "6. The Hook",
-      "7. Authentic Energy",
-      "8. Visual/Narrative Payoff",
-      "9. Viral/Retention Potential",
-      "10. Basic Quality"
-  ];
+  const ruleSets = {
+      strict: [
+          "1. Exact Brand Messaging: Accurate feature description without deviation.",
+          "2. Professional Setup: Flawless studio or highly controlled lighting.",
+          "3. Perfect Audio: Zero background noise or echo.",
+          "4. Spotless Background: Clinical, clean, or highly professional setting.",
+          "5. Zero Filler Words: No stutters, slang, or 'ums/ahs'.",
+          "6. Prominent Logo/Product: Product perfectly centered and legible.",
+          "7. Formal Delivery: Professional and authoritative tone.",
+          "8. Direct Call-to-Action: Explicit instruction to buy or click.",
+          "9. Technical Quality: High resolution and perfect framing.",
+          "10. Brand Safety: Completely risk-free and family-friendly."
+      ],
+      creative: [
+          "1. The Hook: High-energy or visually striking first 3 seconds.",
+          "2. Authentic Vibe: Natural, relatable, and human delivery.",
+          "3. Trend Alignment: Fits perfectly into current TikTok styles.",
+          "4. Organic Integration: Product feels naturally placed, not forced.",
+          "5. Creative Concept: Uses skits, magic, stacking, or humor.",
+          "6. Dynamic Pacing: Fast cuts or engaging physical movement.",
+          "7. Visual Payoff: Satisfying conclusion (e.g., eating, applying).",
+          "8. High Retention: Highly engaging enough to watch twice.",
+          "9. Casual Setup: Forgives messy/casual rooms if vibe fits.",
+          "10. Conversational Audio: Slang and casual talk are allowed."
+      ],
+      combined: [
+          "1. Clear Product Value: Viewers understand why it is useful.",
+          "2. Product Integration: Product is shown or handled.",
+          "3. Presentable Setup: Looks appealing but doesn't need to be perfect.",
+          "4. Acceptable Background: Natural, neat, or creative.",
+          "5. Product Spotlight: Viewer can clearly see what is sold.",
+          "6. The Hook: Grabs attention early.",
+          "7. Authentic Energy: Natural and engaging without sounding robotic.",
+          "8. Visual Payoff: Shows product in action.",
+          "9. Viral Potential: Interesting enough for real people to watch.",
+          "10. Basic Quality: Audio understandable, video clear."
+      ]
+  };
+
+  let activeRules = ruleSets.creative; // Default selection
 
   // 1. Initialize Form
   const checklistContainer = document.getElementById('qaChecklist');
-  checklistContainer.innerHTML = qaRules.map((rule, idx) => `
-      <label class="rule-card">
-          <input type="checkbox" class="rule-cb" onchange="calculateScore()">
-          <span class="rule-text">${rule}</span>
-      </label>
-  `).join('');
+  
+  function renderChecklist() {
+      checklistContainer.innerHTML = activeRules.map((rule, idx) => `
+          <label class="rule-card">
+              <input type="checkbox" class="rule-cb" onchange="calculateScore()">
+              <span class="rule-text">${rule}</span>
+          </label>
+      `).join('');
+      calculateScore();
+  }
+
+  // Listen for Radio Button Swaps
+  document.querySelectorAll('input[name="aiMode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+          activeRules = ruleSets[e.target.value];
+          renderChecklist();
+      });
+  });
+
+  // Initial render
+  renderChecklist();
 
   // 2. Score Calculator
   function calculateScore() {
@@ -307,12 +350,14 @@
           
           let personaInstruction = "";
           if (aiMode === 'strict') {
-              personaInstruction = `You are a Strict QA Manager. Enforce perfect brand standards. Penalize filler words, messy setups, and unprofessional delivery. Do NOT forgive mistakes. Technical perfection is required.`;
+              personaInstruction = `You are a Strict QA Manager. Enforce perfect brand standards. Penalize filler words, messy setups, and unprofessional delivery. Technical perfection is required.`;
           } else if (aiMode === 'creative') {
-              personaInstruction = `You are a Viral Content Strategist. Authentic, engaging, and creative videos MUST PASS. Forgive technical flaws, casual setups, or slang if the energy is authentic and highly creative (e.g., stacking boxes).`;
+              personaInstruction = `You are a Viral Content Strategist. Authentic, engaging, and creative videos MUST PASS. Forgive technical flaws if the energy is highly creative.`;
           } else {
-              personaInstruction = `You are a Balanced Brand Reviewer. You want high virality and authentic energy, but the product must still be clearly visible and respectfully presented. Balance rules with creativity.`;
+              personaInstruction = `You are a Balanced Brand Reviewer. Balance viral energy with good brand presentation.`;
           }
+
+          const currentRulesList = activeRules.join('\n          ');
 
           const SYSTEM_PROMPT = `
           ${personaInstruction}
@@ -323,26 +368,16 @@
           ### BRAND STANDARDS & FORMATS
           - SEOUL SECRETS (Skincare/Cosmetics): Show results. Authentic reviews.
           - MOMOM FOOD (Food/Beverage): Focus on taste, appetite, and cravings.
-          - CONTENT STYLES: We encourage high creativity (Skits, Direct Pitches, Stacking boxes, Magic tricks, etc.).
 
-          ### THE 10-POINT RUBRIC (Evaluate each independently: Pass = true, Fail = false)
-          1. Clear Product Value: Do viewers understand why this product is good/useful?
-          2. Product Integration: Is the product shown, handled, or naturally integrated into the video?
-          3. Presentable Setup: Does the product/food look appealing? (Pass as long as it isn't visually disastrous or unappetizing).
-          4. Acceptable Background: Is the background acceptable? (Pass if it's natural, creative, or neat. Only fail if it is extremely messy or completely uninspired).
-          5. Product Spotlight: Can the viewer clearly see what is being sold?
-          6. The Hook: Does the start of the video grab attention? (Casual, relatable, or highly visual hooks all pass).
-          7. Authentic Energy: Do they sound natural and engaging? (ONLY FAIL if they sound like a boring, dead robot reading a script).
-          8. Visual/Narrative Payoff: Do they eat the food, apply the skincare, or show off a satisfying visual?
-          9. Viral/Retention Potential: Does this feel like a natural, interesting TikTok that real people would actually watch?
-          10. Basic Quality: Is the audio understandable and the video clear?
+          ### THE 10-POINT RUBRIC (Evaluate each independently based on the active mode: Pass = true, Fail = false)
+          ${currentRulesList}
 
           CRITICAL FEEDBACK INSTRUCTION: 
           Act as a supportive coach. DO NOT use marketing jargon. Explain in plain, everyday Taglish. 
           STRICT LENGTH LIMIT: Max 500 characters. Tell them what worked and how to improve.
 
           ### JSON OUTPUT FORMAT
-          IMPORTANT: Grade honestly based on the transcript and your assigned persona.
+          IMPORTANT: Grade honestly based on the transcript and your assigned persona. Output 10 rules.
           {
             "rules": {
               "rule_1": true, "rule_2": true, "rule_3": false, "rule_4": true, "rule_5": false,
@@ -499,7 +534,7 @@
       let passedRules = [];
       let failedRules = [];
 
-      qaRules.forEach((rule, index) => {
+      activeRules.forEach((rule, index) => {
           if (checkboxes[index].checked) {
               passedRules.push(rule);
           } else {
