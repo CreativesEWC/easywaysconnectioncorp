@@ -309,13 +309,18 @@
 
           btn.textContent = 'Saving AI Results...';
 
-          // 2. Update Supabase Database
+          // 2. Normalize response values with fallbacks
+          const finalScore = analysis.final_score ?? analysis.score ?? 0;
+          const status = (analysis.status || (finalScore >= 7 ? 'approved' : 'rejected')).toString();
+          const feedbackNotes = analysis.feedback_notes || analysis.notes || analysis.feedback || 'Evaluation completed.';
+
+          // Update Supabase Database
           const { error: dbErr } = await supabaseClient
               .from('video_submissions')
               .update({ 
-                  status: analysis.status,
-                  ai_score: analysis.final_score,
-                  ai_notes: analysis.feedback_notes
+                  status: status.toLowerCase(),
+                  ai_score: finalScore,
+                  ai_notes: feedbackNotes
               })
               .eq('id', activeVideoId);
 
@@ -324,8 +329,8 @@
           // 3. Ping Employee with AI Feedback
           await supabaseClient.from('notifications').insert({
               employee_id: activeEmployeeId,
-              title: `AI Video Audit Complete (${analysis.final_score}/10)`,
-              message: `Your video scored ${analysis.final_score}/10. Status: ${analysis.status.toUpperCase()}. AI Feedback: "${analysis.feedback_notes}"`,
+              title: `AI Video Audit Complete (${finalScore}/10)`,
+              message: `Your video scored ${finalScore}/10. Status: ${status.toUpperCase()}. AI Feedback: "${feedbackNotes}"`,
               is_read: false
           });
 
