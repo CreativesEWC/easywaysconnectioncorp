@@ -4830,12 +4830,18 @@ if (saveScheduleBtn) {
       const { data: sales } = await supabaseClient.from('sales_reports').select('employee_id, actual_sales').gte('report_date', firstDay).lte('report_date', lastDay);
 
       let html = '';
+      
+      // Grab the global logged-in user
+      const currentUser = await getMyEmployeeRecord();
+      const isDevAccount = currentUser?.badge_id === 'CREATIVES-01';
+
       emps.forEach(emp => {
-        // Exclude dummy test account from master sheet and finance payouts
+        // Hide dummy test accounts from master sheet, BUT let the test user see themselves
         if (
+            !isDevAccount && emp.id !== currentUser.id && (
             (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || 
             (emp.name && emp.name.includes('[DEV]'))
-        ) {
+        )) {
             return; // Skip this employee
         }
         const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
@@ -5031,9 +5037,15 @@ if (saveScheduleBtn) {
 
     window.cachedAllSubmissions = vids || [];
 
+    const currentUser = await getMyEmployeeRecord();
+    const isDevAccount = currentUser?.badge_id === 'CREATIVES-01';
+
     const sellers = (emps || []).filter(e => {
       const pos = (e.positions && e.positions.name) || '';
-      return pos.toLowerCase().includes('live seller') && !String(e.badge_id).startsWith('TEST-');
+      const isTest = String(e.badge_id).startsWith('TEST-') || (e.name && e.name.includes('[DEV]'));
+      
+      // Let them pass if they are a live seller AND (they are not a test account, OR you are the master dev, OR it's their own account)
+      return pos.toLowerCase().includes('live seller') && (!isTest || isDevAccount || e.id === currentUser.id);
     });
 
     if (sellers.length === 0) {
@@ -5139,8 +5151,8 @@ if (saveScheduleBtn) {
       const empId = r.employee_id;
       const name = r.employees ? r.employees.name : 'Unknown';
       
-      // STRICT FILTER: Hide test accounts from normal admins
-      if (!isDev && name.includes('[DEV]')) return;
+      // STRICT FILTER: Hide test accounts from normal admins, BUT let them see their own
+      if (!isDev && name.includes('[DEV]') && empId !== currentEmp.id) return;
       
       if (!aggregated[empId]) {
           aggregated[empId] = { name: name, buyers: 0, sold: 0, gmv: 0, commi: 0, hasPending: false, hasSubmitted: false, isApproved: false };
