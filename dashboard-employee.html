@@ -2563,11 +2563,20 @@ aside.sidebar.collapsed ~ main.main-content {
         if (buddy1Dropdown) buddy1Dropdown.innerHTML = '<option value="">None (Solo)</option>';
         if (buddy2Dropdown) buddy2Dropdown.innerHTML = '<option value="">None</option>';
         
+        // Check if the person logged in is a test/dev account
+        const isTestUser = (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || (emp.name && emp.name.includes('[DEV]')) || emp.badge_id === 'CREATIVES-01';
+
         sellerTeam.forEach(seller => {
-            if (seller.id !== emp.id) {
-                if (buddy1Dropdown) buddy1Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
-                if (buddy2Dropdown) buddy2Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
-            }
+            const isTargetTest = (seller.badge_id && String(seller.badge_id).startsWith('TEST-')) || (seller.name && seller.name.includes('[DEV]'));
+            
+            // 1. Hide test accounts if a REAL seller is logged in
+            if (!isTestUser && isTargetTest) return;
+            
+            // 2. Hide the logged-in user from their own buddy list (you can't be your own buddy)
+            if (seller.id === emp.id) return;
+
+            if (buddy1Dropdown) buddy1Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
+            if (buddy2Dropdown) buddy2Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
         });
 
         // Helper function to build the grid HTML
