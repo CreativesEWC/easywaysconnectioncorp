@@ -2007,29 +2007,136 @@ aside.sidebar.collapsed ~ main.main-content {
       loadAdminLiveCommissions();
   };
 
-  // CSV Export Engine
+  // CSV Export Engine (Formatted Side-by-Side 2-Column Grid)
   window.exportLiveSalesCSV = function() {
       if (!window.cachedSalesReports || window.cachedSalesReports.length === 0) {
           alert("No sales reports available to export for the selected date range.");
           return;
       }
 
-      const headers = ["Date", "Shift Time", "Employee Submitter", "Shop / Brand", "Shift Buddies", "Buyers", "Commission", "LH Sold", "LH GMV", "Proof Screenshot"];
-      
-      const rows = window.cachedSalesReports.map(r => [
-          r.report_date || '',
-          r.shift_time || '',
-          `"${(r.employees?.name || 'Staff').replace(/"/g, '""')}"`,
-          `"${(r.shop_name || '').replace(/"/g, '""')}"`,
-          `"${(r.shift_buddy || 'Solo').replace(/"/g, '""')}"`,
-          r.buyers || 0,
-          (parseFloat(r.actual_sales) || 0).toFixed(2),
-          r.lh_sold || 0,
-          (parseFloat(r.lh_gmv) || 0).toFixed(2),
-          `"${(r.screenshot_url || '').replace(/"/g, '""')}"`
-      ]);
+      // 1. Group the raw data by Shop Name
+      const shops = {};
+      window.cachedSalesReports.forEach(r => {
+          const sName = (r.shop_name || 'UNASSIGNED SHOP').trim().toUpperCase();
+          if (!shops[sName]) {
+              shops[sName] = { logs: [], hosts: {} };
+          }
+          
+          const hostName = r.employees?.name || 'Staff';
+          const commi = parseFloat(r.actual_sales) || 0;
+          const lhSold = parseInt(r.lh_sold) || 0;
+          const lhGmv = parseFloat(r.lh_gmv) || 0;
 
-      const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+          // Add to detailed logs
+          shops[sName].logs.push({
+              name: hostName,
+              time: r.shift_time || '',
+              buyer: parseInt(r.buyers) || 0,
+              commi: commi,
+              sold: parseInt(r.sold) || 0,
+              lhSold: lhSold,
+              gmv: parseFloat(r.gmv) || 0,
+              lhGmv: lhGmv,
+              proof: r.screenshot_url || ''
+          });
+
+          // Add to the bottom summary totals
+          if (!shops[sName].hosts[hostName]) {
+              shops[sName].hosts[hostName] = { commi: 0, lhSold: 0, lhGmv: 0 };
+          }
+          shops[sName].hosts[hostName].commi += commi;
+          shops[sName].hosts[hostName].lhSold += lhSold;
+          shops[sName].hosts[hostName].lhGmv += lhGmv;
+      });
+
+      const shopNames = Object.keys(shops);
+      const shopBlocks = [];
+      const colsPerShop = 9; // 8 visible data columns + 1 proof link
+      const emptyCol = () => Array(colsPerShop).fill("");
+
+      // 2. Build individual 2D array blocks for each shop
+      shopNames.forEach(shopName => {
+          const data = shops[shopName];
+          const block = [];
+
+          // Shop Header Row
+          const headerRow = emptyCol();
+          headerRow[0] = `"SHOP: ${shopName.replace(/"/g, '""')}"`;
+          block.push(headerRow);
+
+          // Detailed Logs Column Headers
+          block.push(["FULL NAME", "TIME", "BUYER", "COMMI", "SOLD", "LH SOLD", "GMV", "LH GMV", "PROOF LINK"]);
+          
+          // Inject Detailed Logs
+          data.logs.forEach(log => {
+              block.push([
+                  `"${log.name.replace(/"/g, '""')}"`,
+                  `"${log.time}"`,
+                  log.buyer,
+                  log.commi,
+                  log.sold,
+                  log.lhSold,
+                  log.gmv,
+                  log.lhGmv,
+                  `"${log.proof}"`
+              ]);
+          });
+
+          // Blank Row Spacer
+          block.push(emptyCol());
+
+          // Overall Total Header Row
+          const sumHeader1 = emptyCol();
+          sumHeader1[0] = "SUMMARY: OVERALL TOTAL";
+          block.push(sumHeader1);
+
+          const sumHeader2 = emptyCol();
+          sumHeader2[0] = "NAME";
+          sumHeader2[1] = "TOTAL COMMI";
+          sumHeader2[2] = "LH SOLD";
+          sumHeader2[3] = "LH GMV";
+          sumHeader2[4] = "SIGN";
+          block.push(sumHeader2);
+
+          // Inject Summary Rows
+          Object.keys(data.hosts).forEach(hName => {
+              const host = data.hosts[hName];
+              const sumRow = emptyCol();
+              sumRow[0] = `"${hName.replace(/"/g, '""')}"`;
+              sumRow[1] = host.commi;
+              sumRow[2] = host.lhSold;
+              sumRow[3] = host.lhGmv;
+              sumRow[4] = "Verified";
+              block.push(sumRow);
+          });
+
+          shopBlocks.push(block);
+      });
+
+      // 3. Merge blocks side-by-side (2 columns of tables)
+      let csvRows = [];
+      for (let i = 0; i < shopBlocks.length; i += 2) {
+          const blockL = shopBlocks[i];
+          const blockR = shopBlocks[i + 1] || [];
+
+          // Figure out which shop block is taller to prevent cutting off rows
+          const maxRows = Math.max(blockL.length, blockR.length);
+
+          for (let r = 0; r < maxRows; r++) {
+              const rowL = blockL[r] || emptyCol();
+              const rowR = blockR[r] || emptyCol();
+              
+              // Combine left shop, an empty spacer column, and right shop
+              csvRows.push([...rowL, "", ...rowR]);
+          }
+
+          // Vertical spacing between rows of grids
+          csvRows.push([]);
+          csvRows.push([]);
+      }
+
+      // 4. Generate the file and download
+      const csvContent = csvRows.map(e => e.join(',')).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -2038,7 +2145,7 @@ aside.sidebar.collapsed ~ main.main-content {
       const toVal = document.getElementById('salesFilterTo')?.value || 'all';
       
       link.setAttribute("href", url);
-      link.setAttribute("download", `live_sales_reports_${fromVal}_to_${toVal}.csv`);
+      link.setAttribute("download", `Live_Sales_Grid_${fromVal}_to_${toVal}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
