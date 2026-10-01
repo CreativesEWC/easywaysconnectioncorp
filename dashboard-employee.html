@@ -1291,14 +1291,16 @@ aside.sidebar.collapsed ~ main.main-content {
 
             <button type="button" id="addSalesRowBtn" class="btn2" style="border: 1px dashed var(--mint-500); color: var(--mint-500); background: transparent; padding: 10px; margin-top: 5px;">[+] Add Another Shop Report</button>
             <button type="submit" id="salesSubmitBtn" class="btn2" style="background: var(--mint-500); color: var(--navy-950); width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;">Submit My Live Commission</button>
-
-            <!-- PERSISTENT DAILY SUMMARY (STAYS ALL DAY) -->
-            <div id="persistentDailySummaryContainer"></div>
-            
-            <!-- DYNAMIC SUMMARY CONTAINER -->
-            <div id="dynamicSummaryContainer"></div>
           </form>
         </section>
+
+        <!-- INILABAS NA SUMMARY CONTAINERS (STATIC NA SA IBABA) -->
+        <!-- PERSISTENT DAILY SUMMARY (STAYS ALL DAY) -->
+        <div id="persistentDailySummaryContainer"></div>
+        
+        <!-- DYNAMIC SUMMARY CONTAINER -->
+        <div id="dynamicSummaryContainer"></div>
+        
       </div> <!-- CLOSES VIEW 1: DAILY SALES REPORT -->
 
         <!-- VIEW 2: OVERALL SPREADSHEET (HIDDEN BY DEFAULT) -->
@@ -2524,7 +2526,7 @@ aside.sidebar.collapsed ~ main.main-content {
 
         const { data: allEmps, error: empErr } = await supabaseClient
             .from('employees')
-            .select('id, name, avatar_url, brand_id, positions(name)')
+            .select('id, name, avatar_url, badge_id, brand_id, position, positions(name)')
             .order('name');
         if (empErr) throw empErr;
 
@@ -2545,16 +2547,15 @@ aside.sidebar.collapsed ~ main.main-content {
         const amIOffice = myPositionName.includes('rts') || myPositionName.includes('multimedia') || myPositionName.includes('customer service') || myPositionName.includes('secretary');
         const amISeller = myPositionName.includes('live seller');
 
-        // Partition Employees
+        // Partition Employees (WITH SAFE FALLBACK FOR TEXT POSITIONS)
         const officeTeam = allEmps.filter(e => {
-            if (!e.positions) return false;
-            const p = e.positions.name.toLowerCase();
-            return p.includes('rts') || p.includes('multimedia') || p.includes('customer service') || p.includes('secretary');
+            const pName = (e.positions?.name || e.position || '').toLowerCase();
+            return pName.includes('rts') || pName.includes('multimedia') || pName.includes('customer service') || pName.includes('secretary');
         });
         
         const sellerTeam = allEmps.filter(e => {
-            if (!e.positions) return false;
-            return e.positions.name.toLowerCase().includes('live seller');
+            const pName = (e.positions?.name || e.position || '').toLowerCase();
+            return pName.includes('live seller');
         });
 
         // GLOBAL BUDDIES: Update dropdowns with all live sellers
@@ -2563,7 +2564,7 @@ aside.sidebar.collapsed ~ main.main-content {
         if (buddy1Dropdown) buddy1Dropdown.innerHTML = '<option value="">None (Solo)</option>';
         if (buddy2Dropdown) buddy2Dropdown.innerHTML = '<option value="">None</option>';
         
-        // Check if the person logged in is a test/dev account
+        // Master check: Is the person logged in a test account or master dev?
         const isTestUser = (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || (emp.name && emp.name.includes('[DEV]')) || emp.badge_id === 'CREATIVES-01';
 
         sellerTeam.forEach(seller => {
