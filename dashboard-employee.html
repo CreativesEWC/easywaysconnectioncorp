@@ -1193,7 +1193,7 @@ aside.sidebar.collapsed ~ main.main-content {
             <form id="salesReportForm" style="display: flex; flex-direction: column; gap: 15px;">
             
             <!-- GLOBAL BUDDY SELECTORS (For tracking purposes only) -->
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 10px;">
               <div>
                 <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 1</label>
                 <select id="buddy1NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
@@ -1203,6 +1203,12 @@ aside.sidebar.collapsed ~ main.main-content {
               <div>
                 <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 2</label>
                 <select id="buddy2NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Buddy 3</label>
+                <select id="buddy3NameInput" class="buddy-select" style="width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
                   <option value="">None</option>
                 </select>
               </div>
@@ -2561,8 +2567,10 @@ aside.sidebar.collapsed ~ main.main-content {
         // GLOBAL BUDDIES: Update dropdowns with all live sellers
         const buddy1Dropdown = document.getElementById('buddy1NameInput');
         const buddy2Dropdown = document.getElementById('buddy2NameInput');
+        const buddy3Dropdown = document.getElementById('buddy3NameInput');
         if (buddy1Dropdown) buddy1Dropdown.innerHTML = '<option value="">None (Solo)</option>';
         if (buddy2Dropdown) buddy2Dropdown.innerHTML = '<option value="">None</option>';
+        if (buddy3Dropdown) buddy3Dropdown.innerHTML = '<option value="">None</option>';
         
         // Master check: Is the person logged in a test account or master dev?
         const isTestUser = (emp.badge_id && String(emp.badge_id).startsWith('TEST-')) || (emp.name && emp.name.includes('[DEV]')) || emp.badge_id === 'CREATIVES-01';
@@ -2578,6 +2586,7 @@ aside.sidebar.collapsed ~ main.main-content {
 
             if (buddy1Dropdown) buddy1Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
             if (buddy2Dropdown) buddy2Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
+            if (buddy3Dropdown) buddy3Dropdown.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(seller.name)}">${escapeHtml(seller.name)}</option>`);
         });
 
         // Helper function to build the grid HTML
@@ -4538,6 +4547,12 @@ window.loadTodayOverallTotal = async function() {
           grandGmv += parseFloat(row.querySelector('.inp-me-gmv').value) || 0;
       });
 
+      // HIDE the calculator if the form is empty!
+      if (grandCommi === 0 && grandSold === 0 && grandGmv === 0) {
+          container.innerHTML = '';
+          return;
+      }
+
       // Output exactly ONE table that acts as the global overall total
       container.innerHTML = `
       <div style="margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
@@ -4635,9 +4650,11 @@ window.loadTodayOverallTotal = async function() {
           // Merge buddies into a string for Admin tracking
           const b1Select = document.getElementById('buddy1NameInput');
           const b2Select = document.getElementById('buddy2NameInput');
+          const b3Select = document.getElementById('buddy3NameInput');
           const b1Name = b1Select.value ? b1Select.options[b1Select.selectedIndex].text : null;
           const b2Name = b2Select.value ? b2Select.options[b2Select.selectedIndex].text : null;
-          const shiftBuddyString = [b1Name, b2Name].filter(Boolean).join(', ') || null;
+          const b3Name = b3Select.value ? b3Select.options[b3Select.selectedIndex].text : null;
+          const shiftBuddyString = [b1Name, b2Name, b3Name].filter(Boolean).join(', ') || null;
 
           const submitBtn = document.getElementById('salesSubmitBtn');
           submitBtn.textContent = 'Uploading... Please wait.';
@@ -4695,6 +4712,7 @@ window.loadTodayOverallTotal = async function() {
               await loadTodayOverallTotal();
               if(b1Select) b1Select.value = '';
               if(b2Select) b2Select.value = '';
+              if(b3Select) b3Select.value = '';
               
               const firstRow = salesRowsContainer.querySelector('.sales-upload-row').cloneNode(true);
               firstRow.querySelector('.remove-sales-row').style.display = 'none';
