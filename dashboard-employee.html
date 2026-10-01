@@ -4053,6 +4053,7 @@ if (ticketBtn) {
   const initialSalesRow = document.querySelector('.sales-upload-row');
   if (initialSalesRow) {
       attachSalesListeners(initialSalesRow);
+      updateSummaryTally(); // <-- Added this to force the table to show immediately!
   }
 
  
@@ -4536,11 +4537,6 @@ window.loadTodayOverallTotal = async function() {
           grandSold += parseInt(row.querySelector('.inp-me-sold').value) || 0;
           grandGmv += parseFloat(row.querySelector('.inp-me-gmv').value) || 0;
       });
-
-    if (grandCommi === 0 && grandSold === 0 && grandGmv === 0) {
-        container.innerHTML = '';
-        return;
-    }
 
       // Output exactly ONE table that acts as the global overall total
       container.innerHTML = `
