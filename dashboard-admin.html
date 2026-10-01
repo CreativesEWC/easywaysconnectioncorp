@@ -2198,8 +2198,8 @@ aside.sidebar.collapsed ~ main.main-content {
               const lhSold = parseInt(r.lh_sold) || 0;
               const lhGmv = parseFloat(r.lh_gmv) || 0;
               const proofLink = r.screenshot_url 
-                  ? `<a href="javascript:void(0)" onclick="viewAdminProof('${r.screenshot_url}')" style="color: var(--mint-500); font-weight: bold; text-decoration: underline;">View</a>` 
-                  : '—';
+                  ? `<img src="${r.screenshot_url}" onclick="viewAdminProof('${r.screenshot_url}')" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Click to enlarge">` 
+                  : '<span style="color: #7488b6;">—</span>';
 
               rowsHtml += `
               <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
@@ -6021,6 +6021,7 @@ if (saveScheduleBtn) {
   populateVideoAuditSellers();
   loadFinanceVideoTracker();
   loadFinanceLiveTracker();
+  window.loadAdminLiveCommissions(); // <-- Add this here!
 
   
 
