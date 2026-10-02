@@ -1290,8 +1290,18 @@ aside.sidebar.collapsed ~ main.main-content {
                 </div>
 
                 <div>
-                  <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Upload Dashboard Screenshot (.png, .jpg)</label>
-                  <input type="file" class="sales-screenshot" accept="image/png, image/jpeg, image/webp" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 8px; padding: 10px 12px; font-size: 13px;">
+                  <label style="font-size: 10px; color: #7488b6; text-transform: uppercase; margin-bottom: 4px; display: block;">Dashboard Screenshot Proof</label>
+                  <div style="display: flex; gap: 10px;">
+                    <label class="btn2" style="flex: 1; text-align: center; border: 1px dashed var(--mint-500); color: var(--mint-500); cursor: pointer; padding: 10px; border-radius: 8px; background: var(--navy-900);">
+                      📸 Camera
+                      <input type="file" class="sales-screenshot-cam" accept="image/*" capture="environment" style="display:none;">
+                    </label>
+                    <label class="btn2" style="flex: 1; text-align: center; border: 1px dashed var(--amber-500); color: var(--amber-400); cursor: pointer; padding: 10px; border-radius: 8px; background: var(--navy-900);">
+                      📁 Upload
+                      <input type="file" class="sales-screenshot-file" accept="image/*" style="display:none;">
+                    </label>
+                  </div>
+                  <div class="sales-file-name" style="font-size: 11px; color: #7488b6; font-family: var(--font-mono); margin-top: 6px; text-align: center;">No photo attached</div>
                 </div>
               </div>
 
@@ -4503,7 +4513,9 @@ window.loadTodayOverallTotal = async function() {
           newRow.querySelector('.inp-me-commi').value = '';
           newRow.querySelector('.inp-me-sold').value = '';
           newRow.querySelector('.inp-me-gmv').value = '';
-          newRow.querySelector('.sales-screenshot').value = '';
+          if (newRow.querySelector('.sales-screenshot-cam')) newRow.querySelector('.sales-screenshot-cam').value = '';
+          if (newRow.querySelector('.sales-screenshot-file')) newRow.querySelector('.sales-screenshot-file').value = '';
+          if (newRow.querySelector('.sales-file-name')) newRow.querySelector('.sales-file-name').textContent = 'No photo attached';
           
           // SMART MEMORY: Inherit the exact Shop, Date, and Time from the row above!
           newRow.querySelector('.sales-shop').value = lastRow.querySelector('.sales-shop').value;
@@ -4635,11 +4647,26 @@ window.loadTodayOverallTotal = async function() {
           }
       });
 
-      row.querySelectorAll('input').forEach(inp => {
+     row.querySelectorAll('input').forEach(inp => {
           inp.addEventListener('input', updateSummaryTally);
       });
-  }
-  
+
+      // UI Handler for Camera & Upload toggle
+      const camInp = row.querySelector('.sales-screenshot-cam');
+      const fileInp = row.querySelector('.sales-screenshot-file');
+      const nameDisp = row.querySelector('.sales-file-name');
+      
+      if (camInp) camInp.addEventListener('change', () => {
+          if (fileInp) fileInp.value = ''; 
+          if (nameDisp) nameDisp.textContent = camInp.files[0] ? 'Selected: ' + camInp.files[0].name : 'No photo attached';
+      });
+      if (fileInp) fileInp.addEventListener('change', () => {
+          if (camInp) camInp.value = ''; 
+          if (nameDisp) nameDisp.textContent = fileInp.files[0] ? 'Selected: ' + fileInp.files[0].name : 'No photo attached';
+      });
+
+  } // <--- This is the end of the attachSalesListeners function
+
   // --- 3. Single-Employee Database Push ---
   if (salesReportForm) {
       salesReportForm.addEventListener('submit', async (e) => {
@@ -4674,8 +4701,11 @@ window.loadTodayOverallTotal = async function() {
                 const sTotalGmv = parseFloat(row.querySelector('.sales-total-gmv').value) || 0;
           
                   
-                  const file = row.querySelector('.sales-screenshot').files[0];
-                  if (!file) throw new Error("Missing screenshot.");
+                  const camFile = row.querySelector('.sales-screenshot-cam')?.files[0];
+                  const libFile = row.querySelector('.sales-screenshot-file')?.files[0];
+                  const file = camFile || libFile;
+                  
+                  if (!file) throw new Error("Missing screenshot proof. Please capture or upload a photo.");
 
                   const fileExt = file.name.split('.').pop();
                   const fileName = `public/${emp.id}_${Date.now()}_${i}_sales.${fileExt}`;
