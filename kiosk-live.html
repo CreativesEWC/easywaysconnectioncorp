@@ -756,7 +756,7 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
   setInterval(refocusHid, 400);
 
   // 4. Fast Scan Logic
-  hid.addEventListener('keypress', (e)=>{
+  hid.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter'){
       e.preventDefault(); // Stop default form behaviors
       handleScan(hid.value);
