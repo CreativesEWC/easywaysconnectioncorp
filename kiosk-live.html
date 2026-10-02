@@ -426,12 +426,27 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
     const timeOutDisplay = row.time_out ? new Date(row.time_out).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}) : null;
     const inVal = timeInDisplay ? `<div class="stamp-mark in">IN · ${timeInDisplay}</div>` : `<div class="value">— not yet —</div>`;
     const outVal = timeOutDisplay ? `<div class="stamp-mark out">OUT · ${timeOutDisplay}</div>` : `<div class="value">— not yet —</div>`;
+    
     let message = '';
     if(kind === 'in') message = 'Time In recorded. See you later today!';
     else if(kind === 'out') message = 'Time Out recorded. Have a good rest!';
     else message = 'Attendance already completed for today.';
+    
     const positionLabel = employee.positions ? employee.positions.name : '';
     const bdayBanner = birthday ? `<div class="birthday-banner">🎉 Happy Birthday, ${firstNameOnly(employee.name)}! 🎂</div>` : '';
+
+    // Automatically load the image from the 'avatars' bucket, or fallback to text initials
+    let avatarContent = initials;
+    if (employee.avatar_url) {
+        // Build the public URL from your bucket
+        const imgUrl = employee.avatar_url.startsWith('http') 
+            ? employee.avatar_url 
+            : supabaseClient.storage.from('avatars').getPublicUrl(employee.avatar_url).data.publicUrl;
+            
+        // Inject the image with a perfect circular crop
+        avatarContent = `<img src="${imgUrl}" alt="${display}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+    }
+
     return `
       <div class="badge-top">
         <span class="co-name">Easy Ways Connection Corp.</span>
@@ -439,7 +454,7 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
       </div>
       ${bdayBanner}
       <div class="badge-body">
-        <div class="avatar">${initials}</div>
+        <div class="avatar" style="padding: 0; overflow: hidden;">${avatarContent}</div>
         <div>
           <div class="badge-name">${display}</div>
           <div class="badge-position">${positionLabel}</div>
