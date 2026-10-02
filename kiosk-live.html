@@ -720,48 +720,42 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
     }
   }
   // ---- USB HID barcode scanner support ----
-  // A USB scanner "types" the barcode then presses Enter, just like a keyboard.
-  // Keeping this field silently focused means a plugged-in scanner works instantly.
   const hid = document.getElementById('hidCapture');
   
-  // 1. Aggressive Auto-Focus Lock (Instantly refocuses if it loses focus)
-  hid.addEventListener('blur', () => {
-    const overlayOpen = document.getElementById('confirmOverlay').classList.contains('show');
-    const manualOpen = document.getElementById('manualPanel').classList.contains('open');
-    if(!overlayOpen && !manualOpen) {
-        setTimeout(() => hid.focus(), 50);
-    }
-  });
-
-  // 2. Click anywhere on the background to force focus
-  document.addEventListener('click', () => {
-    const overlayOpen = document.getElementById('confirmOverlay').classList.contains('show');
-    const manualOpen = document.getElementById('manualPanel').classList.contains('open');
-    if(!overlayOpen && !manualOpen) {
-        hid.focus();
-    }
-  });
-
-  // 3. Fallback interval just in case
-  function refocusHid(){
-    const overlayOpen = document.getElementById('confirmOverlay').classList.contains('show');
-    const manualOpen = document.getElementById('manualPanel').classList.contains('open');
-    if(!overlayOpen && !manualOpen && document.activeElement !== hid){
-      hid.focus();
-    }
+  // The Ultimate Focus Enforcer
+  function refocusHid() {
+      const overlayOpen = document.getElementById('confirmOverlay').classList.contains('show');
+      const manualOpen = document.getElementById('manualPanel').classList.contains('open');
+      
+      // If the manual box isn't open, and the popup isn't showing, FORCE the cursor into the scanner box.
+      if (!overlayOpen && !manualOpen && document.activeElement !== hid) {
+          hid.focus();
+      }
   }
-  setInterval(refocusHid, 400);
+
+  // 1. Heartbeat Lock: Checks every 300 milliseconds and forces focus
+  setInterval(refocusHid, 300);
+
+  // 2. Click Lock: Forces focus if they click the blank background
+  document.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+          setTimeout(refocusHid, 50);
+      }
+  });
+
+  // 3. Blur Lock: Forces focus instantly if the box loses it
+  hid.addEventListener('blur', () => {
+      setTimeout(refocusHid, 50);
+  });
 
   // 4. Bulletproof Fast Scan Logic
   hid.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault(); 
-
       const scannedBadge = hid.value.trim(); 
       if (scannedBadge !== '') {
           handleScan(scannedBadge); 
       }
-      
       hid.value = ''; 
     }
   });
