@@ -9,9 +9,9 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
-    --navy-950:#0a0f1e; --navy-900:#0f1830; --navy-800:#16213f; --navy-700:#22315a;
-    --amber-500:#e8a13a; --amber-400:#f2b854; --paper:#f3efe6;
-    --mint-500:#4fb286; --mint-700:#2f7a58; --coral-500:#d9614f; --coral-700:#a63e2f; --line:#2a3a63;
+    --navy-950:#f4f4f5; --navy-900:#ffffff; --navy-800:#e4e4e7; --navy-700:#d4d4d8;
+    --amber-500:#d97706; --amber-400:#b45309; --paper:#000000;
+    --mint-500:#059669; --mint-700:#047857; --coral-500:#dc2626; --coral-700:#b91c1c; --line:#d4d4d8;
     --font-display:'Rockwell',Georgia,serif; --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
     --font-mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
   }
@@ -141,29 +141,35 @@
     </div>
 
     <div class="scan-zone">
-      <div class="camera-frame">
-        <div id="reader"></div>
-        <div class="scan-corner tl"></div>
-        <div class="scan-corner tr"></div>
-        <div class="scan-corner bl"></div>
-        <div class="scan-corner br"></div>
-      </div>
-      <div class="instructions">
-        <div class="icon">🪪</div>
-        <h2>Hold your badge to the camera</h2>
-        <p>Your first scan of the day records Time In. Your next scan records Time Out.
-           Unregistered IDs will not be recorded.</p>
-        <div class="usb-note">✓ USB barcode scanner also active — just scan, no tapping needed</div>
-        <div class="scan-hint" id="scanHint" style="display:none; color:var(--amber-400); font-family:var(--font-mono); font-size:12px; margin-top:8px;">
-          Having trouble? Hold the badge flat, 6–8 inches away, barcode facing the camera straight-on — or use manual entry below.
+      <!-- Dual-Mode Wrapper -->
+      <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 460px; flex-shrink: 0;">
+        
+        <!-- Toggle Button -->
+        <button id="kioskModeToggleBtn" style="margin-bottom: 16px; width: 100%; padding: 12px; background: transparent; border: 2px solid var(--line); color: var(--amber-500); border-radius: 12px; cursor: pointer; font-family: var(--font-body); font-weight: bold; font-size: 14px; transition: 0.2s;">
+          🛜 Switch to Wireless Barcode Mode
+        </button>
+
+        <!-- Mode 1: Mobile Camera Scanner -->
+        <div class="camera-frame" id="cameraModeFrame">
+          <div id="reader"></div>
+          <div class="scan-corner tl"></div>
+          <div class="scan-corner tr"></div>
+          <div class="scan-corner bl"></div>
+          <div class="scan-corner br"></div>
         </div>
-        <button class="manual-toggle" id="manualToggleBtn">Trouble scanning? Enter ID manually</button>
-        <div class="manual-panel" id="manualPanel">
-          <input type="text" id="manualId" placeholder="e.g. EW-0076-2024">
-          <button id="manualBtn">Log</button>
+
+        <!-- Mode 2: Digital Biometrics UI -->
+        <div id="wirelessClockFrame" style="display: none; width: 100%; aspect-ratio: 1/1; background: var(--navy-900); border-radius: 16px; border: 2px solid var(--line); flex-direction: column; align-items: center; justify-content: center; text-align: center; box-shadow: inset 0 4px 20px rgba(0,0,0,0.05);">
+          <div style="background: #111; border-radius: 8px; padding: 24px 40px; width: 85%; box-shadow: inset 0 0 15px rgba(0,0,0,0.9);">
+            <div id="giantDate" style="font-family: var(--font-mono); font-size: 14px; color: #4fb286; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px;">Oct 2, 2026, Fri</div>
+            <div id="giantTime" style="font-family: 'Courier New', Courier, monospace; font-size: 56px; font-weight: bold; color: #4fb286; line-height: 1; letter-spacing: 2px;">00:00</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 35px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--amber-500)" stroke-width="2"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M9 12h6"></path></svg>
+            <div style="color: #52525b; font-size: 15px; font-family: var(--font-mono); font-weight: bold;">READY TO SCAN</div>
+          </div>
         </div>
       </div>
-    </div>
 
     <div class="kiosk-footer">
       <span>Easy Ways Connection Corp. · Registered company IDs only</span>
@@ -280,9 +286,12 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
       const parts = fullName.split(',');
       last = parts[0].trim();
       first = (parts[1] || '').trim().split(/\s+/)[0] || '';
+    } else {
+      first = fullName.trim();
+      last = fullName.trim().split(/\s+/).pop();
     }
-    const cap = s => s ? s.charAt(0).toUpperCase()+s.slice(1).toLowerCase() : '';
-    const display = (cap(first) + ' ' + cap(last)).trim();
+    // Force the display name to uppercase
+    const display = fullName.trim().toUpperCase();
     const initials = ((first[0]||'') + (last[0]||'')).toUpperCase() || '?';
     return { display, initials };
   }
@@ -305,8 +314,24 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
   // ---- Clock ----
   function tickClock(){
     const now = new Date();
+    
+    // Header Clock
     document.getElementById('liveTime').textContent = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true});
     document.getElementById('liveDate').textContent = now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+    
+    // Digital Terminal Clock
+    const giantTime = document.getElementById('giantTime');
+    const giantDate = document.getElementById('giantDate');
+    if (giantTime) {
+        giantTime.textContent = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:true});
+    }
+    if (giantDate) {
+        const shortMonth = now.toLocaleDateString('en-US', { month: 'short' });
+        const day = now.getDate();
+        const year = now.getFullYear();
+        const shortDay = now.toLocaleDateString('en-US', { weekday: 'short' });
+        giantDate.textContent = `${shortMonth} ${day}, ${year}, ${shortDay}`;
+    }
   }
   tickClock(); setInterval(tickClock, 1000);
 
@@ -737,6 +762,36 @@ function calculateFixedShiftHours(timeInDateStr, timeOutDateStr) {
       handleScan(hid.value);
       hid.value = '';
     }
+  });
+
+  // ---- Kiosk Mode Toggle Logic ----
+  let isCameraMode = true;
+  document.getElementById('kioskModeToggleBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('kioskModeToggleBtn');
+      const camFrame = document.getElementById('cameraModeFrame');
+      const clockFrame = document.getElementById('wirelessClockFrame');
+
+      isCameraMode = !isCameraMode;
+
+      if (isCameraMode) {
+          btn.textContent = '🛜 Switch to Wireless Barcode Mode';
+          clockFrame.style.display = 'none';
+          camFrame.style.display = 'block';
+          startCamera(); // Reignite the camera
+      } else {
+          btn.textContent = '📸 Switch to Mobile Camera Mode';
+          camFrame.style.display = 'none';
+          clockFrame.style.display = 'flex';
+          
+          // Completely shut down the camera hardware to save battery
+          if (html5QrCode) {
+              try {
+                  await html5QrCode.stop();
+                  html5QrCode.clear();
+              } catch (e) { console.warn("Camera stop issue", e); }
+          }
+      }
+      refocusHid(); // Re-lock the invisible hardware scanner
   });
 
   // ---- Setup / manual entry wiring ----
