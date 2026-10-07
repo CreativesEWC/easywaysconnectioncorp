@@ -2601,8 +2601,11 @@ function toggleSubNav(containerId, btnElement) {
   if (emp.name === 'Eden Rose R. De Leon' || emp.name === 'Catherine R. Cay') {
     const parcelBtn = document.getElementById('navParcelsBtn');
     const kioskBtn = document.getElementById('navKioskScannerBtn');
+    const guardDeskFolder = document.getElementById('guardDeskAccordion'); // Targets the main folder
+    
     if (parcelBtn) parcelBtn.style.display = 'none';
     if (kioskBtn) kioskBtn.style.display = 'none';
+    if (guardDeskFolder) guardDeskFolder.style.display = 'none'; // Hides the folder from the sidebar
   }
 
   // RESTRICT TEST ACCOUNTS FROM FINANCE & SUBMISSIONS
