@@ -4379,8 +4379,10 @@ window.loadTodayOverallTotal = async function() {
                   try {
                       await fetch("https://script.google.com/macros/s/AKfycbwzojY5E-f_4sNYP6msVVabBLFqhJq1e-m5mbzcX5Ecmayqu4oB6NjT2wSTE3ebfSh3Cg/exec", {
                           method: "POST",
-                          mode: "no-cors", 
-                          headers: { "Content-Type": "application/json" },
+                          // Disguise the payload as plain text to bypass Google's firewall
+                          headers: { 
+                              "Content-Type": "text/plain;charset=utf-8" 
+                          },
                           body: JSON.stringify({
                               report_date: sDate,
                               shift_time: sTime,
