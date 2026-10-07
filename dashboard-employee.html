@@ -4374,10 +4374,32 @@ window.loadTodayOverallTotal = async function() {
                       });
 
                   if (dbErr) throw dbErr;
+
+                  // ---- GOOGLE DRIVE & SHEETS AUTO-SYNC ----
+                  try {
+                      await fetch("https://script.google.com/macros/s/AKfycbwzojY5E-f_4sNYP6msVVabBLFqhJq1e-m5mbzcX5Ecmayqu4oB6NjT2wSTE3ebfSh3Cg/exec", {
+                          method: "POST",
+                          mode: "no-cors", 
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                              report_date: sDate,
+                              shift_time: sTime,
+                              employee_name: emp.name,
+                              shop_name: sShop,
+                              buyers: sBuyers,
+                              commi: parseFloat(row.querySelector('.inp-me-commi').value) || 0,
+                              screenshot_url: publicUrlData.publicUrl
+                          })
+                      });
+                  } catch(googleErr) {
+                      console.warn("Saved to system, but Google Sync failed: ", googleErr);
+                  }
+                  // ------------------------------------------
+
                   successCount++;
               }
 
-              alert(`Successfully uploaded ${successCount} videos!`);
+              alert(`Successfully submitted ${successCount} shop reports to Finance!`);
               videoSubmitForm.reset();
               loadMyVideoSubmissions();
             
