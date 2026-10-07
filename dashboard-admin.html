@@ -1401,7 +1401,10 @@ aside.sidebar.collapsed ~ main.main-content {
   <!-- 3. VIDEO COMMISSION -->
   <div id="finance-video" class="finance-tab-content" style="display:none;">
     <section class="panel" style="border-color: var(--amber-500);">
-      <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Video Commission Tracker</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="color: var(--amber-400); margin: 0;">Video Commission Tracker</h2>
+        <button class="btn2 primary" onclick="exportVideoTrackerCSV()" style="font-size: 12px; padding: 6px 12px; font-weight: bold; background: var(--amber-500); color: #000; border: none;">📥 Export CSV</button>
+      </div>
       <div style="overflow-x: auto;">
         <table style="width:100%; border-collapse:collapse; text-align: center; min-width: 1000px;">
           <thead>
@@ -5163,44 +5166,43 @@ if (saveScheduleBtn) {
     tbody.innerHTML = sellers.map(seller => {
       const mySubmissions = (vids || []).filter(v => v.employee_id === seller.id);
       
-      const approvedVids = mySubmissions.filter(v => v.status === 'approved');
-      const rejectedCount = mySubmissions.filter(v => v.status === 'rejected').length;
-      const pendingVids = mySubmissions.filter(v => v.status === 'pending');
+      // FIX: Sort chronologically so V1 is the very first video submitted that month
+      mySubmissions.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       
       let matrixCells = '';
+      let approvedCount = 0;
+      let rejectedCount = 0;
       
-      for (let i = 1; i <= 15; i++) {
-        const approvedItem = approvedVids[i - 1];
+      for (let i = 0; i < 15; i++) {
+        const targetVid = mySubmissions[i];
         
-        if (approvedItem) {
-          matrixCells += `
-            <td style="padding: 6px 2px; border-bottom: 1px solid var(--line);">
-              <span onclick="auditMatrixVideo('${approvedItem.id}')" 
-                    title="Approved (${approvedItem.upload_date}). Click to inspect" 
-                    style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(5,150,105,0.15); color: var(--mint-500); font-weight: bold;">
-                ✅
-              </span>
-            </td>`;
-        } else {
-          const pendingIndex = i - 1 - approvedVids.length;
-          const pendingItem = pendingVids[pendingIndex];
-          
-          if (pendingItem) {
+        if (targetVid) {
+          const status = (targetVid.status || '').toLowerCase();
+          if (status === 'approved') {
+            approvedCount++;
             matrixCells += `
               <td style="padding: 6px 2px; border-bottom: 1px solid var(--line);">
-                <span onclick="auditMatrixVideo('${pendingItem.id}')" 
-                      title="Pending Review. Click to audit" 
-                      style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(217,119,6,0.15); color: var(--amber-400);">
-                  ⏳
-                </span>
+                <span onclick="auditMatrixVideo('${targetVid.id}')" title="Approved. Click to inspect" style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(5,150,105,0.15); color: var(--mint-500); font-weight: bold;">✅</span>
+              </td>`;
+          } else if (status === 'rejected') {
+            rejectedCount++;
+            matrixCells += `
+              <td style="padding: 6px 2px; border-bottom: 1px solid var(--line);">
+                <span onclick="auditMatrixVideo('${targetVid.id}')" title="Rejected. Click to inspect" style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(220,38,38,0.15); color: var(--coral-500); font-weight: bold;">❌</span>
               </td>`;
           } else {
-            matrixCells += `<td style="padding: 6px 2px; border-bottom: 1px solid var(--line); color: #52525b;">—</td>`;
+            matrixCells += `
+              <td style="padding: 6px 2px; border-bottom: 1px solid var(--line);">
+                <span onclick="auditMatrixVideo('${targetVid.id}')" title="Pending Review. Click to audit" style="cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 4px; background: rgba(217,119,6,0.15); color: var(--amber-400);">⏳</span>
+              </td>`;
           }
+        } else {
+          // Empty slots for missing videos
+          matrixCells += `<td style="padding: 6px 2px; border-bottom: 1px solid var(--line); color: #52525b;">—</td>`;
         }
       }
 
-      const totalBonus = approvedVids.length * 100;
+      const totalBonus = approvedCount * 100;
 
       return `
         <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
@@ -5212,12 +5214,60 @@ if (saveScheduleBtn) {
             ${rejectedCount}
           </td>
           <td style="padding: 10px; border-bottom: 1px solid var(--line); color: var(--mint-500); font-weight: bold; font-family: var(--font-mono);">
-            ${approvedVids.length} <span style="font-size: 10px; color: #7488b6; font-weight: normal;">(₱${totalBonus.toLocaleString()})</span>
+            ${approvedCount} <span style="font-size: 10px; color: #7488b6; font-weight: normal;">(₱${totalBonus.toLocaleString()})</span>
           </td>
         </tr>
       `;
     }).join('');
-  }
+
+    // ---- EXPORT VIDEO TRACKER CSV ----
+  window.exportVideoTrackerCSV = function() {
+      // Find the closest table element wrapping the video matrix
+      const table = document.getElementById('videoCommiTable').closest('table');
+      if (!table) return;
+
+      let csvRows = [];
+      
+      // 1. Grab Headers (Live Seller, V1, V2... Failed, Approved)
+      let headers = [];
+      table.querySelectorAll('thead th').forEach(th => {
+          headers.push('"' + th.innerText.trim() + '"');
+      });
+      csvRows.push(headers.join(','));
+
+      // 2. Grab Data Rows
+      table.querySelectorAll('tbody tr').forEach(tr => {
+          if (tr.classList.contains('empty-row') || tr.classList.contains('loading-note')) return;
+          
+          let rowData = [];
+          tr.querySelectorAll('td').forEach((td, index) => {
+              let cellText = td.innerText.trim();
+              
+              // Clean up the "Total Approved" column (removes the peso amount)
+              if (index === 17) {
+                  cellText = cellText.split(' ')[0]; // Grabs just the number
+              }
+              
+              rowData.push('"' + cellText + '"');
+          });
+          csvRows.push(rowData.join(','));
+      });
+
+      // 3. Format and Download File
+      const csvContent = "\uFEFF" + csvRows.join('\n'); // Forces UTF-8 for Excel emoji support
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      const now = new Date();
+      const monthStr = now.toLocaleString('default', { month: 'short', year: 'numeric' });
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Video_Commission_${monthStr.replace(' ', '_')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
   
   window.loadFinanceLiveTracker = async function() {
     const tbody = document.getElementById('liveCommiTable');
