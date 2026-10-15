@@ -1929,13 +1929,34 @@ aside.sidebar.collapsed ~ main.main-content {
   </div>
 </div>
 
-  <!-- VIDEO VIEWER POP-UP MODAL -->
-<div class="modal-overlay" id="videoViewerModal" style="z-index: 9999;">
-  <div class="modal-box" style="max-width: 900px; background: transparent; border: none; box-shadow: none; text-align: center; padding: 0;">
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-        <button class="btn2 danger" onclick="closeVideoViewer()">✖ Close Viewer</button>
+  <!-- UPDATED VIDEO VIEWER MODAL WITH AI FEEDBACK -->
+<div class="modal-overlay" id="videoViewerModal" style="z-index: 10000; padding: 12px;">
+  <div class="modal-box" style="width: 100%; max-width: 420px; text-align: center; padding: 16px; background: var(--navy-900); border: 1px solid var(--line); border-radius: 16px; margin: auto;">
+    
+    <!-- Video Player -->
+    <div style="background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); max-height: 55vh; display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+      <video id="viewerVideoSrc" controls style="width: 100%; max-height: 55vh; display: block;"></video>
     </div>
-    <video id="viewerVideoSrc" controls autoplay style="max-width: 100%; max-height: 85vh; border-radius: 8px; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0,0,0,0.8); background: #0a0f1e;"></video>
+
+    <!-- AI Feedback Section -->
+    <div style="text-align: left; background: var(--navy-800); border: 1px solid var(--line); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="color: var(--amber-400); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">AI Audit Results</strong>
+            <span id="viewerScore" style="font-family: var(--font-mono); font-size: 16px; font-weight: bold; color: var(--paper);">--/10</span>
+        </div>
+        <div id="viewerFeedback" style="font-size: 13px; color: var(--text-muted); line-height: 1.5; max-height: 100px; overflow-y: auto;">
+            Loading feedback...
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="modal-actions" style="justify-content: space-between; margin-top: 0; display: flex; gap: 10px;">
+      <button class="btn2" onclick="closeVideoViewer()" style="flex: 1; padding: 10px; background: var(--navy-800);">Close Viewer</button>
+      <button id="btnReevaluate" class="btn2 primary" style="flex: 1; padding: 10px;">🔄 Re-evaluate</button>
+    </div>
+    
+    <!-- Hidden Record ID to track which video is playing -->
+    <input type="hidden" id="viewerRecordId">
   </div>
 </div>
 
@@ -2326,7 +2347,7 @@ aside.sidebar.collapsed ~ main.main-content {
           tbody.innerHTML = vids.map(v => {
               const empName = v.employees?.name || 'Staff';
               const rawLink = v.video_file_url 
-                  ? `<button class="btn2" onclick="openVideoViewer('${v.video_file_url}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
+                  ? `<button class="btn2" onclick="openVideoViewer('${v.id}', '${v.video_file_url}')" style="font-size: 10px; padding: 4px 8px;">▶ Watch Video</button>`
                   : '<span style="color: #7488b6;">No File</span>';
               const platformLink = v.video_link 
                   ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Platform Link</a>` 
@@ -2357,26 +2378,81 @@ aside.sidebar.collapsed ~ main.main-content {
       }
   }; // <--- MAKE SURE THIS CLOSING BRACE & SEMICOLON IS PRESENT
 
-  window.openVideoViewer = function(videoUrl) {
+  window.openVideoViewer = async function(recordId, videoUrl) {
       const modal = document.getElementById('videoViewerModal');
       const videoEl = document.getElementById('viewerVideoSrc');
+      
       if (modal && videoEl) {
+          // Reset UI while loading
+          document.getElementById('viewerRecordId').value = recordId;
+          document.getElementById('viewerScore').textContent = '...';
+          document.getElementById('viewerFeedback').textContent = 'Fetching AI data...';
+          
           videoEl.src = videoUrl;
           modal.classList.add('open');
-      } else {
-          window.open(videoUrl, '_blank');
+          videoEl.play().catch(e => console.log("Auto-play prevented"));
+
+          // Fetch Score and Feedback live from Supabase
+          const { data, error } = await supabaseClient
+              .from('video_submissions')
+              .select('ai_score, ai_notes')
+              .eq('id', recordId)
+              .single();
+              
+          if (!error && data) {
+              const scoreEl = document.getElementById('viewerScore');
+              if (data.ai_score !== null) {
+                  scoreEl.textContent = data.ai_score + '/10';
+                  scoreEl.style.color = data.ai_score >= 6 ? 'var(--mint-500)' : 'var(--coral-500)';
+              } else {
+                  scoreEl.textContent = 'Pending';
+                  scoreEl.style.color = 'var(--amber-400)';
+              }
+              document.getElementById('viewerFeedback').textContent = data.ai_notes || 'No feedback recorded yet.';
+          }
       }
   };
 
   window.closeVideoViewer = function() {
       const modal = document.getElementById('videoViewerModal');
       const videoEl = document.getElementById('viewerVideoSrc');
-      if (videoEl) {
+      if (modal && videoEl) {
           videoEl.pause();
-          videoEl.src = '';
+          videoEl.src = "";
+          modal.classList.remove('open');
       }
-      if (modal) modal.classList.remove('open');
   };
+
+  // Re-evaluate Button Logic
+  document.getElementById('btnReevaluate')?.addEventListener('click', async () => {
+      const recordId = document.getElementById('viewerRecordId').value;
+      if (!recordId) return;
+      
+      if (!confirm("Send this video back to the AI for re-evaluation?")) return;
+
+      const btn = document.getElementById('btnReevaluate');
+      btn.textContent = "⏳ Resetting...";
+      btn.disabled = true;
+      
+      try {
+          const { error } = await supabaseClient
+              .from('video_submissions')
+              .update({ status: 'pending', ai_score: null, ai_notes: null })
+              .eq('id', recordId);
+              
+          if (error) throw error;
+          
+          document.getElementById('viewerScore').textContent = 'Pending';
+          document.getElementById('viewerScore').style.color = 'var(--amber-400)';
+          document.getElementById('viewerFeedback').textContent = 'Status reset to Pending. The AI bot will re-audit this video shortly.';
+          
+      } catch (err) {
+          alert("Error: " + err.message);
+      } finally {
+          btn.textContent = "🔄 Re-evaluate";
+          btn.disabled = false;
+      }
+  });
 
   window.reviewVideoStatus = async function(videoId, status) {
       const actionText = status === 'approved' ? 'Approve' : 'Reject';
