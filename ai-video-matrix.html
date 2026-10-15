@@ -322,19 +322,21 @@
           // REPLACE FROM HERE:
           let directDownloadUrl = activeRawVideoUrl;
           const driveIdMatch = activeRawVideoUrl.match(/[-\w]{25,}/);
+          
           if (driveIdMatch) {
               const driveLink = `https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
-              // Switch to a media-friendly proxy that bypasses Drive's bot detection
-              directDownloadUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(driveLink)}`;
+              // Primary reliable proxy
+              directDownloadUrl = `https://corsproxy.io/?${encodeURIComponent(driveLink)}`;
           }
 
           // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
           btn.textContent = 'EWC AI is downloading video...';
           let videoResponse = await fetch(directDownloadUrl);
           
-          // Secondary media proxy fallback
+          // Secondary proxy fallback if the first one is busy
           if (!videoResponse.ok && driveIdMatch) {
-              const backupLink = `https://thingproxy.freeboard.io/fetch/https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
+              const driveLink = `https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
+              const backupLink = `https://api.allorigins.win/raw?url=${encodeURIComponent(driveLink)}`;
               videoResponse = await fetch(backupLink);
           }
 
