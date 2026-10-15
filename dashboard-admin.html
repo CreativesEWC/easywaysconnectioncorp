@@ -5135,7 +5135,8 @@ if (saveScheduleBtn) {
     if (!targetVid) return;
     
     if (targetVid.video_file_url) {
-      openVideoViewer(targetVid.video_file_url);
+      // FIX: We now pass BOTH the ID and the URL so the viewer can load the AI scores!
+      openVideoViewer(targetVid.id, targetVid.video_file_url);
     } else if (targetVid.video_link) {
       window.open(targetVid.video_link, '_blank');
     }
