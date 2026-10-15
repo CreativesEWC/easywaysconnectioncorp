@@ -71,7 +71,7 @@
 <script>
 (async function() {
     // IMPORTANT: Make sure to paste your NEW Apps Script Web App URL right here!
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5DwIUNVxF1KNLlWQZo4HOPghlP7j_cNnVe7PqvraaC00K0R5VwzLvmKCcvE_DMN4kBA/exec";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyaYKxaB_Qpha-mZMB0U2PL5LXASs6agtQT7DLI-dsRa-PIxOYtZds4M9f4KuBtQ3Nqrg/exec";
 
     // Safely pull the employee record using your global function
     const emp = await getMyEmployeeRecord();
@@ -178,12 +178,19 @@
                 if (!rowDate || !linkInput) continue;
                 if (!directMp4Url) throw new Error(`Row ${i + 1} requires you to click Auto-Fetch first.`);
 
-                const fileName = `${emp.id}_${Date.now()}_${i}.mp4`;
+                // Format Date to MM-DD-YYYY to avoid illegal slash characters
+                const [year, month, day] = rowDate.split('-');
+                const formattedDate = `${month}-${day}-${year}`;
+                const firstName = emp.name.split(' ')[0].toUpperCase();
+
+                // Custom Filename: DATE_FIRSTNAME_1.mp4 (Added index in case they upload 5 videos at once)
+                const fileName = `${formattedDate}_${firstName}_${i + 1}.mp4`;
                 
                 const payload = {
                     action: "fetch_url",
                     directMp4Url: directMp4Url,
-                    fileName: fileName
+                    fileName: fileName,
+                    employeeName: emp.name // <-- Tells Google Apps Script which folder to use
                 };
 
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
