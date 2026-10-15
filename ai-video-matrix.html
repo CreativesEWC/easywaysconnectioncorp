@@ -323,8 +323,9 @@
           let directDownloadUrl = activeRawVideoUrl;
           const driveIdMatch = activeRawVideoUrl.match(/[-\w]{25,}/);
           if (driveIdMatch) {
-              // Convert to Google Drive's direct file download endpoint
-              directDownloadUrl = `https://drive.google.com/uc?export=download&id=${driveIdMatch[0]}`;
+              const driveLink = `https://drive.google.com/uc?export=download&id=${driveIdMatch[0]}`;
+              // Wrap the Drive link in a CORS proxy to bypass browser security blocks
+              directDownloadUrl = `https://corsproxy.io/?${encodeURIComponent(driveLink)}`;
           }
 
           // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
