@@ -294,16 +294,15 @@
       calculateScore();
   }
 
- // 5. Submit to Groq API (Two-Step Pipeline) & Save Evaluation
+ // 5. Submit to Groq API (3-Mode Auto-Grading Engine)
   document.getElementById('autoCheckBtn').addEventListener('click', async () => {
-    if (!activeVideoId) return;
+      if (!activeVideoId) return;
 
-    const btn = document.getElementById('autoCheckBtn');
-    const manBtn = document.getElementById('manualCheckBtn');
-    
+      const btn = document.getElementById('autoCheckBtn');
+      const manBtn = document.getElementById('manualCheckBtn');
+      
       btn.disabled = true;
       manBtn.disabled = true;
-      btn.disabled = true;
 
       try {
           // Secure Local Key Storage
@@ -320,83 +319,51 @@
 
           const videoUrlToAnalyze = document.getElementById('mainPlayer').src;
 
-          // ==========================================
           // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
-          // ==========================================
           btn.textContent = 'EWC AI is transcribing audio...';
-          
-          // Download MP4 blob from Supabase URL
           const videoResponse = await fetch(videoUrlToAnalyze);
           const videoBlob = await videoResponse.blob();
-          
-          // Package video blob into form data
           const audioData = new FormData();
           audioData.append("file", videoBlob, "video.mp4");
           audioData.append("model", "whisper-large-v3-turbo");
 
           const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
               method: 'POST',
-              headers: { 
-                  'Authorization': `Bearer ${GROQ_API_KEY}`
-                  // CRITICAL: Do not set Content-Type header manually here; the browser handles the FormData boundary.
-              },
+              headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
               body: audioData
           });
 
           const transcriptJson = await whisperRes.json();
-          if (transcriptJson.error) {
-              throw new Error(`Whisper Error: ${transcriptJson.error.message}`);
-          }
-          
+          if (transcriptJson.error) throw new Error(`Whisper Error: ${transcriptJson.error.message}`);
           const actualTranscript = transcriptJson.text || "[No speech detected in this video]";
 
-          // ==========================================
-          // STEP 2: EVALUATE TRANSCRIPT VIA LLM
-          // ==========================================
-          btn.textContent = 'EWC AI is grading script...';
-
-          // Read the selected radio button mode
-          const aiMode = document.querySelector('input[name="aiMode"]:checked').value;
-          
-          let personaInstruction = "";
-          if (aiMode === 'strict') {
-              personaInstruction = `You are a Strict QA Manager. Enforce perfect brand standards. Penalize filler words, messy setups, and unprofessional delivery. Technical perfection is required.`;
-          } else if (aiMode === 'creative') {
-              personaInstruction = `You are a Viral Content Strategist. Authentic, engaging, and creative videos MUST PASS. Forgive technical flaws if the energy is highly creative.`;
-          } else {
-              personaInstruction = `You are a Balanced Brand Reviewer. Balance viral energy with good brand presentation.`;
-          }
-
-          const currentRulesList = activeRules.join('\n          ');
+          // STEP 2: EVALUATE TRANSCRIPT AGAINST ALL 3 MODES IN ONE FAST API CALL
+          btn.textContent = 'EWC AI is grading 3 modes simultaneously...';
 
           const SYSTEM_PROMPT = `
-          ${personaInstruction}
+          You are an AI Video Auditor. You must evaluate the transcript against THREE distinct rubrics simultaneously to save processing time.
 
           VIDEO TRANSCRIPT:
           "${actualTranscript}"
 
-          ### BRAND STANDARDS & FORMATS
-          - SEOUL SECRETS (Skincare/Cosmetics): Show results. Authentic reviews.
-          - MOMOM FOOD (Food/Beverage): Focus on taste, appetite, and cravings.
+          RUBRIC 1: STRICT (Technical perfection, formal tone, no filler words)
+          ${ruleSets.strict.join('\n')}
 
-          ### THE 10-POINT RUBRIC (Evaluate each independently based on the active mode: Pass = true, Fail = false)
-          ${currentRulesList}
+          RUBRIC 2: CREATIVE (High energy, viral hooks, organic/casual delivery)
+          ${ruleSets.creative.join('\n')}
 
-          CRITICAL FEEDBACK INSTRUCTION: 
-          Act as a supportive coach. DO NOT use marketing jargon. Explain in plain, everyday Taglish. 
-          STRICT LENGTH LIMIT: Max 500 characters. Tell them what worked and how to improve.
+          RUBRIC 3: COMBINED (Balance of product value and engaging delivery)
+          ${ruleSets.combined.join('\n')}
 
-          ### JSON OUTPUT FORMAT
-          IMPORTANT: Grade honestly based on the transcript and your assigned persona. Output 10 rules.
+          OUTPUT STRICTLY AS JSON WITH EXACTLY THIS FORMAT:
           {
-            "rules": {
-              "rule_1": true, "rule_2": true, "rule_3": false, "rule_4": true, "rule_5": false,
-              "rule_6": true, "rule_7": false, "rule_8": true, "rule_9": true, "rule_10": true
-            },
-            "final_score": 7,
-            "status": "approved",
-            "feedback_notes": "Okay yung hook mo sa simula, pero madilim yung ilaw kaya hindi kita yung product. Next time lakasan mo ang boses mo para mas engaging."
+            "strict": { "score": 0, "rules": [true, false, true, false, true, false, true, false, true, false] },
+            "creative": { "score": 0, "rules": [true, false, true, false, true, false, true, false, true, false] },
+            "combined": { "score": 0, "rules": [true, false, true, false, true, false, true, false, true, false] },
+            "failure_feedback": "Max 400 chars. Write supportive Taglish feedback explaining why it failed overall (based on the average issues). Do not mention specific matrix modes like 'strict' or 'creative'.",
+            "success_feedback": "Max 400 chars. Write supportive Taglish feedback acknowledging exactly which style it excelled in (e.g., 'Ganda ng creative energy mo...')."
           }
+          Ensure the 'rules' arrays always contain exactly 10 boolean values representing the 10 criteria.
           `;
 
           const evalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -416,58 +383,106 @@
           if (aiData.error) throw new Error(`Groq Evaluation Error: ${aiData.error.message}`);
 
           const rawJsonString = aiData.choices[0].message.content;
-          // Strip out rogue markdown formatting before parsing
           const cleanJson = rawJsonString.replace(/```json|```/gi, '').trim();
           const analysis = JSON.parse(cleanJson);
 
-          // Visually tick the checkboxes on screen robustly
-          const checkboxes = document.querySelectorAll('.rule-cb');
-          if (analysis.rules) {
-              // Handle whether AI returns rules as an array or an object
-              const ruleValues = Array.isArray(analysis.rules) 
-                  ? analysis.rules 
-                  : Object.values(analysis.rules);
+          // Extract scores with fallbacks
+          const st = analysis.strict || { score: 0, rules: [] };
+          const cr = analysis.creative || { score: 0, rules: [] };
+          const cb = analysis.combined || { score: 0, rules: [] };
+          
+          const maxScore = Math.max(st.score, cr.score, cb.score);
 
-              ruleValues.forEach((passed, idx) => {
+          // ==========================================
+          // STEP 3: AUTO-REJECT OR HUMAN REVIEW ROUTING
+          // ==========================================
+          if (maxScore < 6) {
+              // FAILED ALL MODES: Average the score and auto-reject
+              btn.textContent = 'Saving Auto-Reject...';
+              
+              const avgScore = Math.round((st.score + cr.score + cb.score) / 3);
+              const feedback = analysis.failure_feedback || 'Needs improvement in delivery and quality.';
+
+              // Save instantly to database
+              const { error: dbErr } = await supabaseClient
+                  .from('video_submissions')
+                  .update({ 
+                      status: 'rejected', 
+                      ai_score: avgScore, 
+                      ai_notes: feedback 
+                  })
+                  .eq('id', activeVideoId);
+
+              if (dbErr) throw dbErr;
+
+              // Notify seller
+              await supabaseClient.from('notifications').insert({
+                  employee_id: activeEmployeeId,
+                  title: `Video Auto-Rejected (${avgScore}/10)`,
+                  message: `Your video scored an average of ${avgScore}/10. Feedback: "${feedback}"`,
+                  is_read: false
+              });
+
+              alert(`Auto-Rejected! Failed all 3 modes. Average Score: ${avgScore}/10`);
+
+              // Clear screen and load next
+              activeVideoId = null;
+              document.getElementById('mainPlayer').src = '';
+              document.getElementById('mainPlayer').style.display = 'none';
+              document.getElementById('noVideoMsg').style.display = 'flex';
+              
+              btn.textContent = 'Auto AI Check';
+              btn.disabled = false;
+              manBtn.disabled = false;
+              resetForm();
+              loadPendingQueue();
+
+          } else {
+              // PASSED AT LEAST 1 MODE: Prepare UI for manual verification
+              btn.textContent = 'AI Draft Ready! Please Review.';
+              
+              let winningMode = 'combined';
+              let winningRules = cb.rules;
+              
+              if (cr.score === maxScore) { winningMode = 'creative'; winningRules = cr.rules; }
+              else if (st.score === maxScore) { winningMode = 'strict'; winningRules = st.rules; }
+              
+              // Select the winning mode's radio button and update the text checklist
+              const modeRadio = document.querySelector(`input[name="aiMode"][value="${winningMode}"]`);
+              if (modeRadio) modeRadio.checked = true;
+              
+              activeRules = ruleSets[winningMode];
+              renderChecklist(); 
+
+              // Visually tick the checkboxes based on the winning mode's rules
+              const checkboxes = document.querySelectorAll('.rule-cb');
+              winningRules.forEach((passed, idx) => {
                   if (checkboxes[idx]) {
                       checkboxes[idx].checked = Boolean(passed);
-                      // Force the browser to trigger calculateScore() and update UI colors instantly
                       checkboxes[idx].dispatchEvent(new Event('change')); 
                   }
               });
+
+              // Populate feedback box with the success feedback
+              const feedbackEl = document.getElementById('qaNotes');
+              if (feedbackEl) feedbackEl.value = analysis.success_feedback || 'Great work!';
+
+              // Enable Manual Save Button so the admin can review
+              setTimeout(() => {
+                  btn.textContent = 'Re-Run AI Check';
+                  btn.disabled = false; 
+                  manBtn.disabled = false;
+                  manBtn.textContent = '💾 Save Final Verification';
+                  manBtn.classList.add('primary'); 
+                  btn.classList.remove('primary');
+              }, 1500);
           }
-
-          // Populate the feedback textarea on screen
-          const feedbackEl = document.getElementById('qaNotes');
-          if (feedbackEl && analysis.feedback_notes) {
-              feedbackEl.value = analysis.feedback_notes;
-          }
-
-          // ==========================================
-          // STEP 3: PRE-FILL FORM FOR HUMAN VERIFICATION (NO AUTO-SAVE)
-          // ==========================================
-          btn.textContent = 'AI Draft Ready! Please Review.';
-
-          // We intentionally STOP here. No database saving or auto-clearing.
-          // The admin can now review the screen, uncheck incorrect rules, edit the AI's notes, 
-          // and finalize the score manually.
-          
-          setTimeout(() => {
-              btn.textContent = 'Re-Run AI Check';
-              btn.disabled = false; 
-              manBtn.disabled = false;
-              
-              // Highlight the manual save button so the admin knows it's their turn
-              manBtn.textContent = '💾 Save Final Verification';
-              manBtn.classList.add('primary'); 
-              btn.classList.remove('primary');
-          }, 1500);
 
       } catch (err) {
           alert('AI Audit Failed:\n\n' + err.message);
           btn.disabled = false; 
           manBtn.disabled = false;
-          btn.textContent = 'Auto (AI) Check';
+          btn.textContent = 'Auto AI Check';
       }
   });
 
