@@ -138,6 +138,7 @@
   let activeVideoId = null;
   let activeEmployeeId = null;
   let activeUploadDate = null;
+  let activeRawVideoUrl = null; NE
 
   const ruleSets = {
       strict: [
@@ -257,7 +258,7 @@
       }
   }
 
-  // 4. Load Video to Main View
+ // 4. Load Video to Main View
   window.loadVideoToPlayer = function(vidId, fileUrl, empId, upDate) {
       document.querySelectorAll('.vid-item').forEach(el => el.classList.remove('active'));
       document.getElementById(`vid-${vidId}`).classList.add('active');
@@ -265,6 +266,7 @@
       activeVideoId = vidId;
       activeEmployeeId = empId;
       activeUploadDate = upDate;
+      activeRawVideoUrl = fileUrl;
       
       resetForm();
 
@@ -305,7 +307,7 @@
       manBtn.disabled = true;
 
       try {
-          // Secure Local Key Storage
+        // Secure Local Key Storage
           let GROQ_API_KEY = localStorage.getItem('ewc_groq_key');
           if (!GROQ_API_KEY) {
               GROQ_API_KEY = prompt("Enter your Groq API Key to run the audit:");
@@ -317,7 +319,19 @@
               }
           }
 
-          const videoUrlToAnalyze = document.getElementById('mainPlayer').src;
+          // REPLACE THE OLD videoUrlToAnalyze LINE WITH THIS BLOCK:
+          let directDownloadUrl = activeRawVideoUrl;
+          const driveIdMatch = activeRawVideoUrl.match(/[-\w]{25,}/);
+          if (driveIdMatch) {
+              // Convert to Google Drive's direct file download endpoint
+              directDownloadUrl = `https://drive.google.com/uc?export=download&id=${driveIdMatch[0]}`;
+          }
+
+          // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
+          btn.textContent = 'EWC AI is transcribing audio...';
+          const videoResponse = await fetch(directDownloadUrl);
+          const videoBlob = await videoResponse.blob();
+          const audioData = new FormData();
 
           // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
           btn.textContent = 'EWC AI is transcribing audio...';
