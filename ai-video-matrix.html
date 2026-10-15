@@ -319,22 +319,22 @@
               }
           }
 
-          // REPLACE THE OLD videoUrlToAnalyze LINE WITH THIS BLOCK:
+          // REPLACE FROM HERE:
           let directDownloadUrl = activeRawVideoUrl;
           const driveIdMatch = activeRawVideoUrl.match(/[-\w]{25,}/);
           if (driveIdMatch) {
-              // Add &confirm=t to forcefully bypass Drive's hidden HTML warning pages
               const driveLink = `https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
-              directDownloadUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(driveLink)}`;
+              // Switch to a media-friendly proxy that bypasses Drive's bot detection
+              directDownloadUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(driveLink)}`;
           }
 
           // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
           btn.textContent = 'EWC AI is downloading video...';
           let videoResponse = await fetch(directDownloadUrl);
           
-          // Fallback proxy if the first one is overloaded
+          // Secondary media proxy fallback
           if (!videoResponse.ok && driveIdMatch) {
-              const backupLink = `https://corsproxy.io/?${encodeURIComponent('https://drive.google.com/uc?export=download&confirm=t&id=' + driveIdMatch[0])}`;
+              const backupLink = `https://thingproxy.freeboard.io/fetch/https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
               videoResponse = await fetch(backupLink);
           }
 
@@ -342,7 +342,7 @@
 
           // NEW: Anti-HTML Protection
           if (videoBlob.type.includes('text/html')) {
-              throw new Error("Google Drive blocked the media transfer. Ensure the video is under 25MB and publicly accessible.");
+              throw new Error("Google Drive blocked the media transfer. Ensure the video is under 25MB and the sharing setting is 'Anyone with the link'.");
           }
 
           btn.textContent = 'EWC AI is transcribing audio...';
@@ -355,6 +355,7 @@
               headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
               body: audioData
           });
+          // TO HERE.
 
           const transcriptJson = await whisperRes.json();
           if (transcriptJson.error) throw new Error(`Whisper Error: ${transcriptJson.error.message}`);
