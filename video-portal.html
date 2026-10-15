@@ -60,7 +60,7 @@
 <script src="supabase-config.js"></script>
 <script>
 (async function() {
-    const GOOGLE_SCRIPT_URL = "PASTE_YOUR_NEW_APPS_SCRIPT_URL_HERE";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_P1kq96SAwaqKrQN0k01aWgTcejz1sKd-YxXwfu6g2jsx3Ga31Ixx2JIvwurJ5zEcrw/exec";
 
     const { data: { session }, error: authErr } = await supabaseClient.auth.getSession();
     if (authErr || !session) {
