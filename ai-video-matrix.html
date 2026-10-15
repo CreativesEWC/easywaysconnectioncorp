@@ -320,34 +320,11 @@
           }
 
           // REPLACE FROM HERE:
-          let directDownloadUrl = activeRawVideoUrl;
-          const driveIdMatch = activeRawVideoUrl.match(/[-\w]{25,}/);
-          
-          if (driveIdMatch) {
-              const driveLink = `https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
-              // Primary reliable proxy
-              directDownloadUrl = `https://corsproxy.io/?${encodeURIComponent(driveLink)}`;
-          }
-
-          // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
-          btn.textContent = 'EWC AI is downloading video...';
-          let videoResponse = await fetch(directDownloadUrl);
-          
-          // Secondary proxy fallback if the first one is busy
-          if (!videoResponse.ok && driveIdMatch) {
-              const driveLink = `https://drive.google.com/uc?export=download&confirm=t&id=${driveIdMatch[0]}`;
-              const backupLink = `https://api.allorigins.win/raw?url=${encodeURIComponent(driveLink)}`;
-              videoResponse = await fetch(backupLink);
-          }
-
+          const videoResponse = await fetch(activeRawVideoUrl);
+          if (!videoResponse.ok) throw new Error("Failed to download video. Ensure it is hosted on Supabase.");
           const videoBlob = await videoResponse.blob();
 
-          // NEW: Anti-HTML Protection
-          if (videoBlob.type.includes('text/html')) {
-              throw new Error("Google Drive blocked the media transfer. Ensure the video is under 25MB and the sharing setting is 'Anyone with the link'.");
-          }
-
-          btn.textContent = 'EWC AI is transcribing audio...';
+          btn.textContent = 'EWC AI is transcribing...';
           const audioData = new FormData();
           audioData.append("file", videoBlob, "video.mp4");
           audioData.append("model", "whisper-large-v3-turbo");
@@ -357,39 +334,18 @@
               headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
               body: audioData
           });
-          // TO HERE.
-
           const transcriptJson = await whisperRes.json();
-          if (transcriptJson.error) throw new Error(`Whisper Error: ${transcriptJson.error.message}`);
-          const actualTranscript = transcriptJson.text || "[No speech detected in this video]";
+          if (transcriptJson.error) throw new Error(transcriptJson.error.message);
+          const actualTranscript = transcriptJson.text || "[No speech detected]";
 
-          // STEP 2: EVALUATE TRANSCRIPT AGAINST ALL 3 MODES IN ONE FAST API CALL
-          btn.textContent = 'EWC AI is grading 3 modes simultaneously...';
+          btn.textContent = 'EWC AI is grading...';
+          const selectedMode = document.querySelector('input[name="aiMode"]:checked').value.toUpperCase();
 
           const SYSTEM_PROMPT = `
-          You are an AI Video Auditor. You must evaluate the transcript against THREE distinct rubrics simultaneously to save processing time.
-
-          VIDEO TRANSCRIPT:
-          "${actualTranscript}"
-
-          RUBRIC 1: STRICT (Technical perfection, formal tone, no filler words)
-          ${ruleSets.strict.join('\n')}
-
-          RUBRIC 2: CREATIVE (High energy, viral hooks, organic/casual delivery)
-          ${ruleSets.creative.join('\n')}
-
-          RUBRIC 3: COMBINED (Balance of product value and engaging delivery)
-          ${ruleSets.combined.join('\n')}
-
-          OUTPUT STRICTLY AS JSON WITH EXACTLY THIS FORMAT:
-          {
-            "strict": { "score": 0, "rules": [true, false, true, false, true, false, true, false, true, false] },
-            "creative": { "score": 0, "rules": [true, false, true, false, true, false, true, false, true, false] },
-            "combined": { "score": 0, "rules": [true, false, true, false, true, false, true, false, true, false] },
-            "failure_feedback": "Max 400 chars. Write supportive Taglish feedback explaining why it failed overall (based on the average issues). Do not mention specific matrix modes like 'strict' or 'creative'.",
-            "success_feedback": "Max 400 chars. Write supportive Taglish feedback acknowledging exactly which style it excelled in (e.g., 'Ganda ng creative energy mo...')."
-          }
-          Ensure the 'rules' arrays always contain exactly 10 boolean values representing the 10 criteria.
+          You are an AI Video Auditor. Evaluate the transcript against the following ${selectedMode} rubric.
+          VIDEO TRANSCRIPT: "${actualTranscript}"
+          RUBRIC: ${activeRules.join('\n')}
+          OUTPUT JSON: { "score": 0, "rules": [true,false,true,false,true,false,true,false,true,false], "feedback": "Max 400 chars." }
           `;
 
           const evalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -399,25 +355,17 @@
                   'Authorization': `Bearer ${GROQ_API_KEY}`
               },
               body: JSON.stringify({
-                  model: "openai/gpt-oss-20b",
+                  model: "llama3-8b-8192", 
                   messages: [{ role: "user", content: SYSTEM_PROMPT }],
                   response_format: { type: "json_object" }
               })
           });
 
           const aiData = await evalRes.json();
-          if (aiData.error) throw new Error(`Groq Evaluation Error: ${aiData.error.message}`);
-
-          const rawJsonString = aiData.choices[0].message.content;
-          const cleanJson = rawJsonString.replace(/```json|```/gi, '').trim();
-          const analysis = JSON.parse(cleanJson);
-
-          // Extract scores with fallbacks
-          const st = analysis.strict || { score: 0, rules: [] };
-          const cr = analysis.creative || { score: 0, rules: [] };
-          const cb = analysis.combined || { score: 0, rules: [] };
+          if (aiData.error) throw new Error(aiData.error.message);
           
-          const maxScore = Math.max(st.score, cr.score, cb.score);
+          const analysis = JSON.parse(aiData.choices[0].message.content.replace(/```json|```/gi, '').trim());
+          const maxScore = analysis.score || 0; // Defines maxScore for your existing rejection logic
 
           // ==========================================
           // STEP 3: AUTO-REJECT OR HUMAN REVIEW ROUTING
