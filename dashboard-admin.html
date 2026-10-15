@@ -1935,7 +1935,7 @@ aside.sidebar.collapsed ~ main.main-content {
     
     <!-- Video Player -->
     <div style="background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); max-height: 55vh; display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
-      <video id="viewerVideoSrc" controls style="width: 100%; max-height: 55vh; display: block;"></video>
+      <iframe id="viewerIframeSrc" allow="autoplay; fullscreen" style="width: 100%; height: 55vh; border: none; display: block;"></iframe>
     </div>
 
     <!-- AI Feedback Section -->
@@ -2380,17 +2380,23 @@ aside.sidebar.collapsed ~ main.main-content {
 
   window.openVideoViewer = async function(recordId, videoUrl) {
       const modal = document.getElementById('videoViewerModal');
-      const videoEl = document.getElementById('viewerVideoSrc');
+      const iframeEl = document.getElementById('viewerIframeSrc');
       
-      if (modal && videoEl) {
+      if (modal && iframeEl) {
           // Reset UI while loading
           document.getElementById('viewerRecordId').value = recordId;
           document.getElementById('viewerScore').textContent = '...';
           document.getElementById('viewerFeedback').textContent = 'Fetching AI data...';
           
-          videoEl.src = videoUrl;
+          // Convert any Google Drive URL into an embeddable preview player
+          let embedUrl = videoUrl;
+          const driveIdMatch = videoUrl.match(/[-\w]{25,}/);
+          if (driveIdMatch) {
+              embedUrl = `https://drive.google.com/file/d/${driveIdMatch[0]}/preview`;
+          }
+          
+          iframeEl.src = embedUrl;
           modal.classList.add('open');
-          videoEl.play().catch(e => console.log("Auto-play prevented"));
 
           // Fetch Score and Feedback live from Supabase
           const { data, error } = await supabaseClient
@@ -2415,10 +2421,9 @@ aside.sidebar.collapsed ~ main.main-content {
 
   window.closeVideoViewer = function() {
       const modal = document.getElementById('videoViewerModal');
-      const videoEl = document.getElementById('viewerVideoSrc');
-      if (modal && videoEl) {
-          videoEl.pause();
-          videoEl.src = "";
+      const iframeEl = document.getElementById('viewerIframeSrc');
+      if (modal && iframeEl) {
+          iframeEl.src = ""; // Clears the iframe to stop background audio
           modal.classList.remove('open');
       }
   };
