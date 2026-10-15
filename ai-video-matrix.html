@@ -332,12 +332,6 @@
           const videoResponse = await fetch(directDownloadUrl);
           const videoBlob = await videoResponse.blob();
           const audioData = new FormData();
-
-          // STEP 1: TRANSCRIBE AUDIO VIA WHISPER
-          btn.textContent = 'EWC AI is transcribing audio...';
-          const videoResponse = await fetch(videoUrlToAnalyze);
-          const videoBlob = await videoResponse.blob();
-          const audioData = new FormData();
           audioData.append("file", videoBlob, "video.mp4");
           audioData.append("model", "whisper-large-v3-turbo");
 
