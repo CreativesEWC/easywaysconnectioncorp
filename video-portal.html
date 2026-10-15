@@ -62,14 +62,14 @@
 (async function() {
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_P1kq96SAwaqKrQN0k01aWgTcejz1sKd-YxXwfu6g2jsx3Ga31Ixx2JIvwurJ5zEcrw/exec";
 
-    const { data: { session }, error: authErr } = await supabaseClient.auth.getSession();
-    if (authErr || !session) {
-        alert("You must be logged into the dashboard to use the Video Portal.");
+    // Safely pull the employee record using your global function
+    const emp = await getMyEmployeeRecord();
+    
+    if (!emp || !emp.id) {
+        alert("Security Error: Could not verify your employee ID. Please log into the main dashboard first.");
         window.close();
         return;
     }
-
-    const { data: emp } = await supabaseClient.from('employees').select('id, name').eq('auth_id', session.user.id).single();
 
     document.getElementById('addVideoRowBtn').addEventListener('click', () => {
         const rowCount = document.querySelectorAll('.video-upload-row').length;
