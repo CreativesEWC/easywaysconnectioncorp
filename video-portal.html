@@ -183,9 +183,13 @@
                 const formattedDate = `${month}-${day}-${year}`;
                 const firstName = emp.name.split(' ')[0].toUpperCase();
 
-                // Custom Filename: DATE_FIRSTNAME_1.mp4 (Added index in case they upload 5 videos at once)
+               // Custom Filename: DATE_FIRSTNAME_1.mp4 (Added index in case they upload 5 videos at once)
                 const fileName = `${formattedDate}_${firstName}_${i + 1}.mp4`;
                 
+                // NEW: Fetch the raw video data to create the vidBlob
+                const vidResponse = await fetch(directMp4Url);
+                const vidBlob = await vidResponse.blob();
+
                 // HYBRID ROUTE A: TEMPORARY SUPABASE
                 const { error: uploadErr } = await supabaseClient.storage
                     .from('temp-ai-videos')
