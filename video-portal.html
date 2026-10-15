@@ -49,16 +49,21 @@
   
   <form id="dedicatedVideoForm">
     <div id="videoRowsContainer" style="display: flex; flex-direction: column; gap: 10px;">
-      <div class="video-upload-row">
-        <div class="input-group">
-          <input type="date" class="vid-date" required>
-          <input type="url" class="vid-link" placeholder="Platform Link (e.g., TikTok URL)" required>
+      <div class="video-upload-row" style="background: var(--navy-800); padding: 15px; border-radius: 8px; border: 1px solid var(--line); position: relative;">
+        <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+          <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 10px;">
+          <input type="url" class="vid-link" placeholder="TikTok Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 10px;">
+          <button type="button" class="btn2 primary auto-fetch-btn" style="padding: 10px 15px; background: var(--amber-500); color: var(--navy-950); border: none; font-weight: bold; border-radius: 6px; cursor: pointer; width: auto;">📥 Auto-Fetch</button>
         </div>
-        <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/quicktime,video/*" required>
+        <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" style="display: none;">
+        <div class="fetch-status" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 5px;">Paste link and click Auto-Fetch</div>
+        <input type="hidden" class="vid-direct-mp4"> 
       </div>
     </div>
 
-    <button type="button" id="addVideoRowBtn" class="btn2" style="border: 1px dashed var(--amber-500); color: var(--amber-400); margin-top: 10px; margin-bottom: 20px;">[+] Add Another Video</button>
+    <!-- Hidden for now since API fetch handles one at a time efficiently -->
+    <button type="button" id="addVideoRowBtn" class="btn2" style="border: 1px dashed var(--amber-500); color: var(--amber-400); margin-top: 10px; margin-bottom: 20px; display: none;">[+] Add Another Video</button>
+    
     <button type="submit" id="vidSubmitBtn" class="btn2 primary">Upload & Submit to QA</button>
   </form>
 </div>
@@ -66,7 +71,8 @@
 <script src="supabase-config.js"></script>
 <script>
 (async function() {
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbynRiCGgDvribhDaCvNn6BR78YZqgG2g2yhnkNnlgxzIupDOZ1VF8XGXc5sRMZK0eIM9g/exec";
+    // IMPORTANT: Make sure to paste your NEW Apps Script Web App URL right here!
+    const GOOGLE_SCRIPT_URL = "PASTE_YOUR_NEW_APPS_SCRIPT_URL_HERE";
 
     // Safely pull the employee record using your global function
     const emp = await getMyEmployeeRecord();
@@ -77,31 +83,54 @@
         return;
     }
 
-    document.getElementById('addVideoRowBtn').addEventListener('click', () => {
-        const rowCount = document.querySelectorAll('.video-upload-row').length;
-        if (rowCount >= 5) { alert('Maximum 5 videos per batch due to upload limits.'); return; }
+    // 1. Handle the Auto-Fetch Button Click
+    document.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('auto-fetch-btn')) {
+            const row = e.target.closest('.video-upload-row');
+            const linkInput = row.querySelector('.vid-link').value;
+            const statusText = row.querySelector('.fetch-status');
+            const hiddenMp4 = row.querySelector('.vid-direct-mp4');
+            
+            if (!linkInput.includes('tiktok.com')) {
+                alert("Please paste a valid TikTok URL.");
+                return;
+            }
 
-        const newRow = document.createElement('div');
-        newRow.className = 'video-upload-row';
-        newRow.innerHTML = `
-            <button type="button" class="remove-vid-row">&times;</button>
-            <div class="input-group">
-                <input type="date" class="vid-date" required>
-                <input type="url" class="vid-link" placeholder="Platform Link (e.g., TikTok URL)" required>
-            </div>
-            <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/quicktime,video/*" required>
-        `;
-        newRow.querySelector('.remove-vid-row').addEventListener('click', () => newRow.remove());
-        document.getElementById('videoRowsContainer').appendChild(newRow);
+            e.target.textContent = "⏳ Extracting...";
+            e.target.disabled = true;
+            statusText.textContent = "Contacting servers...";
+            statusText.style.color = "var(--amber-400)";
+
+            try {
+                const response = await fetch(`https://tiktok-video-no-watermark2.p.rapidapi.com/?url=${encodeURIComponent(linkInput)}`, {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': 'af4bdcd5ccmshd6c4e40e3ea867fp1b1477jsn5fa2407650bb',
+                        'x-rapidapi-host': 'tiktok-video-no-watermark2.p.rapidapi.com'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!data.data || !data.data.play) throw new Error("Could not extract video. Ensure the video is public.");
+
+                hiddenMp4.value = data.data.play; 
+                
+                e.target.textContent = "✅ Ready";
+                e.target.style.background = "var(--mint-500)";
+                statusText.textContent = "Video extracted successfully!";
+                statusText.style.color = "var(--mint-500)";
+
+            } catch (err) {
+                e.target.textContent = "📥 Auto-Fetch";
+                e.target.disabled = false;
+                statusText.textContent = "Extraction failed: " + err.message;
+                statusText.style.color = "var(--coral-500)";
+            }
+        }
     });
 
-    const getBase64 = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = error => reject(error);
-    });
-
+    // 2. Submit Button Logic
     document.getElementById('dedicatedVideoForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const rows = document.querySelectorAll('.video-upload-row');
@@ -111,38 +140,33 @@
 
         try {
             for (let i = 0; i < rows.length; i++) {
-                submitBtn.textContent = `Uploading Video ${i + 1} of ${rows.length}...`;
+                submitBtn.textContent = `Processing Video ${i + 1} of ${rows.length}...`;
                 
                 const row = rows[i];
                 const rowDate = row.querySelector('.vid-date').value;
                 const linkInput = row.querySelector('.vid-link').value;
-                const fileInput = row.querySelector('.vid-file').files[0];
+                const directMp4Url = row.querySelector('.vid-direct-mp4').value;
 
-                if (!fileInput || !rowDate) continue;
+                if (!rowDate || !linkInput) continue;
+                if (!directMp4Url) throw new Error(`Row ${i + 1} requires you to click Auto-Fetch first.`);
+
+                const fileName = `${emp.id}_${Date.now()}_${i}.mp4`;
                 
-                if (fileInput.size > 35 * 1024 * 1024) {
-                    throw new Error(`Video ${i + 1} exceeds the 35MB limit. Please compress it.`);
-                }
-
-                // Convert file and send to Google Drive
-                const base64Data = await getBase64(fileInput);
-                const fileExt = fileInput.name.split('.').pop();
-                const fileName = `${emp.id}_${Date.now()}_${i}.${fileExt}`;
+                const payload = {
+                    action: "fetch_url",
+                    directMp4Url: directMp4Url,
+                    fileName: fileName
+                };
 
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        fileName: fileName,
-                        mimeType: fileInput.type,
-                        fileBase64: base64Data
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
                 if (result.status !== "success") throw new Error(result.message);
 
-                // Save Drive link to Supabase
                 const { error: dbErr } = await supabaseClient.from('video_submissions').insert({
                     employee_id: emp.id,
                     upload_date: rowDate,
@@ -155,11 +179,11 @@
                 successCount++;
             }
 
-            alert(`Success! ${successCount} videos safely uploaded to Google Drive.`);
+            alert(`Success! ${successCount} videos sent to QA.`);
             window.location.reload(); 
 
         } catch (err) {
-            alert(`Upload failed: ${err.message}`);
+            alert(`Process failed: ${err.message}`);
         } finally {
             submitBtn.textContent = 'Upload & Submit to QA';
             submitBtn.disabled = false;
