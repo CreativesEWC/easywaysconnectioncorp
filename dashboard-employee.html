@@ -57,6 +57,12 @@
     --amber-500: #b45309; 
   }
 
+  @keyframes pulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(232,161,58,0.4)); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(232,161,58,0.8)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(232,161,58,0.4)); }
+  }
+
   /* ---- IG FLOATING CHAT WIDGET ---- */
   .ig-chat-widget {
     position: fixed; bottom: 20px; right: 340px; 
@@ -992,6 +998,8 @@ aside.sidebar.collapsed ~ main.main-content {
         <h1 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);">Home</h1>
         <div style="margin-top: 4px; font-size: 14px; color: #7488b6;" id="homeWelcomeText">Welcome, Employee!</div>
       </div>
+
+    
       <div class="profile-card">
         <div class="avatar-wrap">
           <div class="avatar" id="avatarInitials">?</div>
@@ -1005,6 +1013,21 @@ aside.sidebar.collapsed ~ main.main-content {
           <div class="meta" id="empPositionBrand">—</div>
           <div class="badge-id" id="empBadgeId">—</div>
         </div>
+
+        <!-- TIKTOK-STYLE STREAK TRACKER -->
+      <div id="streakWidget" style="display: none; background: linear-gradient(135deg, var(--navy-900), var(--navy-800)); border: 1px solid var(--amber-500); border-radius: 16px; padding: 20px; margin-bottom: 22px; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(232, 161, 58, 0.15);">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <div id="streakFireIcon" style="font-size: 42px; filter: drop-shadow(0 0 10px rgba(232,161,58,0.6)); animation: pulse 2s infinite;">🔥</div>
+          <div>
+            <h2 style="margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--amber-400);"><span id="streakCount">0</span>-Day Streak!</h2>
+            <p id="streakMessage" style="margin: 4px 0 0 0; font-size: 12px; color: #9fb0d6;">Submit your live commission today to build your streak.</p>
+          </div>
+        </div>
+        <div style="text-align: right; background: rgba(0,0,0,0.3); padding: 10px 15px; border-radius: 10px; border: 1px solid var(--line);">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Best Streak</div>
+          <div style="font-family: var(--font-mono); font-size: 18px; font-weight: bold; color: var(--paper);" id="bestStreakCount">0</div>
+        </div>
+      </div>
         
         <button class="btn" id="digitalIdBtn" title="View Digital ID">Digital ID</button>
       </div>
@@ -3639,6 +3662,107 @@ if (digitalIdBtn) {
 
     await loadWeekSchedule();
   }
+
+  // ==========================================================
+  // TIKTOK-STYLE LIVE STREAK ENGINE
+  // ==========================================================
+  window.loadLiveStreak = async function() {
+      if (!emp || !emp.id) return;
+      
+      // 1. Only show the widget to Live Sellers
+      const posName = (emp.positions && emp.positions.name) ? emp.positions.name.toLowerCase() : (emp.position || '').toLowerCase();
+      if (!posName.includes('live seller')) return;
+      
+      const widget = document.getElementById('streakWidget');
+      if (widget) widget.style.display = 'flex';
+
+      // 2. Fetch all their historical sales report dates
+      const { data: reports, error } = await supabaseClient
+          .from('sales_reports')
+          .select('report_date')
+          .eq('employee_id', emp.id)
+          .order('report_date', { ascending: false });
+
+      if (error || !reports) return;
+
+      // 3. Extract unique dates only (in case of double shifts)
+      const uniqueDates = [...new Set(reports.map(r => r.report_date))].sort((a, b) => new Date(b) - new Date(a));
+      
+      const today = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      
+      const todaySubmitted = uniqueDates.includes(todayStr);
+      
+      // 4. Calculate Current Active Streak
+      let currentStreak = 0;
+      let checkDate = new Date(today);
+      
+      // If they haven't submitted today yet, we start checking from yesterday so we don't break the streak prematurely
+      if (!todaySubmitted) {
+          checkDate.setDate(checkDate.getDate() - 1);
+      }
+
+      while (true) {
+          const checkStr = `${checkDate.getFullYear()}-${pad(checkDate.getMonth() + 1)}-${pad(checkDate.getDate())}`;
+          if (uniqueDates.includes(checkStr)) {
+              currentStreak++;
+              checkDate.setDate(checkDate.getDate() - 1); // Step backwards one day
+          } else {
+              break; // Streak broken!
+          }
+      }
+
+      // 5. Calculate Best All-Time Streak
+      let bestStreak = 0;
+      let tempStreak = 0;
+      let prevDate = null;
+
+      // Flip to chronological order to calculate highest peak
+      const ascendingDates = [...uniqueDates].reverse();
+      
+      ascendingDates.forEach(dateStr => {
+          const curr = new Date(dateStr);
+          if (!prevDate) {
+              tempStreak = 1;
+          } else {
+              const diffDays = Math.round((curr - prevDate) / (1000 * 60 * 60 * 24));
+              if (diffDays === 1) {
+                  tempStreak++;
+              } else if (diffDays > 1) {
+                  tempStreak = 1; // Streak broken, reset temp counter
+              }
+          }
+          if (tempStreak > bestStreak) bestStreak = tempStreak;
+          prevDate = curr;
+      });
+
+      // 6. Update the Dashboard UI
+      document.getElementById('streakCount').textContent = currentStreak;
+      document.getElementById('bestStreakCount').textContent = bestStreak;
+      
+      const fireIcon = document.getElementById('streakFireIcon');
+      const msgEl = document.getElementById('streakMessage');
+
+      // Visual feedback based on whether they submitted today
+      if (todaySubmitted) {
+          fireIcon.style.filter = 'drop-shadow(0 0 15px rgba(232,161,58,0.9))';
+          fireIcon.style.opacity = '1';
+          fireIcon.style.animation = 'pulse 1.5s infinite';
+          msgEl.textContent = "Awesome! You've logged your sales today. Keep the fire burning tomorrow!";
+          msgEl.style.color = "var(--mint-400)";
+      } else {
+          fireIcon.style.filter = 'grayscale(100%) opacity(0.3)';
+          fireIcon.style.animation = 'none'; 
+          if (currentStreak > 0) {
+              msgEl.textContent = "Submit your live commission today to keep your streak alive!";
+              msgEl.style.color = "var(--amber-400)";
+          } else {
+              msgEl.textContent = "Submit your first live commission today to ignite your streak!";
+              msgEl.style.color = "#9fb0d6";
+          }
+      }
+  };
   
   // ---- Sign out ----
   document.getElementById('signOutBtn').addEventListener('click', async ()=>{
@@ -4061,7 +4185,8 @@ if (ticketBtn) {
   }, 300);
 
   // Add the trigger right here!
-    loadHomeShiftStatus();
+  loadHomeShiftStatus();
+  loadLiveStreak();
 
   // Initialize listeners for the first shop row
   const initialSalesRow = document.querySelector('.sales-upload-row');
