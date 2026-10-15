@@ -186,30 +186,44 @@
                 // Custom Filename: DATE_FIRSTNAME_1.mp4 (Added index in case they upload 5 videos at once)
                 const fileName = `${formattedDate}_${firstName}_${i + 1}.mp4`;
                 
-                const payload = {
-                    action: "fetch_url",
-                    directMp4Url: directMp4Url,
-                    fileName: fileName,
-                    employeeName: emp.name // <-- Tells Google Apps Script which folder to use
-                };
+                // HYBRID ROUTE A: TEMPORARY SUPABASE
+                const { error: uploadErr } = await supabaseClient.storage
+                    .from('temp-ai-videos')
+                    .upload(`public/${fileName}`, vidBlob, { upsert: true });
+                if (uploadErr) throw uploadErr;
 
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('temp-ai-videos')
+                    .getPublicUrl(`public/${fileName}`);
+
+                // HYBRID ROUTE B: PERMANENT GOOGLE DRIVE
+                const getBase64 = (b) => new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(b);
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = e => reject(e);
+                });
+                const base64Data = await getBase64(vidBlob);
+                
+                await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        fileName: fileName,
+                        mimeType: vidBlob.type,
+                        fileBase64: base64Data,
+                        employeeName: emp.name
+                    })
                 });
 
-                const result = await response.json();
-                if (result.status !== "success") throw new Error(result.message);
-
+                // SAVE URL TO DB
                 const { error: dbErr } = await supabaseClient.from('video_submissions').insert({
                     employee_id: emp.id,
                     upload_date: rowDate,
                     video_link: linkInput,
-                    video_file_url: result.url,
+                    video_file_url: publicUrlData.publicUrl,
                     status: 'pending'
                 });
-
                 if (dbErr) throw dbErr;
                 successCount++;
             }
