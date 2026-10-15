@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWC Video Portal</title>
+<link rel="icon" type="image/svg+xml" href="easyway_icon.svg">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --navy-950: #000000; --navy-900: #000000; --navy-800: #121212;
+    --line: #262626; --paper: #ffffff; --text-muted: #a8a8a8;
+    --amber-500: #e8a13a; --amber-400: #f2b854; --coral-500: #d9614f;
+    --font-display: 'Rockwell', Georgia, serif; 
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; background: var(--navy-950); color: var(--paper); font-family: var(--font-body); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+  .portal-container { max-width: 600px; width: 100%; background: var(--navy-900); border: 1px solid var(--line); border-radius: 16px; padding: 30px; margin-top: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .header { text-align: center; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 20px; }
+  .header h1 { margin: 0; font-family: var(--font-display); font-size: 22px; color: var(--amber-400); }
+  .header p { margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted); }
+  .video-upload-row { background: var(--navy-800); padding: 15px; border-radius: 8px; border: 1px solid var(--line); position: relative; margin-bottom: 10px; }
+  .remove-vid-row { position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1; z-index: 10; }
+  .input-group { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  input { background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 10px; font-size: 13px; width: 100%; }
+  input[type="date"] { flex: 1; min-width: 120px; }
+  input[type="url"] { flex: 2; min-width: 200px; }
+  input[type="file"] { border: 1px dashed var(--line); padding: 12px; cursor: pointer; }
+  .btn2 { border-radius: 8px; padding: 12px 14px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--paper); text-align: center; width: 100%; display: block; transition: 0.2s; }
+  .btn2.primary { background: var(--amber-500); color: var(--navy-950); border: none; font-weight: bold; }
+  .btn2:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="portal-container">
+  <div class="header">
+    <div style="display:flex; justify-content:center; margin-bottom:10px;"><img src="easyway_icon.svg" style="width:40px; height:40px;"></div>
+    <h1>Dedicated Video Portal</h1>
+    <p>Upload video files directly to Google Drive (Max 30MB per video).</p>
+  </div>
+
+  <form id="dedicatedVideoForm">
+    <div id="videoRowsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="video-upload-row">
+        <div class="input-group">
+          <input type="date" class="vid-date" required>
+          <input type="url" class="vid-link" placeholder="Platform Link (e.g., TikTok URL)" required>
+        </div>
+        <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/quicktime,video/*" required>
+      </div>
+    </div>
+
+    <button type="button" id="addVideoRowBtn" class="btn2" style="border: 1px dashed var(--amber-500); color: var(--amber-400); margin-top: 10px; margin-bottom: 20px;">[+] Add Another Video</button>
+    <button type="submit" id="vidSubmitBtn" class="btn2 primary">Upload & Submit to QA</button>
+  </form>
+</div>
+
+<script src="supabase-config.js"></script>
+<script>
+(async function() {
+    const GOOGLE_SCRIPT_URL = "PASTE_YOUR_NEW_APPS_SCRIPT_URL_HERE";
+
+    const { data: { session }, error: authErr } = await supabaseClient.auth.getSession();
+    if (authErr || !session) {
+        alert("You must be logged into the dashboard to use the Video Portal.");
+        window.close();
+        return;
+    }
+
+    const { data: emp } = await supabaseClient.from('employees').select('id, name').eq('auth_id', session.user.id).single();
+
+    document.getElementById('addVideoRowBtn').addEventListener('click', () => {
+        const rowCount = document.querySelectorAll('.video-upload-row').length;
+        if (rowCount >= 5) { alert('Maximum 5 videos per batch due to upload limits.'); return; }
+
+        const newRow = document.createElement('div');
+        newRow.className = 'video-upload-row';
+        newRow.innerHTML = `
+            <button type="button" class="remove-vid-row">&times;</button>
+            <div class="input-group">
+                <input type="date" class="vid-date" required>
+                <input type="url" class="vid-link" placeholder="Platform Link (e.g., TikTok URL)" required>
+            </div>
+            <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/quicktime,video/*" required>
+        `;
+        newRow.querySelector('.remove-vid-row').addEventListener('click', () => newRow.remove());
+        document.getElementById('videoRowsContainer').appendChild(newRow);
+    });
+
+    const getBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+
+    document.getElementById('dedicatedVideoForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const rows = document.querySelectorAll('.video-upload-row');
+        const submitBtn = document.getElementById('vidSubmitBtn');
+        submitBtn.disabled = true;
+        let successCount = 0;
+
+        try {
+            for (let i = 0; i < rows.length; i++) {
+                submitBtn.textContent = `Uploading Video ${i + 1} of ${rows.length}...`;
+                
+                const row = rows[i];
+                const rowDate = row.querySelector('.vid-date').value;
+                const linkInput = row.querySelector('.vid-link').value;
+                const fileInput = row.querySelector('.vid-file').files[0];
+
+                if (!fileInput || !rowDate) continue;
+                
+                if (fileInput.size > 35 * 1024 * 1024) {
+                    throw new Error(`Video ${i + 1} exceeds the 35MB limit. Please compress it.`);
+                }
+
+                // Convert file and send to Google Drive
+                const base64Data = await getBase64(fileInput);
+                const fileExt = fileInput.name.split('.').pop();
+                const fileName = `${emp.id}_${Date.now()}_${i}.${fileExt}`;
+
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        fileName: fileName,
+                        mimeType: fileInput.type,
+                        fileBase64: base64Data
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status !== "success") throw new Error(result.message);
+
+                // Save Drive link to Supabase
+                const { error: dbErr } = await supabaseClient.from('video_submissions').insert({
+                    employee_id: emp.id,
+                    upload_date: rowDate,
+                    video_link: linkInput,
+                    video_file_url: result.url,
+                    status: 'pending'
+                });
+
+                if (dbErr) throw dbErr;
+                successCount++;
+            }
+
+            alert(`Success! ${successCount} videos safely uploaded to Google Drive.`);
+            window.location.reload(); 
+
+        } catch (err) {
+            alert(`Upload failed: ${err.message}`);
+        } finally {
+            submitBtn.textContent = 'Upload & Submit to QA';
+            submitBtn.disabled = false;
+        }
+    });
+})();
+</script>
+</body>
+</html>
