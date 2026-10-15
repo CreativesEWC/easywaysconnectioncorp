@@ -1134,22 +1134,17 @@ aside.sidebar.collapsed ~ main.main-content {
       <div id="lh-video-commi" class="lh-tab-content" style="display: none;">
         <section class="panel" style="margin-bottom: 24px; border-color: var(--amber-500);">
           <h2 style="color: var(--amber-400); margin-top: 0; margin-bottom: 15px;">Submit Daily Video Requirement</h2>
-          <form id="videoSubmitForm" style="display: flex; flex-direction: column; gap: 15px;">
-            <!-- The Container holding the dynamic rows -->
-            <div id="videoRowsContainer" style="display: flex; flex-direction: column; gap: 10px;">
-              <div class="video-upload-row" style="background: var(--navy-800); padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
-                <div style="display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
-                  <input type="date" class="vid-date" required style="flex: 1; min-width: 110px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
-                  <input type="url" class="vid-link" placeholder="Platform Link (https://...)" required style="flex: 2; min-width: 180px; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
-                </div>
-                <input type="file" class="vid-file" accept="video/mp4,video/x-m4v,video/*" required style="width: 100%; background: var(--navy-900); border: 1px dashed var(--line); color: var(--paper); border-radius: 6px; padding: 8px 10px; font-size: 12px;">
-              </div>
-            </div>
-
-            <button type="button" id="addVideoRowBtn" class="btn2" style="border: 1px dashed var(--amber-500); color: var(--amber-400); background: transparent; padding: 10px;">[+] Add Another Video</button>
-
-            <button type="submit" id="vidSubmitBtn" class="btn2 primary" style="width: 100%; padding: 12px; font-size: 14px;">Upload & Submit Videos</button>
-          </form>
+          
+          <!-- NEW CLEAN LAUNCHER FOR VIDEO PORTAL -->
+      <div style="background: var(--navy-800); border: 1px solid var(--line); border-radius: 12px; padding: 25px; text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 10px;">☁️</div>
+          <h3 style="margin: 0 0 10px 0; color: var(--paper);">Launch Dedicated Video Portal</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 20px 0; max-width: 400px; margin-left: auto; margin-right: auto;">
+                To ensure fast upload speeds and preserve system performance, large MP4 video files are now processed through our dedicated high-speed media server.
+          </p>
+            <button onclick="window.open('video-portal.html', '_blank')" class="btn2 primary" style="width: auto; padding: 12px 30px; display: inline-block;">Open Video Uploader &rarr;</button>
+        </div>
+        
         </section>
         <!-- LIVE SELLER VIDEO SUBMISSION & AI AUDIT HISTORY -->
         <section class="panel" style="border-color: var(--line); margin-top: 20px;">
