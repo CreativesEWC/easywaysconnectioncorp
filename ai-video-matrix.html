@@ -449,6 +449,12 @@
                   is_read: false
               });
 
+              // NEW: Instantly delete the temporary video from Supabase to save space
+              const filePath = activeRawVideoUrl.split('temp-ai-videos/')[1];
+              if (filePath) {
+                  await supabaseClient.storage.from('temp-ai-videos').remove([filePath]);
+              }
+
               alert(`Auto-Rejected! Failed all 3 modes. Average Score: ${avgScore}/10`);
 
               // Clear screen and load next
@@ -539,13 +545,20 @@
 
           if (dbErr) throw dbErr;
 
-          await supabaseClient.from('notifications').insert({
+         await supabaseClient.from('notifications').insert({
               employee_id: activeEmployeeId,
               title: `Video Audit Complete (${finalScore}/10)`,
               message: `Your video scored ${finalScore}/10. Status: ${status.toUpperCase()}. Feedback: "${feedbackNotes}"`,
               is_read: false
           });
 
+          // NEW: Instantly delete the temporary video from Supabase to save space
+          const filePath = activeRawVideoUrl.split('temp-ai-videos/')[1];
+          if (filePath) {
+              await supabaseClient.storage.from('temp-ai-videos').remove([filePath]);
+          }
+
+          btn.textContent = 'Saved Successfully!';
           btn.textContent = 'Saved Successfully!';
           
           // Clear screen and load next video
