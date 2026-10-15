@@ -258,7 +258,6 @@
   }
 
   // 4. Load Video to Main View
-  // 4. Load Video to Main View
   window.loadVideoToPlayer = function(vidId, fileUrl, empId, upDate) {
       document.querySelectorAll('.vid-item').forEach(el => el.classList.remove('active'));
       document.getElementById(`vid-${vidId}`).classList.add('active');
@@ -286,6 +285,14 @@
       document.getElementById('autoCheckBtn').disabled = false;
       document.getElementById('manualCheckBtn').disabled = false;
   };
+
+  // 4.5 Reset Form Logic
+  function resetForm() {
+      document.querySelectorAll('.rule-cb').forEach(cb => cb.checked = false);
+      const notesEl = document.getElementById('qaNotes');
+      if (notesEl) notesEl.value = '';
+      calculateScore();
+  }
 
  // 5. Submit to Groq API (Two-Step Pipeline) & Save Evaluation
   document.getElementById('autoCheckBtn').addEventListener('click', async () => {
