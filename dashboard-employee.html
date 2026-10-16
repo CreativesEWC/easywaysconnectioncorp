@@ -4473,8 +4473,10 @@ window.loadTodayOverallTotal = async function() {
 
           tbody.innerHTML = vids.map(v => {
               const dateStr = v.upload_date || (v.created_at ? v.created_at.split('T')[0] : '—');
+              const isPending = !v.status || v.status.toLowerCase() === 'pending';
               const linkBtn = v.video_link 
-                  ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Link</a> | <a href="#" onclick="deleteSubmission('${v.id}')" style="color: var(--coral-500); text-decoration: none; font-size: 12px;">Delete</a>`
+                  ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Link</a>` + 
+                    (isPending ? ` | <a href="#" onclick="deleteSubmission('${v.id}')" style="color: var(--coral-500); text-decoration: none; font-size: 12px;">Delete</a>` : '')
                   : '—';
 
               const rawStatus = (v.status || '').toLowerCase();
