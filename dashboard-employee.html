@@ -854,6 +854,15 @@ aside.sidebar.collapsed ~ main.main-content {
       /* Ensures the white background stays inside the perfect circle */
       object-fit: cover; 
   }
+
+/* --- FINAL PC ALIGNMENT FIX --- */
+  @media (min-width: 901px) {
+      main.main-content {
+          margin-left: 260px !important; /* Anchors firmly to the sidebar */
+          margin-right: auto !important; /* Pushes blank space to the right */
+          max-width: 1400px !important;  /* Prevents it from stretching too wide */
+      }
+  }
   
 </style>
 </head>
