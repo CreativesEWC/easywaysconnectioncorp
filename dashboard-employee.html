@@ -855,12 +855,17 @@ aside.sidebar.collapsed ~ main.main-content {
       object-fit: cover; 
   }
 
-/* --- FINAL PC ALIGNMENT FIX --- */
+/* --- ULTIMATE PC ALIGNMENT FIX --- */
   @media (min-width: 901px) {
+      body {
+          display: block !important; /* Turns off flex-centering */
+      }
       main.main-content {
+          margin: 0 !important;
           margin-left: 260px !important; /* Anchors firmly to the sidebar */
-          margin-right: auto !important; /* Pushes blank space to the right */
-          max-width: 1400px !important;  /* Prevents it from stretching too wide */
+          width: calc(100% - 260px) !important; /* Stretches across the screen */
+          max-width: 1600px !important; /* Safe cap for ultra-wide monitors */
+          box-sizing: border-box !important;
       }
   }
   
@@ -4457,11 +4462,26 @@ window.loadTodayOverallTotal = async function() {
               .eq('employee_id', emp.id)
               .order('created_at', { ascending: false });
 
-          // Apply month filter ONLY if we are NOT viewing archives
+          /// Apply cycle filter (28th to 27th) ONLY if we are NOT viewing archives
           if (!showingVideoArchive) {
               const today = new Date();
-              const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
-              query = query.gte('created_at', startOfMonth);
+              const y = today.getFullYear();
+              const m = today.getMonth();
+              const d = today.getDate();
+              
+              let startD;
+              // If we are past the 28th, we are in the current month's cycle
+              if (d >= 28) {
+                  startD = new Date(y, m, 28);
+              } else {
+                  // If we are before the 28th, we are still in last month's cycle
+                  startD = new Date(y, m - 1, 28);
+              }
+              
+              const pad = n => String(n).padStart(2, '0');
+              const startOfCycle = `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-${pad(startD.getDate())}`;
+              
+              query = query.gte('created_at', startOfCycle);
           }
 
           const { data: vids, error } = await query;
