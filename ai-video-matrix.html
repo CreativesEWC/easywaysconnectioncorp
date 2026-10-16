@@ -367,22 +367,20 @@
           const analysis = JSON.parse(aiData.choices[0].message.content.replace(/```json|```/gi, '').trim());
           const maxScore = analysis.score || 0; // Defines maxScore for your existing rejection logic
 
-          // ==========================================
+         // ==========================================
           // STEP 3: AUTO-REJECT OR HUMAN REVIEW ROUTING
           // ==========================================
           if (maxScore < 6) {
-              // FAILED ALL MODES: Average the score and auto-reject
               btn.textContent = 'Saving Auto-Reject...';
               
-              const avgScore = Math.round((st.score + cr.score + cb.score) / 3);
-              const feedback = analysis.failure_feedback || 'Needs improvement in delivery and quality.';
+              const feedback = analysis.feedback || 'Needs improvement in delivery and quality.';
 
               // Save instantly to database
               const { error: dbErr } = await supabaseClient
                   .from('video_submissions')
                   .update({ 
                       status: 'rejected', 
-                      ai_score: avgScore, 
+                      ai_score: maxScore, 
                       ai_notes: feedback 
                   })
                   .eq('id', activeVideoId);
@@ -392,18 +390,18 @@
               // Notify seller
               await supabaseClient.from('notifications').insert({
                   employee_id: activeEmployeeId,
-                  title: `Video Auto-Rejected (${avgScore}/10)`,
-                  message: `Your video scored an average of ${avgScore}/10. Feedback: "${feedback}"`,
+                  title: `Video Auto-Rejected (${maxScore}/10)`,
+                  message: `Your video scored ${maxScore}/10. Feedback: "${feedback}"`,
                   is_read: false
               });
 
-              // NEW: Instantly delete the temporary video from Supabase to save space
+              // Instantly delete the temporary video from Supabase to save space
               const filePath = activeRawVideoUrl.split('temp-ai-videos/')[1];
               if (filePath) {
                   await supabaseClient.storage.from('temp-ai-videos').remove([filePath]);
               }
 
-              alert(`Auto-Rejected! Failed all 3 modes. Average Score: ${avgScore}/10`);
+              alert(`Auto-Rejected! Score: ${maxScore}/10`);
 
               // Clear screen and load next
               activeVideoId = null;
@@ -418,34 +416,23 @@
               loadPendingQueue();
 
           } else {
-              // PASSED AT LEAST 1 MODE: Prepare UI for manual verification
+              // PASSED: Prepare UI for manual verification
               btn.textContent = 'AI Draft Ready! Please Review.';
               
-              let winningMode = 'combined';
-              let winningRules = cb.rules;
-              
-              if (cr.score === maxScore) { winningMode = 'creative'; winningRules = cr.rules; }
-              else if (st.score === maxScore) { winningMode = 'strict'; winningRules = st.rules; }
-              
-              // Select the winning mode's radio button and update the text checklist
-              const modeRadio = document.querySelector(`input[name="aiMode"][value="${winningMode}"]`);
-              if (modeRadio) modeRadio.checked = true;
-              
-              activeRules = ruleSets[winningMode];
-              renderChecklist(); 
+              const passedRules = analysis.rules || Array(10).fill(false);
 
-              // Visually tick the checkboxes based on the winning mode's rules
+              // Visually tick the checkboxes based on the AI rules
               const checkboxes = document.querySelectorAll('.rule-cb');
-              winningRules.forEach((passed, idx) => {
+              passedRules.forEach((passed, idx) => {
                   if (checkboxes[idx]) {
                       checkboxes[idx].checked = Boolean(passed);
                       checkboxes[idx].dispatchEvent(new Event('change')); 
                   }
               });
 
-              // Populate feedback box with the success feedback
+              // Populate feedback box with the AI feedback
               const feedbackEl = document.getElementById('qaNotes');
-              if (feedbackEl) feedbackEl.value = analysis.success_feedback || 'Great work!';
+              if (feedbackEl) feedbackEl.value = analysis.feedback || 'Great work!';
 
               // Enable Manual Save Button so the admin can review
               setTimeout(() => {
