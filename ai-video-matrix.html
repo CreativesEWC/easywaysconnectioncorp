@@ -416,34 +416,35 @@
               loadPendingQueue();
 
           } else {
-              // PASSED: Prepare UI for manual verification
-              btn.textContent = 'AI Draft Ready! Please Review.';
-              
-              const passedRules = analysis.rules || Array(10).fill(false);
+             // ==========================================
+          // STEP 3: DISPLAY AI DRAFT FOR HUMAN REVIEW
+          // ==========================================
+          btn.textContent = 'AI Draft Ready! Please Review.';
+          
+          const passedRules = analysis.rules || Array(10).fill(false);
 
-              // Visually tick the checkboxes based on the AI rules
-              const checkboxes = document.querySelectorAll('.rule-cb');
-              passedRules.forEach((passed, idx) => {
-                  if (checkboxes[idx]) {
-                      checkboxes[idx].checked = Boolean(passed);
-                      checkboxes[idx].dispatchEvent(new Event('change')); 
-                  }
-              });
+          // Visually tick the checkboxes based on the AI rules
+          const checkboxes = document.querySelectorAll('.rule-cb');
+          passedRules.forEach((passed, idx) => {
+              if (checkboxes[idx]) {
+                  checkboxes[idx].checked = Boolean(passed);
+                  checkboxes[idx].dispatchEvent(new Event('change')); 
+              }
+          });
 
-              // Populate feedback box with the AI feedback
-              const feedbackEl = document.getElementById('qaNotes');
-              if (feedbackEl) feedbackEl.value = analysis.feedback || 'Great work!';
+          // Populate feedback box with the AI feedback
+          const feedbackEl = document.getElementById('qaNotes');
+          if (feedbackEl) feedbackEl.value = analysis.feedback || 'Evaluation completed.';
 
-              // Enable Manual Save Button so the admin can review
-              setTimeout(() => {
-                  btn.textContent = 'Re-Run AI Check';
-                  btn.disabled = false; 
-                  manBtn.disabled = false;
-                  manBtn.textContent = '💾 Save Final Verification';
-                  manBtn.classList.add('primary'); 
-                  btn.classList.remove('primary');
-              }, 1500);
-          }
+          // Enable Manual Save Button so the admin can review ALL videos (pass or fail)
+          setTimeout(() => {
+              btn.textContent = 'Re-Run AI Check';
+              btn.disabled = false; 
+              manBtn.disabled = false;
+              manBtn.textContent = '💾 Save Final Verification';
+              manBtn.classList.add('primary'); 
+              btn.classList.remove('primary');
+          }, 1500);
 
       } catch (err) {
           alert('AI Audit Failed:\n\n' + err.message);
