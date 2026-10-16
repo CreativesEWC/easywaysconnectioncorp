@@ -4458,10 +4458,16 @@ window.loadTodayOverallTotal = async function() {
       if (!tbody || !emp || !emp.id) return;
 
       try {
+          // 1. Get the first day of the current month (e.g., "2026-10-01")
+          const today = new Date();
+          const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+
+          // 2. Fetch only records from this month onward
           const { data: vids, error } = await supabaseClient
               .from('video_submissions')
               .select('id, upload_date, video_link, status, ai_score, ai_notes, created_at')
               .eq('employee_id', emp.id)
+              .gte('created_at', startOfMonth) 
               .order('created_at', { ascending: false });
 
           if (error) throw error;
