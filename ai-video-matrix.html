@@ -365,58 +365,9 @@
           if (aiData.error) throw new Error(aiData.error.message);
           
           const analysis = JSON.parse(aiData.choices[0].message.content.replace(/```json|```/gi, '').trim());
-          const maxScore = analysis.score || 0; // Defines maxScore for your existing rejection logic
+          const maxScore = analysis.score || 0; 
 
-         // ==========================================
-          // STEP 3: AUTO-REJECT OR HUMAN REVIEW ROUTING
           // ==========================================
-          if (maxScore < 6) {
-              btn.textContent = 'Saving Auto-Reject...';
-              
-              const feedback = analysis.feedback || 'Needs improvement in delivery and quality.';
-
-              // Save instantly to database
-              const { error: dbErr } = await supabaseClient
-                  .from('video_submissions')
-                  .update({ 
-                      status: 'rejected', 
-                      ai_score: maxScore, 
-                      ai_notes: feedback 
-                  })
-                  .eq('id', activeVideoId);
-
-              if (dbErr) throw dbErr;
-
-              // Notify seller
-              await supabaseClient.from('notifications').insert({
-                  employee_id: activeEmployeeId,
-                  title: `Video Auto-Rejected (${maxScore}/10)`,
-                  message: `Your video scored ${maxScore}/10. Feedback: "${feedback}"`,
-                  is_read: false
-              });
-
-              // Instantly delete the temporary video from Supabase to save space
-              const filePath = activeRawVideoUrl.split('temp-ai-videos/')[1];
-              if (filePath) {
-                  await supabaseClient.storage.from('temp-ai-videos').remove([filePath]);
-              }
-
-              alert(`Auto-Rejected! Score: ${maxScore}/10`);
-
-              // Clear screen and load next
-              activeVideoId = null;
-              document.getElementById('mainPlayer').src = '';
-              document.getElementById('mainPlayer').style.display = 'none';
-              document.getElementById('noVideoMsg').style.display = 'flex';
-              
-              btn.textContent = 'Auto AI Check';
-              btn.disabled = false;
-              manBtn.disabled = false;
-              resetForm();
-              loadPendingQueue();
-
-          } else {
-             // ==========================================
           // STEP 3: DISPLAY AI DRAFT FOR HUMAN REVIEW
           // ==========================================
           btn.textContent = 'AI Draft Ready! Please Review.';
