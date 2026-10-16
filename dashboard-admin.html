@@ -5147,16 +5147,28 @@ if (saveScheduleBtn) {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading monthly video matrix...</td></tr>';
     
-    // FULL MONTH CALCULATION (1st to last day of current calendar month)
+    // CUSTOM VIDEO COMMISSION CUTOFF (28th to 27th)
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const pad = n => String(n).padStart(2, '0');
-
-    const firstDay = `${year}-${pad(month + 1)}-01`;
-    const lastDay = `${year}-${pad(month + 1)}-${pad(new Date(year, month + 1, 0).getDate())}`;
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const d = now.getDate();
     
-    // Fetch live sellers and all monthly submissions
+    let startD, endD;
+    // If we are currently past the 28th, we are in the new cycle ending next month
+    if (d >= 28) {
+        startD = new Date(y, m, 28);
+        endD = new Date(y, m + 1, 27);
+    } else {
+        // If we are before the 28th, we are in the cycle that started last month
+        startD = new Date(y, m - 1, 28);
+        endD = new Date(y, m, 27);
+    }
+    
+    const pad = n => String(n).padStart(2, '0');
+    const firstDay = `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-${pad(startD.getDate())}`;
+    const lastDay = `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`;
+
+    // Fetch live sellers and all submissions within the custom cutoff
     const { data: emps, error: empErr } = await supabaseClient
       .from('employees')
       .select('id, name, badge_id, positions(name)')
