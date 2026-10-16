@@ -314,7 +314,7 @@
   .header-actions{ display:flex; gap:10px; }
   #digitalIdBtn{ background:none; border:1px solid var(--amber-500); color:var(--amber-400); border-radius:8px; padding:9px 16px; font-family:var(--font-body); font-size:13px; cursor:pointer; }
 
-  main{ max-width:760px; margin:0 auto; padding:24px 20px 60px; }
+  main{ max-width:1400px; margin:0 auto; padding:24px 20px 60px; }
 
   .profile-card{ background:var(--navy-900); border:1px solid var(--line); border-radius:16px; padding:22px 24px; margin-bottom:22px; display:flex; align-items:center; gap:18px; }
   .avatar{ width:60px; height:60px; border-radius:50%; background:var(--navy-950); color:var(--amber-400); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:22px; font-weight:700; border:2px solid var(--amber-500); flex-shrink:0; }
@@ -5356,132 +5356,6 @@ window.loadTodayOverallTotal = async function() {
           });
       });
   }
-
-  // ==========================================================
-  // IG RIGHT SIDEBAR (ONLINE DISCORD-STYLE ROSTER)
-  // ==========================================================
-  const toggleBtn = document.getElementById('toggleRightSidebarBtn');
-  const rightSb = document.getElementById('rightSidebar');
-  const mainCont = document.querySelector('main.main-content');
-  const mobileOverlayDark = document.getElementById('mobileOverlay');
-
-  // Wire up the Discord-style Toggle Button (Smart Mobile & Desktop)
-  if (toggleBtn && rightSb && mainCont) {
-      toggleBtn.addEventListener('click', () => {
-          if (window.innerWidth <= 1300) {
-              // Mobile Mode: Slide in over the screen
-              rightSb.classList.toggle('mobile-open');
-              if (mobileOverlayDark) mobileOverlayDark.classList.toggle('show');
-          } else {
-              // Desktop Mode: Slide out and expand dashboard
-              rightSb.classList.toggle('hidden');
-              mainCont.classList.toggle('expanded-right');
-          }
-      });
-  }
-
-  // Allow tapping the dark background overlay to seamlessly close the roster on mobile
-  if (mobileOverlayDark && rightSb) {
-      mobileOverlayDark.addEventListener('click', () => {
-          if (rightSb.classList.contains('mobile-open')) {
-              rightSb.classList.remove('mobile-open');
-              mobileOverlayDark.classList.remove('show');
-          }
-      });
-  }
-
-  window.loadOnlineRoster = async function() {
-      const container = document.getElementById('rsOnlineContainer');
-      if (!container) return;
-
-      if (emp) {
-          document.getElementById('rsMyAvatar').src = emp.avatar_url || 'https://via.placeholder.com/44';
-          document.getElementById('rsMyUname').textContent = emp.badge_id || 'employee';
-          document.getElementById('rsMyFname').textContent = emp.name || 'EWC User';
-      }
-
-      const todayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
-      
-      const { data: logs, error } = await supabaseClient
-          .from('attendance_logs')
-          .select('employee_id, time_in, employees(name, avatar_url, badge_id, positions(name))')
-          .eq('log_date', todayStr)
-          .is('time_out', null);
-
-      if (error) {
-          container.innerHTML = '<div class="error-note">Could not load online list.</div>';
-          return;
-      }
-
-      const onlineUsers = (logs || []).filter(l => l.employees && l.employee_id !== emp.id);
-
-      if (onlineUsers.length === 0) {
-          container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px; margin-top: 10px;">No other team members online.</div>';
-          return;
-      }
-
-      const grouped = {};
-      onlineUsers.forEach(user => {
-        let pos = user.employees.positions ? user.employees.positions.name : 'Staff';
-        
-        // Clean up and shorten the database position names
-        if (pos.includes('Customer Service')) pos = 'CSR';
-        if (pos.includes('RTS Administrative') || pos.includes('RTS Admin')) pos = 'RTS Admin';
-        
-        if (!grouped[pos]) grouped[pos] = [];
-        grouped[pos].push(user);
-    });
-
-      // Define your strict visual order here
-      const customOrder = ['Multimedia Artist', 'RTS Admin', 'CSR', 'Live Seller'];
-
-      // Sort the grouped categories based on your custom order
-      const sortedPositions = Object.keys(grouped).sort((a, b) => {
-          let indexA = customOrder.indexOf(a);
-          let indexB = customOrder.indexOf(b);
-          // If a new random role appears, push it to the very bottom
-          if (indexA === -1) indexA = 999;
-          if (indexB === -1) indexB = 999;
-          return indexA - indexB;
-      });
-
-      let html = '';
-      
-      // Generate the HTML using the sorted list
-      sortedPositions.forEach(position => {
-          const users = grouped[position];
-          
-          html += `<div class="rs-section"><div class="rs-section-header"><span>${escapeHtml(position)} — Online</span><span>${users.length}</span></div>`;
-          
-          users.forEach(u => {
-              const avatar = u.employees.avatar_url || 'https://via.placeholder.com/40';
-              const fullName = u.employees.name;
-              const shortName = fullName.split(' ')[0]; 
-              
-              html += `
-                  <div class="rs-user">
-                      <img src="${avatar}" alt="Avatar">
-                      <div class="rs-user-info">
-                          <div class="uname">${escapeHtml(fullName)}</div>
-                          <div class="role" style="display:flex; align-items:center; gap:6px;">
-                              <div style="width:6px; height:6px; border-radius:50%; background:var(--mint-500);"></div>
-                              Timed in at ${new Date(u.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </div>
-                      </div>
-                      <button class="rs-action" onclick="startDirectMessage('${u.employee_id}', '${escapeHtml(shortName)}')">Message</button>
-                  </div>`;
-          });
-          html += `</div>`;
-      });
-      
-      container.innerHTML = html;
-  };
-
-  setTimeout(() => { if (typeof loadOnlineRoster === 'function') loadOnlineRoster(); }, 2000);
-
-  setTimeout(() => {
-    if (typeof loadTodayOverallTotal === 'function') loadTodayOverallTotal();
-}, 1200);
 
   // ==========================================================
   // IG FLOATING CHAT WIDGET LOGIC
