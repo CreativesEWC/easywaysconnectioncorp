@@ -1158,7 +1158,10 @@ aside.sidebar.collapsed ~ main.main-content {
         <section class="panel" style="border-color: var(--line); margin-top: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2 style="color: var(--paper); margin: 0;">My Submitted Videos & AI Audits</h2>
-            <button type="button" class="btn2" onclick="loadMyVideoSubmissions()" style="font-size: 11px; padding: 4px 8px;">🔄 Refresh Feed</button>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn2" id="toggleVideoArchiveBtn" onclick="toggleVideoArchive()" style="font-size: 11px; padding: 4px 8px;">📂 View Archives</button>
+                <button type="button" class="btn2" onclick="loadMyVideoSubmissions()" style="font-size: 11px; padding: 4px 8px;">🔄 Refresh Feed</button>
+            </div>
           </div>
           <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; min-width: 650px;">
@@ -4453,27 +4456,46 @@ window.loadTodayOverallTotal = async function() {
   // ==========================================================
   // LIVE SELLER VIDEO COMMISSION HISTORY & AI AUDIT FEED
   // ==========================================================
+  let showingVideoArchive = false;
+
+  window.toggleVideoArchive = function() {
+      showingVideoArchive = !showingVideoArchive;
+      const btn = document.getElementById('toggleVideoArchiveBtn');
+      if (showingVideoArchive) {
+          btn.textContent = '📅 View Current Month';
+          btn.classList.add('primary');
+      } else {
+          btn.textContent = '📂 View Archives';
+          btn.classList.remove('primary');
+      }
+      loadMyVideoSubmissions();
+  };
+
   window.loadMyVideoSubmissions = async function() {
       const tbody = document.getElementById('myVideoHistoryBody');
       if (!tbody || !emp || !emp.id) return;
 
       try {
-          // 1. Get the first day of the current month (e.g., "2026-10-01")
-          const today = new Date();
-          const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
-
-          // 2. Fetch only records from this month onward
-          const { data: vids, error } = await supabaseClient
+          // Base query
+          let query = supabaseClient
               .from('video_submissions')
               .select('id, upload_date, video_link, status, ai_score, ai_notes, created_at')
               .eq('employee_id', emp.id)
-              .gte('created_at', startOfMonth) 
               .order('created_at', { ascending: false });
+
+          // Apply month filter ONLY if we are NOT viewing archives
+          if (!showingVideoArchive) {
+              const today = new Date();
+              const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+              query = query.gte('created_at', startOfMonth);
+          }
+
+          const { data: vids, error } = await query;
 
           if (error) throw error;
 
           if (!vids || vids.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No video submissions logged yet.</td></tr>';
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No video submissions found for this period.</td></tr>';
               return;
           }
 
@@ -4488,7 +4510,6 @@ window.loadTodayOverallTotal = async function() {
               const rawStatus = (v.status || '').toLowerCase();
               const score = v.ai_score !== null ? v.ai_score : '-';
               
-              // NEW LOGIC: Any score 6 or higher is automatically a PASS
               let badgeClass = 'pending';
               let badgeHtml = '<span class="status-pill pending">Pending Review</span>';
               let scoreColor = 'var(--text-muted)';
