@@ -385,7 +385,8 @@
               body: JSON.stringify({
                   model: "openai/gpt-oss-20b",
                   messages: [{ role: "user", content: SYSTEM_PROMPT }],
-                  response_format: { type: "json_object" }
+                  response_format: { type: "json_object" },
+                  temperature: 0 // <-- this line to enforce strict consistency
               })
           });
 
