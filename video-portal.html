@@ -200,34 +200,44 @@
                     .from('temp-ai-videos')
                     .getPublicUrl(`public/${fileName}`);
 
-                // HYBRID ROUTE B: PERMANENT GOOGLE DRIVE
-                const getBase64 = (b) => new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(b);
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = e => reject(e);
-                });
-                const base64Data = await getBase64(vidBlob);
-                
-                await fetch(GOOGLE_SCRIPT_URL, {
+                // 1. UPLOAD TO SUPABASE (Strictly for AI to access)
+                const { error: uploadErr } = await supabaseClient.storage
+                    .from('temp-ai-videos')
+                    .upload(`public/${fileName}`, vidBlob, { upsert: true });
+                if (uploadErr) throw uploadErr;
+
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('temp-ai-videos')
+                    .getPublicUrl(`public/${fileName}`);
+                    
+                const supabaseVideoUrl = publicUrlData.publicUrl;
+
+                // 2. PING GOOGLE DRIVE TO FETCH IT FROM SUPABASE (No Base64 crashing!)
+                submitBtn.textContent = `Syncing Video ${i + 1} to Drive...`;
+                const gDriveResponse = await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
+                        action: "fetch_url",
+                        directMp4Url: supabaseVideoUrl,
                         fileName: fileName,
-                        mimeType: vidBlob.type,
-                        fileBase64: base64Data,
-                        employeeName: emp.name
+                        employeeName: emp.name // Triggers your Smart Router to organize the folder
                     })
                 });
 
-                // SAVE URL TO DB
+                const driveResult = await gDriveResponse.json();
+                const finalGDriveUrl = driveResult.status === "success" ? driveResult.url : null;
+
+                // 3. SAVE BOTH URLS TO SUPABASE DB
                 const { error: dbErr } = await supabaseClient.from('video_submissions').insert({
                     employee_id: emp.id,
                     upload_date: rowDate,
                     video_link: linkInput,
-                    video_file_url: publicUrlData.publicUrl,
+                    video_file_url: supabaseVideoUrl, // Original Supabase Link for the AI
+                    gdrive_url: finalGDriveUrl,       // New GDrive Link for the Admin Viewer
                     status: 'pending'
                 });
+                
                 if (dbErr) throw dbErr;
                 successCount++;
             }
