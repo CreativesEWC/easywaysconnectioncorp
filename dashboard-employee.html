@@ -4535,58 +4535,68 @@ window.loadTodayOverallTotal = async function() {
               return;
           }
           
-          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500); font-weight: bold;">⏳ Booting AI (First time takes a moment)...</span>';
-          
-          Tesseract.recognize(file, 'eng', {
-              logger: m => {
-                  if (m.status === 'recognizing text') {
-                      if (nameDisp) nameDisp.innerHTML = `<span style="color: var(--amber-500); font-weight: bold;">🔍 Scanning Image... ${Math.round(m.progress * 100)}%</span>`;
-                  }
-              }
-          }).then(({ data: { text } }) => {
-              console.log("OCR Extracted:\n", text);
-              
-              // Remove commas to keep numbers whole
-              const cleanText = text.replace(/,/g, '');
-              
-              let gmv = 0, sold = 0, buyers = 0;
+          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500); font-weight: bold;">⏳ Enhancing Photo & Booting AI...</span>';
 
-              // 1. GMV: Looks for "GMV" and grabs the next large number, ignoring bad spelling of "Attributed"
-              const gmvMatch = cleanText.match(/GMV[\s\S]{0,100}?(\d+(?:\.\d+)?)/i);
-              if (gmvMatch) gmv = parseFloat(gmvMatch[1]);
+          // --- NEW: Image Preprocessing to fix Monitor Photos ---
+          const reader = new FileReader();
+          reader.onload = (e) => {
+              const img = new Image();
+              img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = img.width;
+                  canvas.height = img.height;
+                  const ctx = canvas.getContext('2d');
 
-              // 2. SOLD: Looks strictly for the word "sold"
-              const soldMatch = cleanText.match(/sold[\s\S]{0,60}?\b(\d+)\b/i);
-              if (soldMatch) sold = parseInt(soldMatch[1], 10);
+                  // Turn image black & white and crank up the contrast to kill screen glare
+                  ctx.filter = 'grayscale(100%) contrast(300%) brightness(150%)';
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-              // 3. BUYERS: Looks strictly for "Customers" or "Buyers"
-              const buyersMatch = cleanText.match(/(?:Customers|Buyers)[\s\S]{0,60}?\b(\d+)\b/i);
-              if (buyersMatch) buyers = parseInt(buyersMatch[1], 10);
+                  // Now feed the clean, high-contrast canvas to Tesseract instead of the raw photo
+                  Tesseract.recognize(canvas, 'eng', {
+                      logger: m => {
+                          if (m.status === 'recognizing text') {
+                              if (nameDisp) nameDisp.innerHTML = `<span style="color: var(--amber-500); font-weight: bold;">🔍 Scanning Image... ${Math.round(m.progress * 100)}%</span>`;
+                          }
+                      }
+                  }).then(({ data: { text } }) => {
+                      console.log("OCR Extracted:\n", text);
+                      
+                      const cleanText = text.replace(/,/g, '');
+                      let gmv = 0, sold = 0, buyers = 0;
 
-              // NOTE: The dangerous "Fallback" guessing logic has been permanently deleted. 
-              // If it can't find the labels above, it defaults to 0.
+                      const gmvMatch = cleanText.match(/Attributed\s*GMV[\s\S]{0,100}?(\d+(?:\.\d+)?)/i);
+                      if (gmvMatch) gmv = parseFloat(gmvMatch[1]);
 
-              if (gmv > 0 || sold > 0 || buyers > 0) {
-                  const gmvInp = row.querySelector('.sales-total-gmv');
-                  const soldInp = row.querySelector('.sales-total-sold');
-                  const buyerInp = row.querySelector('.sales-buyers');
-                  
-                  if (gmvInp && gmv > 0) gmvInp.value = gmv.toFixed(2);
-                  if (soldInp && sold > 0) soldInp.value = sold;
-                  if (buyerInp && buyers > 0) buyerInp.value = buyers;
-                  
-                  if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
-                  if (soldInp) soldInp.dispatchEvent(new Event('input'));
-                  
-                  if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
-              } else {
-                  // Graceful failure if the background gradient is too dark for the AI to read
-                  if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but image was too dark to read. Please enter manually.</span>';
-              }
-          }).catch(err => {
-              console.error(err);
-              if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ Scanner failed. Please enter manually.</span>';
-          });
+                      const soldMatch = cleanText.match(/Attributed\s*items\s*sold[\s\S]{0,100}?\b(\d+)\b/i);
+                      if (soldMatch) sold = parseInt(soldMatch[1], 10);
+
+                      const buyersMatch = cleanText.match(/Customers[\s\S]{0,200}?\b(\d+)\b(?!\s*[Kk%s\.])/i);
+                      if (buyersMatch) buyers = parseInt(buyersMatch[1], 10);
+
+                      if (gmv > 0 || sold > 0 || buyers > 0) {
+                          const gmvInp = row.querySelector('.sales-total-gmv');
+                          const soldInp = row.querySelector('.sales-total-sold');
+                          const buyerInp = row.querySelector('.sales-buyers');
+                          
+                          if (gmvInp && gmv > 0) gmvInp.value = gmv.toFixed(2);
+                          if (soldInp && sold > 0) soldInp.value = sold;
+                          if (buyerInp && buyers > 0) buyerInp.value = buyers;
+                          
+                          if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
+                          if (soldInp) soldInp.dispatchEvent(new Event('input'));
+                          
+                          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
+                      } else {
+                          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but screen glare blocked numbers. Please enter manually.</span>';
+                      }
+                  }).catch(err => {
+                      console.error(err);
+                      if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ Scanner failed. Please enter manually.</span>';
+                  });
+              };
+              img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
       };
 
       // These listeners trigger the scanner when a file is selected
