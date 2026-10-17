@@ -4508,7 +4508,7 @@ window.loadTodayOverallTotal = async function() {
           inp.addEventListener('input', updateSummaryTally);
       });
 
-      // UI Handler for Camera & Upload toggle with AI OCR Scanner
+      // UI Handler for Camera & Upload toggle
       const camInp = row.querySelector('.sales-screenshot-cam');
       const fileInp = row.querySelector('.sales-screenshot-file');
       
@@ -4576,15 +4576,28 @@ window.loadTodayOverallTotal = async function() {
                   if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
                   if (soldInp) soldInp.dispatchEvent(new Event('input'));
                   
-                  nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
+                  if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
               } else {
-                  nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but couldn\'t map numbers. Please enter manually.</span>';
+                  if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but couldn\'t map numbers. Please enter manually.</span>';
               }
           }).catch(err => {
               console.error(err);
-              nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ Scanner failed. Please enter manually.</span>';
+              if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ Scanner failed. Please enter manually.</span>';
           });
-      }; // <--- This is the end of the attachSalesListeners function
+      };
+
+      // These listeners trigger the scanner when a file is selected
+      if (camInp) camInp.addEventListener('change', () => {
+          if (fileInp) fileInp.value = ''; 
+          handleImageScan(camInp.files[0]);
+      });
+      
+      if (fileInp) fileInp.addEventListener('change', () => {
+          if (camInp) camInp.value = ''; 
+          handleImageScan(fileInp.files[0]);
+      });
+
+  } // <--- This properly closes attachSalesListeners!
 
   // --- 3. Single-Employee Database Push (WITH GOOGLE DRIVE UPLOAD & CUSTOM FILENAMES) ---
   if (salesReportForm) {
