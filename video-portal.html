@@ -190,16 +190,6 @@
                 const vidResponse = await fetch(directMp4Url);
                 const vidBlob = await vidResponse.blob();
 
-                // HYBRID ROUTE A: TEMPORARY SUPABASE
-                const { error: uploadErr } = await supabaseClient.storage
-                    .from('temp-ai-videos')
-                    .upload(`public/${fileName}`, vidBlob, { upsert: true });
-                if (uploadErr) throw uploadErr;
-
-                const { data: publicUrlData } = supabaseClient.storage
-                    .from('temp-ai-videos')
-                    .getPublicUrl(`public/${fileName}`);
-
                 // 1. UPLOAD TO SUPABASE (Strictly for AI to access)
                 const { error: uploadErr } = await supabaseClient.storage
                     .from('temp-ai-videos')
