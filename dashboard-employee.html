@@ -4546,37 +4546,52 @@ window.loadTodayOverallTotal = async function() {
           }).then(({ data: { text } }) => {
               console.log("OCR Extracted:\n", text);
               
-              // Remove commas so "89,128" becomes "89128"
+              // Remove commas so numbers like 91,243 stay whole
               const cleanText = text.replace(/,/g, '');
               
               let gmv = 0, sold = 0, buyers = 0;
 
-              // 1. GMV: Looks for "GMV", skips up to 50 characters of junk (like "MAX active"), and grabs the number
-              const gmvMatch = cleanText.match(/GMV[\s\S]{0,50}?(\d+(?:\.\d+)?)/i);
+              // 1. GMV: Anchors to "Attributed GMV" and grabs the number
+              const gmvMatch = cleanText.match(/Attributed\s*GMV[\s\S]{0,100}?(\d+(?:\.\d+)?)/i);
               if (gmvMatch) gmv = parseFloat(gmvMatch[1]);
 
-              // 2. SOLD: Looks for "sold" and grabs the number next to it (max 30 chars away)
-              const soldMatch = cleanText.match(/sold[\s\S]{0,30}?(\d+)/i);
+              // 2. SOLD: Anchors exactly to "Attributed items sold"
+              const soldMatch = cleanText.match(/Attributed\s*items\s*sold[\s\S]{0,50}?\b(\d+)\b/i);
               if (soldMatch) sold = parseInt(soldMatch[1], 10);
 
-              // 3. BUYERS: Looks for "Customers" or "Buyers" and grabs the number
-              const buyersMatch = cleanText.match(/(?:Customers|Buyers)[\s\S]{0,30}?(\d+)/i);
+              // 3. BUYERS: Anchors exactly to "Customers"
+              const buyersMatch = cleanText.match(/Customers[\s\S]{0,50}?\b(\d+)\b/i);
               if (buyersMatch) buyers = parseInt(buyersMatch[1], 10);
 
-              // Safety Net: If GMV is impossibly high (like a timestamp bug), reject it
-              if (gmv > 10000000) gmv = 0;
+              // SMART FALLBACK: If the layout is heavily scrambled, grab the top 3 safe whole numbers
+              if (gmv === 0 || sold === 0 || buyers === 0) {
+                  const rawNums = cleanText.match(/\b\d+(?:\.\d+)?\b/g) || [];
+                  const safeNums = [];
+                  rawNums.forEach(num => {
+                      // Filter out anything attached to K, %, or s
+                      const regex = new RegExp(num + '\\s*[Kk%s]', 'i');
+                      if (!regex.test(cleanText)) safeNums.push(parseFloat(num));
+                  });
+                  
+                  const uniqueNums = [...new Set(safeNums)].sort((a, b) => b - a);
+                  const validNums = uniqueNums.filter(n => n < 10000000); // Excludes timestamp bugs
+                  
+                  if (validNums.length >= 3) {
+                      if (gmv === 0) gmv = validNums[0];
+                      if (sold === 0) sold = validNums[1];
+                      if (buyers === 0) buyers = validNums[2];
+                  }
+              }
 
               if (gmv > 0 || sold > 0 || buyers > 0) {
                   const gmvInp = row.querySelector('.sales-total-gmv');
                   const soldInp = row.querySelector('.sales-total-sold');
                   const buyerInp = row.querySelector('.sales-buyers');
                   
-                  // Only fill the boxes if the AI actually found a valid number
                   if (gmvInp && gmv > 0) gmvInp.value = gmv.toFixed(2);
                   if (soldInp && sold > 0) soldInp.value = sold;
                   if (buyerInp && buyers > 0) buyerInp.value = buyers;
                   
-                  // Trigger the math calculations to update personal commi
                   if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
                   if (soldInp) soldInp.dispatchEvent(new Event('input'));
                   
