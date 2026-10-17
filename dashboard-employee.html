@@ -4508,18 +4508,82 @@ window.loadTodayOverallTotal = async function() {
           inp.addEventListener('input', updateSummaryTally);
       });
 
-      // UI Handler for Camera & Upload toggle
+      // UI Handler for Camera & Upload toggle with AI OCR Scanner
       const camInp = row.querySelector('.sales-screenshot-cam');
       const fileInp = row.querySelector('.sales-screenshot-file');
-      const nameDisp = row.querySelector('.sales-file-name');
       
+      const handleImageScan = (file) => {
+          const nameDisp = row.querySelector('.sales-file-name');
+          if (!file) {
+              if (nameDisp) nameDisp.textContent = 'No photo attached';
+              return;
+          }
+          
+          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500); font-weight: bold;">🔍 AI Scanning Image... Please wait.</span>';
+          
+          Tesseract.recognize(file, 'eng').then(({ data: { text } }) => {
+              console.log("OCR Extracted:\n", text);
+              
+              // Remove commas to prevent numbers like "62,583" from splitting
+              const cleanText = text.replace(/,/g, '');
+              
+              // 1. GMV: Scans for the massive number under "Attributed GMV"
+              let gmv = 0;
+              const gmvMatch = cleanText.match(/Attributed\s*GMV[\s\S]*?(\d+(?:\.\d+)?)/i);
+              if (gmvMatch) {
+                  gmv = parseFloat(gmvMatch[1]);
+              } else {
+                  // Fallback: Simply grab the absolute largest number on the screen
+                  const allNums = cleanText.match(/\b\d+(?:\.\d+)?\b/g) || [];
+                  const nums = allNums.map(n => parseFloat(n));
+                  if (nums.length > 0) gmv = Math.max(...nums);
+              }
+
+              // 2. SOLD: Scans for the number right next to "items sold"
+              let sold = 0;
+              const soldMatch = cleanText.match(/(?:Attributed\s*)?items\s*sold[\s\S]*?(\d+)/i);
+              if (soldMatch) {
+                  sold = parseInt(soldMatch[1], 10);
+              }
+
+              // 3. BUYERS: Scans for the number directly under "Customers"
+              let buyers = 0;
+              const buyersMatch = cleanText.match(/Customers[\s\S]*?(\d+)/i);
+              if (buyersMatch) {
+                  buyers = parseInt(buyersMatch[1], 10);
+              }
+
+              if (gmv > 0 || sold > 0 || buyers > 0) {
+                  const gmvInp = row.querySelector('.sales-total-gmv');
+                  const soldInp = row.querySelector('.sales-total-sold');
+                  const buyerInp = row.querySelector('.sales-buyers');
+                  
+                  if (gmvInp && gmv) gmvInp.value = gmv.toFixed(2);
+                  if (soldInp && sold) soldInp.value = sold;
+                  if (buyerInp && buyers) buyerInp.value = buyers;
+                  
+                  // Trigger the math calculations to update personal commi
+                  if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
+                  if (soldInp) soldInp.dispatchEvent(new Event('input'));
+                  
+                  nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
+              } else {
+                  nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but couldn\'t read the layout. Please enter manually.</span>';
+              }
+          }).catch(err => {
+              console.error(err);
+              nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ Scanner failed. Please enter manually.</span>';
+          });
+      };
+
       if (camInp) camInp.addEventListener('change', () => {
           if (fileInp) fileInp.value = ''; 
-          if (nameDisp) nameDisp.textContent = camInp.files[0] ? 'Selected: ' + camInp.files[0].name : 'No photo attached';
+          handleImageScan(camInp.files[0]);
       });
+      
       if (fileInp) fileInp.addEventListener('change', () => {
           if (camInp) camInp.value = ''; 
-          if (nameDisp) nameDisp.textContent = fileInp.files[0] ? 'Selected: ' + fileInp.files[0].name : 'No photo attached';
+          handleImageScan(fileInp.files[0]);
       });
 
   } // <--- This is the end of the attachSalesListeners function
