@@ -1160,7 +1160,8 @@ aside.sidebar.collapsed ~ main.main-content {
               <div class="sales-upload-row" style="background: var(--navy-800); padding: 15px; border-radius: 8px; border: 1px solid var(--line); position: relative;">
                 <button type="button" class="remove-sales-row" style="position: absolute; top: -10px; right: -10px; background: var(--coral-500); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; line-height: 1; z-index: 10; display: none;">&times;</button>
                 
-                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                   <!-- Row 1: Shop -->
                    <div>
                       <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shop / Brand Name</label>
                       <select class="sales-shop" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;" onchange="this.nextElementSibling.style.display = this.value === 'Other' ? 'block' : 'none';">
@@ -1180,13 +1181,21 @@ aside.sidebar.collapsed ~ main.main-content {
                       </select>
                       <input type="text" class="sales-shop-other" placeholder="Type outside shop name..." style="display: none; width: 100%; background: var(--navy-950); border: 1px solid var(--amber-500); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; margin-top: 8px;">
                    </div>
-                   <div>
-                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date</label>
-                      <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
-                   </div>
-                   <div>
-                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Time</label>
-                      <input type="text" class="sales-time" required placeholder="8:00 - 12:00" style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px;">
+                   
+                   <!-- Row 2: Date and Time Dropdowns -->
+                   <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px;">
+                       <div>
+                          <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date 📅</label>
+                          <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; cursor: pointer;">
+                       </div>
+                       <div>
+                          <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Time</label>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                              <input type="time" class="sales-time-start" required style="flex: 1; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 6px; font-size: 12px; text-align: center; cursor: pointer;">
+                              <span style="color: #7488b6; font-size: 12px; font-weight: bold;">TO</span>
+                              <input type="time" class="sales-time-end" required style="flex: 1; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 6px; font-size: 12px; text-align: center; cursor: pointer;">
+                          </div>
+                       </div>
                    </div>
                 </div>
 
@@ -4378,7 +4387,8 @@ window.loadTodayOverallTotal = async function() {
           // SMART MEMORY: Inherit the exact Shop, Date, and Time from the row above!
           newRow.querySelector('.sales-shop').value = lastRow.querySelector('.sales-shop').value;
           newRow.querySelector('.sales-date').value = lastRow.querySelector('.sales-date').value;
-          newRow.querySelector('.sales-time').value = lastRow.querySelector('.sales-time').value;
+          newRow.querySelector('.sales-time-start').value = lastRow.querySelector('.sales-time-start').value;
+          newRow.querySelector('.sales-time-end').value = lastRow.querySelector('.sales-time-end').value;
           
           // Check if "Other" was selected and carry over the custom text
           const otherInput = newRow.querySelector('.sales-shop-other');
@@ -4638,7 +4648,19 @@ window.loadTodayOverallTotal = async function() {
                   
                   const sShop = row.querySelector('.sales-shop').value.trim();
                   const sDate = row.querySelector('.sales-date').value;
-                  const sTime = row.querySelector('.sales-time').value.trim();
+                  const tStart = row.querySelector('.sales-time-start').value;
+                  const tEnd = row.querySelector('.sales-time-end').value;
+                  
+                  // Convert military time from dropdown to clean AM/PM format
+                  const formatAMPM = (timeStr) => {
+                      if (!timeStr) return '';
+                      let [h, m] = timeStr.split(':');
+                      const ampm = h >= 12 ? 'PM' : 'AM';
+                      h = h % 12 || 12;
+                      return `${h}:${m} ${ampm}`;
+                  };
+                  const sTime = `${formatAMPM(tStart)} - ${formatAMPM(tEnd)}`;
+                
                   const sBuyers = parseInt(row.querySelector('.sales-buyers').value) || 0;
                   const sTotalSold = parseInt(row.querySelector('.sales-total-sold').value) || 0;
                   const sTotalGmv = parseFloat(row.querySelector('.sales-total-gmv').value) || 0;
