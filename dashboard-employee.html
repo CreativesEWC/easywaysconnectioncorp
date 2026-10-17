@@ -4546,42 +4546,25 @@ window.loadTodayOverallTotal = async function() {
           }).then(({ data: { text } }) => {
               console.log("OCR Extracted:\n", text);
               
-              // Remove commas so numbers like 91,243 stay whole
+              // Remove commas to keep numbers whole
               const cleanText = text.replace(/,/g, '');
               
               let gmv = 0, sold = 0, buyers = 0;
 
-              // 1. GMV: Anchors to "Attributed GMV" and grabs the number
-              const gmvMatch = cleanText.match(/Attributed\s*GMV[\s\S]{0,100}?(\d+(?:\.\d+)?)/i);
+              // 1. GMV: Looks for "GMV" and grabs the next large number, ignoring bad spelling of "Attributed"
+              const gmvMatch = cleanText.match(/GMV[\s\S]{0,100}?(\d+(?:\.\d+)?)/i);
               if (gmvMatch) gmv = parseFloat(gmvMatch[1]);
 
-              // 2. SOLD: Anchors exactly to "Attributed items sold"
-              const soldMatch = cleanText.match(/Attributed\s*items\s*sold[\s\S]{0,50}?\b(\d+)\b/i);
+              // 2. SOLD: Looks strictly for the word "sold"
+              const soldMatch = cleanText.match(/sold[\s\S]{0,60}?\b(\d+)\b/i);
               if (soldMatch) sold = parseInt(soldMatch[1], 10);
 
-              // 3. BUYERS: Anchors exactly to "Customers"
-              const buyersMatch = cleanText.match(/Customers[\s\S]{0,50}?\b(\d+)\b/i);
+              // 3. BUYERS: Looks strictly for "Customers" or "Buyers"
+              const buyersMatch = cleanText.match(/(?:Customers|Buyers)[\s\S]{0,60}?\b(\d+)\b/i);
               if (buyersMatch) buyers = parseInt(buyersMatch[1], 10);
 
-              // SMART FALLBACK: If the layout is heavily scrambled, grab the top 3 safe whole numbers
-              if (gmv === 0 || sold === 0 || buyers === 0) {
-                  const rawNums = cleanText.match(/\b\d+(?:\.\d+)?\b/g) || [];
-                  const safeNums = [];
-                  rawNums.forEach(num => {
-                      // Filter out anything attached to K, %, or s
-                      const regex = new RegExp(num + '\\s*[Kk%s]', 'i');
-                      if (!regex.test(cleanText)) safeNums.push(parseFloat(num));
-                  });
-                  
-                  const uniqueNums = [...new Set(safeNums)].sort((a, b) => b - a);
-                  const validNums = uniqueNums.filter(n => n < 10000000); // Excludes timestamp bugs
-                  
-                  if (validNums.length >= 3) {
-                      if (gmv === 0) gmv = validNums[0];
-                      if (sold === 0) sold = validNums[1];
-                      if (buyers === 0) buyers = validNums[2];
-                  }
-              }
+              // NOTE: The dangerous "Fallback" guessing logic has been permanently deleted. 
+              // If it can't find the labels above, it defaults to 0.
 
               if (gmv > 0 || sold > 0 || buyers > 0) {
                   const gmvInp = row.querySelector('.sales-total-gmv');
@@ -4597,7 +4580,8 @@ window.loadTodayOverallTotal = async function() {
                   
                   if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
               } else {
-                  if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but couldn\'t map numbers. Please enter manually.</span>';
+                  // Graceful failure if the background gradient is too dark for the AI to read
+                  if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but image was too dark to read. Please enter manually.</span>';
               }
           }).catch(err => {
               console.error(err);
