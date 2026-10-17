@@ -781,17 +781,24 @@ aside.sidebar.collapsed ~ main.main-content {
       object-fit: cover; 
   }
 
-/* --- ULTIMATE PC ALIGNMENT FIX --- */
+//* --- ULTIMATE PC ALIGNMENT FIX --- */
   @media (min-width: 901px) {
       body {
-          display: block !important; /* Turns off flex-centering */
+          display: block !important;
       }
       main.main-content {
           margin: 0 !important;
-          margin-left: 260px !important; /* Anchors firmly to the sidebar */
-          width: calc(100% - 260px) !important; /* Stretches across the screen */
-          max-width: 1600px !important; /* Safe cap for ultra-wide monitors */
+          margin-left: 260px !important; 
+          width: calc(100% - 260px) !important; 
+          max-width: 1600px !important; 
           box-sizing: border-box !important;
+          transition: margin-left 0.3s ease, width 0.3s ease !important;
+      }
+      
+      /* Reclaim the space when the sidebar is collapsed */
+      aside.sidebar.collapsed ~ main.main-content {
+          margin-left: 80px !important;
+          width: calc(100% - 80px) !important;
       }
   }
   
@@ -2448,7 +2455,7 @@ aside.sidebar.collapsed ~ main.main-content {
   }
   
   // ==========================================================
-  // NOTIFICATION SYSTEM (FIXED LOADER & SAFE PARCEL MODAL)
+  // NOTIFICATION SYSTEM (WIDER, BLACK TEXT, AUTO-ROUTING)
   // ==========================================================
   async function loadNotifications() {
     if (!emp || !emp.id) return; 
@@ -2483,7 +2490,7 @@ aside.sidebar.collapsed ~ main.main-content {
     }
 
     if (!data || data.length === 0) {
-      if (navBellList) navBellList.innerHTML = '<div class="nav-bell-empty" style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No notifications yet.</div>';
+      if (navBellList) navBellList.innerHTML = '<div class="nav-bell-empty" style="padding: 24px; text-align: center; color: #000000; font-size: 13px;">No notifications yet.</div>';
       if (fullListEl) fullListEl.innerHTML = '<div class="empty-note" style="padding: 16px; color: var(--text-muted);">You have no notifications.</div>';
       return;
     }
@@ -2520,23 +2527,18 @@ aside.sidebar.collapsed ~ main.main-content {
         let titlePart = n.title || 'System';
         let msgPart = n.message || 'sent a notification.';
 
-        let actionBtn = '';
-        if (n.link) {
-          actionBtn = `<button type="button" class="btn2 primary" style="padding: 4px 10px; font-size: 11px; flex-shrink: 0; pointer-events: none;">View</button>`;
-        }
+        const unreadDot = !n.is_read ? `<div style="width: 8px; height: 8px; border-radius: 50%; background: #3797F0; flex-shrink: 0; margin-left: auto;"></div>` : '';
 
-        const unreadDot = !n.is_read ? `<div style="width: 7px; height: 7px; border-radius: 50%; background: #3797F0; flex-shrink: 0; margin-left: 4px;"></div>` : '';
-
+        // Removed the "View" button and forced all text colors to pure #000000
         notifHTML += `
-          <div class="nav-bell-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-link="${n.link || ''}" data-msg="${escapeHtml(msgPart)}" style="display: flex; gap: 10px; align-items: center; padding: 10px 14px; cursor: pointer; background: transparent; border-bottom: 1px solid var(--line); transition: background 0.15s;">
-            <img src="${displayAvatar}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line); background: #111;">
-            <div style="flex-grow: 1; min-width: 0; font-size: 13px; color: var(--paper); line-height: 1.35;">
-              <strong style="color: var(--paper); display: inline-block; margin-right: 4px;">${escapeHtml(titlePart)}</strong>
-              <span style="color: #cbd5e1;">${escapeHtml(msgPart)}</span>
-              <span style="color: #7488b6; font-size: 10px; font-family: var(--font-mono); margin-left: 6px;">${timeStr}</span>
+          <div class="nav-bell-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-link="${n.link || ''}" data-title="${escapeHtml(titlePart)}" data-msg="${escapeHtml(msgPart)}" style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; cursor: pointer; background: transparent; border-bottom: 1px solid #e5e7eb; transition: background 0.15s;">
+            <img src="${displayAvatar}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #e5e7eb; background: #ffffff;">
+            <div style="flex-grow: 1; min-width: 0; font-size: 13px; color: #000000; line-height: 1.45;">
+              <strong style="color: #000000; display: block; margin-bottom: 4px;">${escapeHtml(titlePart)}</strong>
+              <span style="color: #000000; display: block;">${escapeHtml(msgPart)}</span>
+              <div style="color: #000000; font-size: 10px; font-family: var(--font-mono); margin-top: 6px; opacity: 0.6;">${timeStr}</div>
             </div>
             ${unreadDot}
-            ${actionBtn}
           </div>
         `;
       });
@@ -2545,7 +2547,7 @@ aside.sidebar.collapsed ~ main.main-content {
     if (navBellList) navBellList.innerHTML = notifHTML;
     if (fullListEl) fullListEl.innerHTML = notifHTML;
 
-    // Attach click listeners
+    // Attach Smart Click Listeners
     document.querySelectorAll('.nav-bell-item').forEach(item => {
       item.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -2553,11 +2555,25 @@ aside.sidebar.collapsed ~ main.main-content {
 
         const notifId = item.getAttribute('data-id');
         const linkId = item.getAttribute('data-link');
-        const msgText = item.getAttribute('data-msg') || 'Package waiting at front desk.';
+        const titleText = item.getAttribute('data-title') || '';
+        const msgText = item.getAttribute('data-msg') || '';
 
         if (item.classList.contains('unread')) {
           await supabaseClient.from('notifications').update({ is_read: true }).eq('id', notifId);
           item.classList.remove('unread');
+        }
+
+        // --- NEW SMART ROUTING: AUTO-JUMP TO TABS BASED ON TITLE ---
+        if (titleText.includes('Video')) {
+            const subTab = document.querySelector('.sidebar-nav button[data-tab="submissions"]');
+            if (subTab) { subTab.click(); const btn = document.getElementById('nav-video-commi'); if (btn) openSubmissionForm('lh-video-commi', btn); return; }
+            const finTab = document.querySelector('.sidebar-nav button[data-tab="finance"]');
+            if (finTab) { finTab.click(); const btn = document.querySelector('button[onclick*="finance-video"]'); if (btn) openFinanceTab('finance-video', btn); return; }
+        } else if (titleText.includes('Commission')) {
+            const subTab = document.querySelector('.sidebar-nav button[data-tab="submissions"]');
+            if (subTab) { subTab.click(); const btn = document.getElementById('nav-live-commi'); if (btn) openSubmissionForm('lh-live-commi', btn); return; }
+            const finTab = document.querySelector('.sidebar-nav button[data-tab="finance"]');
+            if (finTab) { finTab.click(); const btn = document.querySelector('button[onclick*="finance-live"]'); if (btn) openFinanceTab('finance-live', btn); return; }
         }
 
         if (!linkId) return;
@@ -2579,30 +2595,39 @@ aside.sidebar.collapsed ~ main.main-content {
         // Announcement Modal routing
         const { data: post } = await supabaseClient.from('announcements').select('*, brands(name)').eq('id', linkId).maybeSingle();
         if (post) {
-          const brandLabel = post.brands ? post.brands.name : 'Company-wide';
-          const postedDate = new Date(post.created_at).toLocaleDateString([], {month:'long', day:'numeric', year:'numeric'});
-          
-          const titleEl = document.getElementById('modalAnnouncementTitle');
-          if(titleEl) titleEl.textContent = post.title;
-          
-          const dateEl = document.getElementById('modalAnnouncementDate');
-          if(dateEl) dateEl.textContent = `${brandLabel} · Posted ${postedDate}`;
-          
-          const bodyEl = document.getElementById('modalAnnouncementBody');
-          if(bodyEl) bodyEl.textContent = post.body;
-          
-          const modalEl = document.getElementById('announcementModal');
-          if(modalEl) {
-            modalEl.dataset.postId = post.id;
-            modalEl.classList.add('open');
-          }
-          if (typeof loadComments === 'function') loadComments(post.id);
+            const brandLabel = post.brands ? post.brands.name : 'Company-wide';
+            const postedDate = new Date(post.created_at).toLocaleDateString([], {month:'long', day:'numeric', year:'numeric'});
+            
+            // Try updating Employee Modal IDs
+            const empTitle = document.getElementById('modalAnnouncementTitle');
+            if(empTitle) empTitle.textContent = post.title;
+            const empDate = document.getElementById('modalAnnouncementDate');
+            if(empDate) empDate.textContent = `${brandLabel} · Posted ${postedDate}`;
+            const empBody = document.getElementById('modalAnnouncementBody');
+            if(empBody) empBody.textContent = post.body;
+            
+            // Try updating Admin Modal IDs
+            const adminTitle = document.getElementById('modalAnnTitle');
+            if(adminTitle) adminTitle.textContent = post.title;
+            const adminDate = document.getElementById('modalAnnMeta');
+            if(adminDate) adminDate.textContent = `${brandLabel} · Posted ${postedDate}`;
+            const adminBody = document.getElementById('modalAnnBody');
+            if(adminBody) adminBody.textContent = post.body;
+
+            const modalEl = document.getElementById('announcementModal');
+            if(modalEl) {
+                modalEl.dataset.postId = post.id;
+                const activeAnnId = document.getElementById('activeAnnId');
+                if (activeAnnId) activeAnnId.value = post.id;
+                modalEl.classList.add('open');
+            }
+            if (typeof loadComments === 'function') loadComments(post.id);
         } else if (typeof openEmployeeTicketDocument === 'function') {
-          openEmployeeTicketDocument(linkId);
+            openEmployeeTicketDocument(linkId);
         }
       });
     });
-  }// <--- loadNotifications ACTUALLY closes properly here now!
+  } // <--- loadNotifications ACTUALLY closes properly here now!
 
   // Load Employee Submissions / Tickets
   async function loadSubmissions() {
