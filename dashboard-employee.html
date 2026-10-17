@@ -1182,20 +1182,20 @@ aside.sidebar.collapsed ~ main.main-content {
                       <input type="text" class="sales-shop-other" placeholder="Type outside shop name..." style="display: none; width: 100%; background: var(--navy-950); border: 1px solid var(--amber-500); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; margin-top: 8px;">
                    </div>
                    
-                   <!-- Row 2: Date and Time Dropdowns -->
-                   <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px;">
-                       <div>
-                          <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date 📅</label>
-                          <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; cursor: pointer;">
-                       </div>
-                       <div>
-                          <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Time</label>
-                          <div style="display: flex; align-items: center; gap: 6px;">
-                              <input type="time" class="sales-time-start" required style="flex: 1; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 6px; font-size: 12px; text-align: center; cursor: pointer;">
-                              <span style="color: #7488b6; font-size: 12px; font-weight: bold;">TO</span>
-                              <input type="time" class="sales-time-end" required style="flex: 1; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px 6px; font-size: 12px; text-align: center; cursor: pointer;">
-                          </div>
-                       </div>
+                   <!-- Row 2: Date -->
+                   <div>
+                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Date 📅</label>
+                      <input type="date" class="sales-date" required style="width: 100%; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; cursor: pointer;">
+                   </div>
+
+                   <!-- Row 3: Shift Time -->
+                   <div>
+                      <label style="font-size: 10px; color: #7488b6; text-transform: uppercase;">Shift Time</label>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                          <input type="time" class="sales-time-start" required style="flex: 1; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; text-align: center; cursor: pointer;">
+                          <span style="color: #7488b6; font-size: 12px; font-weight: bold;">TO</span>
+                          <input type="time" class="sales-time-end" required style="flex: 1; background: var(--navy-900); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 10px; font-size: 13px; text-align: center; cursor: pointer;">
+                      </div>
                    </div>
                 </div>
 
@@ -4530,7 +4530,6 @@ window.loadTodayOverallTotal = async function() {
               return;
           }
           
-          // Safety check: Did the Tesseract script load in the <head>?
           if (typeof Tesseract === 'undefined') {
               if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ AI Engine missing. Check script tag.</span>';
               return;
@@ -4539,51 +4538,45 @@ window.loadTodayOverallTotal = async function() {
           if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500); font-weight: bold;">⏳ Booting AI (First time takes a moment)...</span>';
           
           Tesseract.recognize(file, 'eng', {
-              // This logger updates the UI with the live percentage!
               logger: m => {
-                  console.log(m);
                   if (m.status === 'recognizing text') {
                       if (nameDisp) nameDisp.innerHTML = `<span style="color: var(--amber-500); font-weight: bold;">🔍 Scanning Image... ${Math.round(m.progress * 100)}%</span>`;
-                  } else {
-                      if (nameDisp) nameDisp.innerHTML = `<span style="color: var(--amber-500); font-weight: bold;">⏳ Loading AI... (${m.status})</span>`;
                   }
               }
           }).then(({ data: { text } }) => {
               console.log("OCR Extracted:\n", text);
               
+              // Remove commas so "89,128" becomes "89128"
               const cleanText = text.replace(/,/g, '');
               
-              let gmv = 0;
-              const gmvMatch = cleanText.match(/Attributed\s*GMV[\s\S]*?(\d+(?:\.\d+)?)/i);
-              if (gmvMatch) {
-                  gmv = parseFloat(gmvMatch[1]);
-              } else {
-                  const allNums = cleanText.match(/\b\d+(?:\.\d+)?\b/g) || [];
-                  const nums = allNums.map(n => parseFloat(n));
-                  if (nums.length > 0) gmv = Math.max(...nums);
-              }
+              let gmv = 0, sold = 0, buyers = 0;
 
-              let sold = 0;
-              const soldMatch = cleanText.match(/(?:Attributed\s*)?items\s*sold[\s\S]*?(\d+)/i);
-              if (soldMatch) {
-                  sold = parseInt(soldMatch[1], 10);
-              }
+              // 1. GMV: Looks for "GMV", skips up to 50 characters of junk (like "MAX active"), and grabs the number
+              const gmvMatch = cleanText.match(/GMV[\s\S]{0,50}?(\d+(?:\.\d+)?)/i);
+              if (gmvMatch) gmv = parseFloat(gmvMatch[1]);
 
-              let buyers = 0;
-              const buyersMatch = cleanText.match(/Customers[\s\S]*?(\d+)/i);
-              if (buyersMatch) {
-                  buyers = parseInt(buyersMatch[1], 10);
-              }
+              // 2. SOLD: Looks for "sold" and grabs the number next to it (max 30 chars away)
+              const soldMatch = cleanText.match(/sold[\s\S]{0,30}?(\d+)/i);
+              if (soldMatch) sold = parseInt(soldMatch[1], 10);
+
+              // 3. BUYERS: Looks for "Customers" or "Buyers" and grabs the number
+              const buyersMatch = cleanText.match(/(?:Customers|Buyers)[\s\S]{0,30}?(\d+)/i);
+              if (buyersMatch) buyers = parseInt(buyersMatch[1], 10);
+
+              // Safety Net: If GMV is impossibly high (like a timestamp bug), reject it
+              if (gmv > 10000000) gmv = 0;
 
               if (gmv > 0 || sold > 0 || buyers > 0) {
                   const gmvInp = row.querySelector('.sales-total-gmv');
                   const soldInp = row.querySelector('.sales-total-sold');
                   const buyerInp = row.querySelector('.sales-buyers');
                   
+                  // Only fill the boxes if the AI actually found a valid number
                   if (gmvInp && gmv > 0) gmvInp.value = gmv.toFixed(2);
                   if (soldInp && sold > 0) soldInp.value = sold;
                   if (buyerInp && buyers > 0) buyerInp.value = buyers;
                   
+                  // Trigger the math calculations to update personal commi
                   if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
                   if (soldInp) soldInp.dispatchEvent(new Event('input'));
                   
