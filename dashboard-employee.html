@@ -4519,34 +4519,45 @@ window.loadTodayOverallTotal = async function() {
               return;
           }
           
-          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500); font-weight: bold;">🔍 AI Scanning Image... Please wait.</span>';
+          // Safety check: Did the Tesseract script load in the <head>?
+          if (typeof Tesseract === 'undefined') {
+              if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ AI Engine missing. Check script tag.</span>';
+              return;
+          }
           
-          Tesseract.recognize(file, 'eng').then(({ data: { text } }) => {
+          if (nameDisp) nameDisp.innerHTML = '<span style="color: var(--amber-500); font-weight: bold;">⏳ Booting AI (First time takes a moment)...</span>';
+          
+          Tesseract.recognize(file, 'eng', {
+              // This logger updates the UI with the live percentage!
+              logger: m => {
+                  console.log(m);
+                  if (m.status === 'recognizing text') {
+                      if (nameDisp) nameDisp.innerHTML = `<span style="color: var(--amber-500); font-weight: bold;">🔍 Scanning Image... ${Math.round(m.progress * 100)}%</span>`;
+                  } else {
+                      if (nameDisp) nameDisp.innerHTML = `<span style="color: var(--amber-500); font-weight: bold;">⏳ Loading AI... (${m.status})</span>`;
+                  }
+              }
+          }).then(({ data: { text } }) => {
               console.log("OCR Extracted:\n", text);
               
-              // Remove commas to prevent numbers like "62,583" from splitting
               const cleanText = text.replace(/,/g, '');
               
-              // 1. GMV: Scans for the massive number under "Attributed GMV"
               let gmv = 0;
               const gmvMatch = cleanText.match(/Attributed\s*GMV[\s\S]*?(\d+(?:\.\d+)?)/i);
               if (gmvMatch) {
                   gmv = parseFloat(gmvMatch[1]);
               } else {
-                  // Fallback: Simply grab the absolute largest number on the screen
                   const allNums = cleanText.match(/\b\d+(?:\.\d+)?\b/g) || [];
                   const nums = allNums.map(n => parseFloat(n));
                   if (nums.length > 0) gmv = Math.max(...nums);
               }
 
-              // 2. SOLD: Scans for the number right next to "items sold"
               let sold = 0;
               const soldMatch = cleanText.match(/(?:Attributed\s*)?items\s*sold[\s\S]*?(\d+)/i);
               if (soldMatch) {
                   sold = parseInt(soldMatch[1], 10);
               }
 
-              // 3. BUYERS: Scans for the number directly under "Customers"
               let buyers = 0;
               const buyersMatch = cleanText.match(/Customers[\s\S]*?(\d+)/i);
               if (buyersMatch) {
@@ -4558,35 +4569,22 @@ window.loadTodayOverallTotal = async function() {
                   const soldInp = row.querySelector('.sales-total-sold');
                   const buyerInp = row.querySelector('.sales-buyers');
                   
-                  if (gmvInp && gmv) gmvInp.value = gmv.toFixed(2);
-                  if (soldInp && sold) soldInp.value = sold;
-                  if (buyerInp && buyers) buyerInp.value = buyers;
+                  if (gmvInp && gmv > 0) gmvInp.value = gmv.toFixed(2);
+                  if (soldInp && sold > 0) soldInp.value = sold;
+                  if (buyerInp && buyers > 0) buyerInp.value = buyers;
                   
-                  // Trigger the math calculations to update personal commi
                   if (gmvInp) gmvInp.dispatchEvent(new Event('input'));
                   if (soldInp) soldInp.dispatchEvent(new Event('input'));
                   
                   nameDisp.innerHTML = '<span style="color: var(--mint-500); font-weight: bold;">✅ Auto-filled! Please verify numbers.</span>';
               } else {
-                  nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but couldn\'t read the layout. Please enter manually.</span>';
+                  nameDisp.innerHTML = '<span style="color: var(--amber-500);">⚠️ Scan complete, but couldn\'t map numbers. Please enter manually.</span>';
               }
           }).catch(err => {
               console.error(err);
               nameDisp.innerHTML = '<span style="color: var(--coral-500);">❌ Scanner failed. Please enter manually.</span>';
           });
-      };
-
-      if (camInp) camInp.addEventListener('change', () => {
-          if (fileInp) fileInp.value = ''; 
-          handleImageScan(camInp.files[0]);
-      });
-      
-      if (fileInp) fileInp.addEventListener('change', () => {
-          if (camInp) camInp.value = ''; 
-          handleImageScan(fileInp.files[0]);
-      });
-
-  } // <--- This is the end of the attachSalesListeners function
+      }; // <--- This is the end of the attachSalesListeners function
 
   // --- 3. Single-Employee Database Push (WITH GOOGLE DRIVE UPLOAD & CUSTOM FILENAMES) ---
   if (salesReportForm) {
