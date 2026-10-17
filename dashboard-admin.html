@@ -2173,19 +2173,21 @@ aside.sidebar.collapsed ~ main.main-content {
   // ==========================================
   // VIDEO AUDITS INBOX ENGINE
   // ==========================================
-  window.openVideoViewer = async function(recordId, videoUrl) {
+  window.openVideoViewer = async function(recordId, supabaseUrl, gdriveUrl) {
       const modal = document.getElementById('videoViewerModal');
       const iframeEl = document.getElementById('viewerIframeSrc');
       
       if (modal && iframeEl) {
-          // Reset UI while loading
           document.getElementById('viewerRecordId').value = recordId;
           document.getElementById('viewerScore').textContent = '...';
           document.getElementById('viewerFeedback').textContent = 'Fetching AI data...';
           
-          // Convert any Google Drive URL into an embeddable preview player
-          let embedUrl = videoUrl;
-          const driveIdMatch = videoUrl.match(/[-\w]{25,}/);
+          // 1. Prioritize Google Drive exclusively for the Admin Viewer
+          let viewUrl = (gdriveUrl && gdriveUrl !== 'null' && gdriveUrl !== 'undefined') ? gdriveUrl : supabaseUrl;
+          let embedUrl = viewUrl;
+          
+          // 2. Automatically convert GDrive link to iframe preview
+          const driveIdMatch = viewUrl.match(/[-\w]{25,}/);
           if (driveIdMatch) {
               embedUrl = `https://drive.google.com/file/d/${driveIdMatch[0]}/preview`;
           }
@@ -2193,7 +2195,7 @@ aside.sidebar.collapsed ~ main.main-content {
           iframeEl.src = embedUrl;
           modal.classList.add('open');
 
-          // Fetch Score and Feedback live from Supabase
+          // 3. AI Data Fetch (Remains unchanged)
           const { data, error } = await supabaseClient
               .from('video_submissions')
               .select('ai_score, ai_notes')
@@ -2275,9 +2277,10 @@ aside.sidebar.collapsed ~ main.main-content {
       if (!tbody) return;
 
       try {
+          // Add gdrive_url to the select query
           const { data: vids, error } = await supabaseClient
               .from('video_submissions')
-              .select('id, upload_date, video_file_url, video_link, status, created_at, employees(name, badge_id)')
+              .select('id, upload_date, video_file_url, gdrive_url, video_link, status, created_at, employees(name, badge_id)')
               .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -2289,10 +2292,12 @@ aside.sidebar.collapsed ~ main.main-content {
 
           tbody.innerHTML = vids.map(v => {
               const empName = v.employees?.name || 'Staff';
-              // FIX: Both ID and URL are now passed!
-              const rawLink = v.video_file_url 
-                  ? `<button class="btn2" onclick="openVideoViewer('${v.id}', '${v.video_file_url}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
+              
+              // Pass BOTH urls to the openVideoViewer
+              const rawLink = (v.video_file_url || v.gdrive_url)
+                  ? `<button class="btn2" onclick="openVideoViewer('${v.id}', '${v.video_file_url || ''}', '${v.gdrive_url || ''}')" style="font-size: 10px; padding: 4px 8px;">▶️ Watch Video</button>`
                   : '<span style="color: #7488b6;">No File</span>';
+              
               const platformLink = v.video_link 
                   ? `<a href="${v.video_link}" target="_blank" style="color: var(--amber-400); text-decoration: underline; font-size: 12px;">Open Platform Link</a>` 
                   : '—';
@@ -5017,9 +5022,8 @@ if (saveScheduleBtn) {
     const targetVid = window.cachedAllSubmissions?.find(v => v.id === submissionId);
     if (!targetVid) return;
     
-    if (targetVid.video_file_url) {
-      // FIX: We now pass BOTH the ID and the URL so the viewer can load the AI scores!
-      openVideoViewer(targetVid.id, targetVid.video_file_url);
+    if (targetVid.video_file_url || targetVid.gdrive_url) {
+      openVideoViewer(targetVid.id, targetVid.video_file_url || '', targetVid.gdrive_url || '');
     } else if (targetVid.video_link) {
       window.open(targetVid.video_link, '_blank');
     }
@@ -5059,7 +5063,7 @@ if (saveScheduleBtn) {
 
     const { data: vids, error: vidErr } = await supabaseClient
       .from('video_submissions')
-      .select('id, employee_id, status, upload_date, created_at, video_file_url, video_link')
+      .select('id, employee_id, status, upload_date, created_at, video_file_url, gdrive_url, video_link')
       .gte('upload_date', firstDay)
       .lte('upload_date', lastDay)
       .order('created_at', { ascending: true });
