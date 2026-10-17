@@ -101,13 +101,27 @@
       <button class="btn" onclick="resetForm()" style="padding: 4px 8px; font-size: 10px;">Clear</button>
     </div>
     
-    <!-- NEW: AI Grading Mode Selector -->
-    <div style="padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--navy-950);">
-      <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">AI Grading Mode</div>
-      <div style="display: flex; gap: 15px; font-size: 13px;">
-        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="strict"> Strict</label>
-        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="creative" checked> Creative</label>
-        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="combined"> Combined</label>
+   <!-- AI Grading Mode & Brand Context Selector -->
+    <div style="padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--navy-950); display: flex; flex-wrap: wrap; gap: 30px; align-items: center;">
+      <div>
+        <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">AI Grading Mode</div>
+        <div style="display: flex; gap: 15px; font-size: 13px;">
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="strict"> Strict</label>
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="creative" checked> Creative</label>
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;"><input type="radio" name="aiMode" value="combined"> Combined</label>
+        </div>
+      </div>
+      
+      <div>
+        <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Target Brand / Focus</div>
+        <select id="brandContext" style="background: var(--navy-900); color: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: var(--font-body); outline: none;">
+            <option value="general">Generic E-Commerce</option>
+            <option value="seoul">Seoul Secrets (Skincare/Inclusive)</option>
+            <option value="momom">Momom Foods (Sweets/Snacks)</option>
+            <option value="wowlinis">WowLinis (Home Cleaning)</option>
+            <option value="puti">Puti Plus (Laundry)</option>
+            <option value="coffee">ME & Joco Coffee</option>
+        </select>
       </div>
     </div>
     
@@ -341,8 +355,22 @@
           btn.textContent = 'EWC AI is grading...';
           const selectedMode = document.querySelector('input[name="aiMode"]:checked').value.toUpperCase();
 
+          const brandContexts = {
+              general: "Generic e-commerce product evaluation.",
+              seoul: "Brand: Seoul Secrets. Products: Skincare, body lotion, sunscreen, whitening soap, bleaching products, face/body/hair care. AUDIENCE: Highly inclusive (Women, Men, LGBTQ+). Do NOT enforce gender norms. Judge favorably if the hook appeals universally.",
+              momom: "Brand: Momom Foods. Products: Cereal krunch, chocolates, biscuits, wafer chocolates, candies, gummies. Focus on taste, craving satisfaction, and food appeal.",
+              wowlinis: "Brand: WowLinis. Products: Home cleaning. Focus on effective stain removal, easy home maintenance, and cleanliness.",
+              puti: "Brand: Puti Plus. Products: Laundry cleaning. Focus on bright whites, tough stain removal on clothes, and fresh scent.",
+              coffee: "Brand: ME Coffee & Joco Coffee. Products: Chocolate coffee, black coffee, crema. Focus on morning energy, rich flavor, and brewing experience."
+          };
+          const selectedBrand = document.getElementById('brandContext').value;
+          const targetContext = brandContexts[selectedBrand];
+
           const SYSTEM_PROMPT = `
           You are an AI Video Auditor. Evaluate the transcript against the following ${selectedMode} rubric.
+          BRAND CONTEXT: ${targetContext}
+          Ensure your evaluation and feedback respects this specific product category and target audience.
+          
           VIDEO TRANSCRIPT: "${actualTranscript}"
           RUBRIC: ${activeRules.join('\n')}
           OUTPUT JSON: { "score": 0, "rules": [true,false,true,false,true,false,true,false,true,false], "feedback": "Max 400 chars." }
