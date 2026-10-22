@@ -6267,6 +6267,11 @@ window.deleteSlot = function(event, slotId) {
         alert("Monitoring slots layout saved successfully!");
     };
 
+  window.closeStreamModal = function() {
+    const modal = document.getElementById('streamModal');
+    if (modal) modal.style.display = 'none';
+};
+
     // Initial render
     renderMonitorGrid();
 
