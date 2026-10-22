@@ -6041,7 +6041,9 @@ if (saveScheduleBtn) {
       (err) => {} 
     ).catch((err) => {
       alert("Could not start camera. Please ensure permissions are allowed.");
-      container.style.display = 'none';window.renderMonitorGrid = function() {
+      container.style.display = 'none';
+  
+  window.renderMonitorGrid = function() {
     const grid = document.getElementById('monitorGrid');
     if (!grid) return;
     
@@ -6052,16 +6054,16 @@ if (saveScheduleBtn) {
         card.style.cssText = "background: var(--navy-800, #f4f4f5); border: 1px solid var(--line, #000000); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 320px; position: relative;";
         
         if (slot.active) {
+            // ACTIVE SLOT CARD
             card.innerHTML = `
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <span class="pill ${slot.platform.includes('TikTok') ? 'pending' : 'approved'}" style="font-size: 10px; padding: 3px 8px;">${slot.platform}</span>
-                        <button onclick="removeMonitor(${slot.id})" title="Remove Slot" style="background: none; border: none; color: var(--coral-500, #dc2626); cursor: pointer; font-size: 18px; font-weight: bold;">&times;</button>
+                        <button onclick="removeMonitor(${slot.id})" title="Clear Feed" style="background: none; border: none; color: var(--coral-500, #dc2626); cursor: pointer; font-size: 18px; font-weight: bold;">&times;</button>
                     </div>
                     
-                    <!-- Live Preview Card Header -->
                     <div style="background: var(--navy-900, #ffffff); border: 1px solid var(--line, #000); border-radius: 10px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14px; margin-bottom: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
-                        <span style="font-size: 28px; margin-bottom: 6px;">Watch</span>
+                        <span style="font-size: 28px; margin-bottom: 6px;">🔴</span>
                         <span style="color: var(--paper, #000); font-size: 15px; font-weight: 700; word-break: break-all;">${slot.name}</span>
                         <span style="color: var(--mint-700, #047857); font-size: 11px; margin-top: 4px; font-weight: 600; font-family: var(--font-mono);">READY TO MONITOR</span>
                     </div>
@@ -6079,7 +6081,11 @@ if (saveScheduleBtn) {
                 </div>
             `;
         } else {
+            // EMPTY / UNUSED SLOT CARD WITH DELETE BUTTON
             card.innerHTML = `
+                <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
+                    <button onclick="deleteSlot(event, ${slot.id})" title="Delete Unused Slot" style="background: none; border: none; color: #a1a1aa; cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1; padding: 4px 8px; border-radius: 4px;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#a1a1aa'">&times;</button>
+                </div>
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; cursor: pointer; border: 2px dashed var(--line, #000); border-radius: 10px; background: transparent;" onclick="openStreamModal(${slot.id})">
                     <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--navy-900, #fff); border: 1px solid var(--line, #000); display: flex; align-items: center; justify-content: center; color: var(--paper, #000); font-size: 22px; margin-bottom: 10px;">+</div>
                     <span style="font-size: 13px; color: var(--text-muted, #52525b); font-weight: 600;">Add Stream Monitor</span>
@@ -6088,6 +6094,13 @@ if (saveScheduleBtn) {
         }
         grid.appendChild(card);
     });
+};
+
+// Function to delete unused slot completely from array
+window.deleteSlot = function(event, slotId) {
+    event.stopPropagation(); // Prevents triggering openStreamModal when clicking delete
+    monitorSlots = monitorSlots.filter(s => s.id !== slotId);
+    renderMonitorGrid();
 };
 
     window.openStreamModal = function(slotId) {
