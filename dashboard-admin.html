@@ -6042,66 +6042,107 @@ if (saveScheduleBtn) {
     ).catch((err) => {
       alert("Could not start camera. Please ensure permissions are allowed.");
       container.style.display = 'none';
+
+      // Boot up the Finance Tab tables!
+    initFinanceTab();
+    populateVideoAuditSellers();
+    loadFinanceVideoTracker();
+    loadFinanceLiveTracker();
+    window.loadAdminLiveCommissions();
+
+      // ==========================================
+    // GLOBAL TAB SWITCHING & DROPDOWN ENGINE
+    // ==========================================
+    window.switchTab = function(tabId) {
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+            panel.style.display = 'none';
+        });
+        
+        const target = document.getElementById('tab-' + tabId);
+        if (target) target.style.display = 'block';
+        
+        document.querySelectorAll('[data-tab]').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+
+        if (tabId === 'live-preview' && typeof renderMonitorGrid === 'function') {
+            renderMonitorGrid();
+        }
+    };
+      
+    // ==========================================
+    // LIVE WEB PREVIEW ROOM CONTROLLER ENGINE
+    // ==========================================
+      let monitorSlots = [
+        { id: 1, active: true, url: "https://www.tiktok.com/@momomfood", name: "@momomfood", platform: "TikTok Live" },
+        { id: 2, active: false, url: "", name: "", platform: "" },
+        { id: 3, active: false, url: "", name: "", platform: "" }
+    ];
+
+    let activeTargetSlotId = null;
   
   window.renderMonitorGrid = function() {
-    const grid = document.getElementById('monitorGrid');
-    if (!grid) return;
-    
-    grid.innerHTML = '';
-    
-    monitorSlots.forEach(slot => {
-        const card = document.createElement('div');
-        card.style.cssText = "background: var(--navy-800, #f4f4f5); border: 1px solid var(--line, #000000); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 320px; position: relative;";
+        const grid = document.getElementById('monitorGrid');
+        if (!grid) return;
+        
+        grid.innerHTML = '';
+        
+        monitorSlots.forEach(slot => {
+            const card = document.createElement('div');
+            card.style.cssText = "background: var(--navy-800, #f4f4f5); border: 1px solid var(--line, #000000); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 320px; position: relative;";
         
         if (slot.active) {
-            // ACTIVE SLOT CARD
-            card.innerHTML = `
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span class="pill ${slot.platform.includes('TikTok') ? 'pending' : 'approved'}" style="font-size: 10px; padding: 3px 8px;">${slot.platform}</span>
-                        <button onclick="removeMonitor(${slot.id})" title="Clear Feed" style="background: none; border: none; color: var(--coral-500, #dc2626); cursor: pointer; font-size: 18px; font-weight: bold;">&times;</button>
+                card.innerHTML = `
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span class="pill ${slot.platform.includes('TikTok') ? 'pending' : 'approved'}" style="font-size: 10px; padding: 3px 8px;">${slot.platform}</span>
+                            <button onclick="removeMonitor(${slot.id})" title="Clear Feed" style="background: none; border: none; color: var(--coral-500, #dc2626); cursor: pointer; font-size: 18px; font-weight: bold;">&times;</button>
+                        </div>
+                        
+                        <div style="background: var(--navy-900, #ffffff); border: 1px solid var(--line, #000); border-radius: 10px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14px; margin-bottom: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
+                            <span style="font-size: 28px; margin-bottom: 6px;">🔴</span>
+                            <span style="color: var(--paper, #000); font-size: 15px; font-weight: 700; word-break: break-all;">${slot.name}</span>
+                            <span style="color: var(--mint-700, #047857); font-size: 11px; margin-top: 4px; font-weight: 600;">READY TO MONITOR</span>
+                        </div>
+                        
+                        <p style="font-size: 11px; color: var(--text-muted, #52525b); margin: 0; word-break: break-all; max-height: 28px; overflow: hidden; text-overflow: ellipsis;">${slot.url}</p>
                     </div>
                     
-                    <div style="background: var(--navy-900, #ffffff); border: 1px solid var(--line, #000); border-radius: 10px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14px; margin-bottom: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
-                        <span style="font-size: 28px; margin-bottom: 6px;">🔴</span>
-                        <span style="color: var(--paper, #000); font-size: 15px; font-weight: 700; word-break: break-all;">${slot.name}</span>
-                        <span style="color: var(--mint-700, #047857); font-size: 11px; margin-top: 4px; font-weight: 600; font-family: var(--font-mono);">READY TO MONITOR</span>
+                    <div style="margin-top: 14px; display: flex; gap: 8px;">
+                        <button onclick="openStreamWindow('${encodeURIComponent(slot.url)}')" class="btn primary" style="flex: 1; font-size: 12px; padding: 10px; font-weight: bold;">
+                            📱 Open Pop-Out (9:16)
+                        </button>
+                        <button onclick="openStreamModal(${slot.id})" class="btn" style="font-size: 11px; padding: 10px;">
+                            ✏️ Edit
+                        </button>
                     </div>
-                    
-                    <p style="font-size: 11px; color: var(--text-muted, #52525b); margin: 0; word-break: break-all; font-family: var(--font-mono); max-height: 28px; overflow: hidden; text-overflow: ellipsis;">${slot.url}</p>
-                </div>
-                
-                <div style="margin-top: 14px; display: flex; gap: 8px;">
-                    <button onclick="openStreamWindow('${encodeURIComponent(slot.url)}')" class="btn primary" style="flex: 1; font-size: 12px; padding: 10px; font-weight: bold;">
-                        📱 Open Pop-Out (9:16)
-                    </button>
-                    <button onclick="openStreamModal(${slot.id})" class="btn" style="font-size: 11px; padding: 10px;">
-                        ✏️ Edit
-                    </button>
-                </div>
-            `;
-        } else {
-            // EMPTY / UNUSED SLOT CARD WITH DELETE BUTTON
-            card.innerHTML = `
-                <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
-                    <button onclick="deleteSlot(event, ${slot.id})" title="Delete Unused Slot" style="background: none; border: none; color: #a1a1aa; cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1; padding: 4px 8px; border-radius: 4px;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#a1a1aa'">&times;</button>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; cursor: pointer; border: 2px dashed var(--line, #000); border-radius: 10px; background: transparent;" onclick="openStreamModal(${slot.id})">
-                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--navy-900, #fff); border: 1px solid var(--line, #000); display: flex; align-items: center; justify-content: center; color: var(--paper, #000); font-size: 22px; margin-bottom: 10px;">+</div>
-                    <span style="font-size: 13px; color: var(--text-muted, #52525b); font-weight: 600;">Add Stream Monitor</span>
-                </div>
-            `;
-        }
-        grid.appendChild(card);
-    });
-};
+                `;
+            } else {
+                card.innerHTML = `
+                    <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
+                        <button onclick="deleteSlot(event, ${slot.id})" title="Delete Unused Slot" style="background: none; border: none; color: #a1a1aa; cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1; padding: 4px 8px; border-radius: 4px;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#a1a1aa'">&times;</button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; cursor: pointer; border: 2px dashed var(--line, #000); border-radius: 10px; background: transparent;" onclick="openStreamModal(${slot.id})">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--navy-900, #fff); border: 1px solid var(--line, #000); display: flex; align-items: center; justify-content: center; color: var(--paper, #000); font-size: 22px; margin-bottom: 10px;">+</div>
+                        <span style="font-size: 13px; color: var(--text-muted, #52525b); font-weight: 600;">Add Stream Monitor</span>
+                    </div>
+                `;
+            }
+            grid.appendChild(card);
+        });
+    };
 
 // Function to delete unused slot completely from array
 window.deleteSlot = function(event, slotId) {
-    event.stopPropagation(); // Prevents triggering openStreamModal when clicking delete
-    monitorSlots = monitorSlots.filter(s => s.id !== slotId);
-    renderMonitorGrid();
-};
+        event.stopPropagation();
+        monitorSlots = monitorSlots.filter(s => s.id !== slotId);
+        renderMonitorGrid();
+    };
 
     window.openStreamModal = function(slotId) {
         activeTargetSlotId = slotId;
@@ -6173,7 +6214,7 @@ window.deleteSlot = function(event, slotId) {
     };
 
     window.addNewMonitorSlot = function() {
-        const newId = monitorSlots.length + 1;
+        const newId = monitorSlots.length > 0 ? Math.max(...monitorSlots.map(s => s.id)) + 1 : 1;
         monitorSlots.push({ id: newId, active: false, url: "", name: "", platform: "" });
         renderMonitorGrid();
     };
@@ -6182,26 +6223,24 @@ window.deleteSlot = function(event, slotId) {
         monitorSlots = [
             { id: 1, active: false, url: "", name: "", platform: "" },
             { id: 2, active: false, url: "", name: "", platform: "" },
-            { id: 3, active: false, url: "", name: "", platform: "" },
-            { id: 4, active: false, url: "", name: "", platform: "" }
+            { id: 3, active: false, url: "", name: "", platform: "" }
         ];
         renderMonitorGrid();
     };
 
     window.openStreamWindow = function(encodedUrl) {
-    const url = decodeURIComponent(encodedUrl);
-    const width = 420;
-    const height = 780;
-    // Positions pop-outs neatly on the right side of the screen
-    const left = window.screen.width - width - 40;
-    const top = 40;
-    window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
-};
+        const url = decodeURIComponent(encodedUrl);
+        const width = 420;
+        const height = 780;
+        const left = window.screen.width - width - 40;
+        const top = 40;
+        window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+    };
 
+    // Initial render
     renderMonitorGrid();
 
-  // Closing brackets for the main IIFE function
-  })(); 
+})();
 </script>
 </body>
 </html>
