@@ -6040,40 +6040,57 @@ if (saveScheduleBtn) {
       },
       (err) => {} 
     ).catch((err) => {
-      alert("Could not start camera. Please ensure permissions are allowed.");
-      container.style.display = 'none';
+        alert("Could not start camera. Please ensure permissions are allowed.");
+        const container = document.getElementById('kioskScannerContainer');
+        if (container) container.style.display = 'none';
+    });
+});
+
+document.getElementById('stopKioskScannerBtn')?.addEventListener('click', () => {
+    if (kioskScannerObj) {
+        kioskScannerObj.stop().then(() => {
+            document.getElementById('kioskScannerContainer').style.display = 'none';
+            kioskScannerObj = null;
+        });
+    } else {
+        document.getElementById('kioskScannerContainer').style.display = 'none';
+    }
+});
+
+  // ==========================================
+  // GLOBAL INITIALIZATION & TAB SWITCHING
+  // ==========================================
 
       // Boot up the Finance Tab tables!
     initFinanceTab();
-    populateVideoAuditSellers();
-    loadFinanceVideoTracker();
-    loadFinanceLiveTracker();
+populateVideoAuditSellers();
+loadFinanceVideoTracker();
+loadFinanceLiveTracker();
+if (typeof window.loadAdminLiveCommissions === 'function') {
     window.loadAdminLiveCommissions();
+}
 
-      // ==========================================
-    // GLOBAL TAB SWITCHING & DROPDOWN ENGINE
-    // ==========================================
-    window.switchTab = function(tabId) {
-        document.querySelectorAll('.tab-panel').forEach(panel => {
-            panel.style.display = 'none';
-        });
-        
-        const target = document.getElementById('tab-' + tabId);
-        if (target) target.style.display = 'block';
-        
-        document.querySelectorAll('[data-tab]').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
-        if (activeBtn) {
-            activeBtn.classList.add('active');
-        }
+  window.switchTab = function(tabId) {
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.style.display = 'none';
+    });
+    
+    const target = document.getElementById('tab-' + tabId);
+    if (target) target.style.display = 'block';
+    
+    document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
 
-        if (tabId === 'live-preview' && typeof renderMonitorGrid === 'function') {
-            renderMonitorGrid();
-        }
-    };
+    if (tabId === 'live-preview' && typeof renderMonitorGrid === 'function') {
+        renderMonitorGrid();
+    }
+};
       
     // ==========================================
     // LIVE WEB PREVIEW ROOM CONTROLLER ENGINE
