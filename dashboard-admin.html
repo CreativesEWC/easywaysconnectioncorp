@@ -6186,10 +6186,13 @@ window.deleteSlot = function(event, slotId) {
         let platform = "TikTok Live";
         const lowerUrl = urlInput.toLowerCase();
 
-        if (lowerUrl.includes("shopee")) {
+        // Catch both full shopee links and ph.shp.ee short links
+        if (lowerUrl.includes("shopee") || lowerUrl.includes("shp.ee")) {
             platform = "Shopee Live";
+            parsedName = "Shopee Live Stream";
         } else if (lowerUrl.includes("lazada")) {
             platform = "Lazada Live";
+            parsedName = "Lazada Live Stream";
         }
         
         if (urlInput.includes("@")) {
