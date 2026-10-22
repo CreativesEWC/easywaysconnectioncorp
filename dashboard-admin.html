@@ -653,11 +653,26 @@ aside.sidebar.collapsed ~ main.main-content {
     
    <nav class="sidebar-nav">
   
-  <!-- HOME -->
-  <button data-tab="home" class="active">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-    <span>Home</span>
-  </button>
+  <!-- EXPANDABLE HOME DROPDOWN -->
+<div class="nav-dropdown" style="width: 100%;">
+    <button class="nav-item dropdown-btn active" onclick="toggleDropdown('homeDropdown')" style="width: 100%; display: flex; align-items: center; justify-content: space-between; background: none; border: none; cursor: pointer; color: inherit; padding: 10px 16px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span style="font-weight: 600;">Home</span>
+        </div>
+        <span id="homeDropdownArrow" style="font-size: 10px; transition: transform 0.2s;">▼</span>
+    </button>
+    
+    <!-- Sub-menu Items -->
+    <div class="dropdown-container" id="homeDropdown" style="display: block; padding-left: 16px; background: rgba(0,0,0,0.15);">
+        <button data-tab="home" class="nav-sub-item active" onclick="switchTab('home'); return false;" style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 12px; color: var(--paper, #fff);">
+            <span>•</span> Main Dashboard
+        </button>
+        <button data-tab="live-preview" class="nav-sub-item" onclick="switchTab('live-preview'); return false;" style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 12px; color: #7488b6;">
+            <span>🔴</span> Live Preview Room
+        </button>
+    </div>
+</div>
 
   <!-- ATTENDANCE -->
   <button data-tab="attendance">
@@ -870,7 +885,7 @@ aside.sidebar.collapsed ~ main.main-content {
   
 
   
-  <!-- Your existing admin dashboard tabs / content panels start right below here -->
+  <!-- ======= DASHBOARD TABS INNER CONTENTS ============ -->
   
 <div class="badge-strip"></div>
 <div id="authGate">Checking your access…</div>
@@ -911,6 +926,42 @@ aside.sidebar.collapsed ~ main.main-content {
       <!-- Cards injected by JS -->
     </div>
   </div>
+
+        <!-- TAB: LIVE PREVIEW ROOM -->
+<div id="tab-live-preview" class="tab-panel" style="display: none; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <p style="font-size: 11px; color: #7488b6; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px;">EASY WAYS CONNECTION CORP.</p>
+            <h1 style="font-size: 22px; color: var(--paper, #fff); margin: 0;">LIVE PREVIEW ROOM</h1>
+            <p style="font-size: 12px; color: #7488b6; margin: 4px 0 0;">Multi-Channel Stream Monitoring Hub</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="addNewMonitorSlot()" class="btn primary" style="font-size: 12px; padding: 8px 14px;">+ Add Slot</button>
+            <button onclick="resetAllMonitors()" class="btn" style="font-size: 12px; padding: 8px 14px;">Reset All</button>
+        </div>
+    </div>
+
+    <!-- Monitor Cards Grid -->
+    <div id="monitorGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
+        <!-- Dynamic Cards render here -->
+    </div>
+</div>
+
+<!-- Modal Overlay for adding link -->
+<div id="streamModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5, 11, 24, 0.85); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: var(--navy-800, #131d31); border: 1px solid var(--line, #233352); border-radius: 12px; padding: 24px; width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <h3 style="margin-top: 0; color: var(--paper, #fff); font-size: 16px;">Connect Stream Monitor</h3>
+        <p style="font-size: 12px; color: #7488b6; margin-bottom: 16px;">Paste the TikTok Live, Shopee, or Lazada link below.</p>
+        
+        <label style="font-size: 11px; color: var(--paper, #fff); display: block; margin-bottom: 6px;">Stream / Profile URL</label>
+        <input type="text" id="streamInputUrl" placeholder="https://www.tiktok.com/@momomfood" style="width: 100%; background: var(--navy-900, #0a1120); border: 1px solid var(--line, #233352); border-radius: 6px; padding: 10px; color: var(--paper, #fff); font-size: 13px; margin-bottom: 16px; box-sizing: border-box;" />
+        
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button onclick="closeStreamModal()" class="btn" style="font-size: 12px;">Cancel</button>
+            <button onclick="confirmAddMonitor()" class="btn primary" style="font-size: 12px;">Confirm & Connect</button>
+        </div>
+    </div>
+</div> <!-- End of LIVE PREVIEW ROOM -->
 
   <!-- 2. ANNOUNCEMENTS TAB -->
   <div id="tab-announcements" class="tab-panel" style="display:none;">
@@ -5995,16 +6046,165 @@ if (saveScheduleBtn) {
     }
   });
 
-  // Boot up the Finance Tab tables!
-  initFinanceTab();
-  populateVideoAuditSellers();
-  loadFinanceVideoTracker();
-  loadFinanceLiveTracker();
-  window.loadAdminLiveCommissions(); // <-- Add this here!
+ // Boot up the Finance Tab tables!
+    initFinanceTab();
+    populateVideoAuditSellers();
+    loadFinanceVideoTracker();
+    loadFinanceLiveTracker();
+    window.loadAdminLiveCommissions();
 
-  
+    // ==========================================
+    // LIVE WEB PREVIEW ROOM CONTROLLER ENGINE
+    // ==========================================
+    let monitorSlots = [
+        { id: 1, active: true, url: "https://www.tiktok.com/@momomfood", name: "@momomfood", platform: "TikTok Live" },
+        { id: 2, active: false, url: "", name: "", platform: "" },
+        { id: 3, active: false, url: "", name: "", platform: "" },
+        { id: 4, active: false, url: "", name: "", platform: "" }
+    ];
 
-})(); 
+    let activeTargetSlotId = null;
+
+    window.renderMonitorGrid = function() {
+        const grid = document.getElementById('monitorGrid');
+        if (!grid) return;
+        
+        grid.innerHTML = '';
+        
+        monitorSlots.forEach(slot => {
+            const card = document.createElement('div');
+            card.style.cssText = "background: var(--navy-800, #121b3a); border: 1px solid var(--line, #2a3b5c); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px; position: relative;";
+            
+            if (slot.active) {
+                card.innerHTML = `
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span class="pill ${slot.platform.includes('TikTok') ? 'pending' : 'approved'}" style="font-size: 10px; padding: 2px 6px;">${slot.platform}</span>
+                            <button onclick="removeMonitor(${slot.id})" title="Remove Monitor" style="background: none; border: none; color: #7488b6; cursor: pointer; font-size: 16px;">&times;</button>
+                        </div>
+                        <div style="background: #000; border-radius: 8px; height: 150px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.08);">
+                            <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.85) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px;">
+                                <span style="font-size: 24px; margin-bottom: 4px;">🔴</span>
+                                <span style="color: #fff; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${slot.name}</span>
+                                <span style="color: var(--mint-500, #4fb286); font-size: 10px; margin-top: 3px; font-weight: 600;">ACTIVE FEED</span>
+                            </div>
+                        </div>
+                        <p style="font-size: 11px; color: #7488b6; margin: 0; word-break: break-all; max-height: 28px; overflow: hidden;">${slot.url}</p>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button onclick="openStreamWindow('${encodeURIComponent(slot.url)}')" class="btn primary" style="width: 100%; font-size: 11px; padding: 8px;">Pop-out Live Stream</button>
+                    </div>
+                `;
+            } else {
+                card.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 250px; cursor: pointer;" onclick="openStreamModal(${slot.id})">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--navy-900, #0a0f25); border: 2px dashed var(--line, #2a3b5c); display: flex; align-items: center; justify-content: center; color: var(--paper, #fff); font-size: 22px; margin-bottom: 10px;">+</div>
+                        <span style="font-size: 12px; color: #7488b6; font-weight: 500;">Add Stream Monitor</span>
+                    </div>
+                `;
+            }
+            grid.appendChild(card);
+        });
+    };
+
+    window.openStreamModal = function(slotId) {
+        activeTargetSlotId = slotId;
+        const input = document.getElementById('streamInputUrl');
+        if (input) input.value = '';
+        const modal = document.getElementById('streamModal');
+        if (modal) modal.style.display = 'flex';
+        if (input) input.focus();
+    };
+
+    window.closeStreamModal = function() {
+        const modal = document.getElementById('streamModal');
+        if (modal) modal.style.display = 'none';
+        activeTargetSlotId = null;
+    };
+
+    window.confirmAddMonitor = function() {
+        const urlInput = document.getElementById('streamInputUrl').value.trim();
+        if (!urlInput) {
+            alert("Please enter a valid live stream or profile URL.");
+            return;
+        }
+        
+        let parsedName = "Live Streamer";
+        let platform = "TikTok Live";
+        const lowerUrl = urlInput.toLowerCase();
+
+        if (lowerUrl.includes("shopee")) {
+            platform = "Shopee Live";
+        } else if (lowerUrl.includes("lazada")) {
+            platform = "Lazada Live";
+        }
+        
+        if (urlInput.includes("@")) {
+            const parts = urlInput.split("@");
+            if (parts.length > 1) {
+                const handlePart = parts[1].split("/")[0].split("?")[0];
+                parsedName = "@" + handlePart;
+            }
+        } else if (urlInput.includes("shop/")) {
+            const parts = urlInput.split("shop/");
+            if (parts.length > 1) {
+                const shopPart = parts[1].split("/")[0].split("?")[0];
+                parsedName = shopPart.charAt(0).toUpperCase() + shopPart.slice(1);
+            }
+        }
+        
+        const targetSlot = monitorSlots.find(s => s.id === activeTargetSlotId);
+        if (targetSlot) {
+            targetSlot.active = true;
+            targetSlot.url = urlInput;
+            targetSlot.name = parsedName;
+            targetSlot.platform = platform;
+        }
+        
+        closeStreamModal();
+        renderMonitorGrid();
+    };
+
+    window.removeMonitor = function(slotId) {
+        const targetSlot = monitorSlots.find(s => s.id === slotId);
+        if (targetSlot) {
+            targetSlot.active = false;
+            targetSlot.url = "";
+            targetSlot.name = "";
+            targetSlot.platform = "";
+        }
+        renderMonitorGrid();
+    };
+
+    window.addNewMonitorSlot = function() {
+        const newId = monitorSlots.length + 1;
+        monitorSlots.push({ id: newId, active: false, url: "", name: "", platform: "" });
+        renderMonitorGrid();
+    };
+
+    window.resetAllMonitors = function() {
+        monitorSlots = [
+            { id: 1, active: false, url: "", name: "", platform: "" },
+            { id: 2, active: false, url: "", name: "", platform: "" },
+            { id: 3, active: false, url: "", name: "", platform: "" },
+            { id: 4, active: false, url: "", name: "", platform: "" }
+        ];
+        renderMonitorGrid();
+    };
+
+    window.openStreamWindow = function(encodedUrl) {
+        const url = decodeURIComponent(encodedUrl);
+        const width = 420;
+        const height = 780;
+        const left = window.screen.width - width - 40;
+        const top = 40;
+        window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars=yes`);
+    };
+
+    renderMonitorGrid();
+
+  // Closing brackets for the main IIFE function
+  })(); 
 </script>
 </body>
 </html>
