@@ -938,16 +938,16 @@ aside.sidebar.collapsed ~ main.main-content {
         <!-- TAB: LIVE PREVIEW ROOM -->
 <div id="tab-live-preview" class="tab-panel" style="display: none; padding: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
-            <p style="font-size: 11px; color: #7488b6; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px;">EASY WAYS CONNECTION CORP.</p>
-            <h1 style="font-size: 22px; color: var(--paper, #fff); margin: 0;">LIVE PREVIEW ROOM</h1>
-            <p style="font-size: 12px; color: #7488b6; margin: 4px 0 0;">Multi-Channel Stream Monitoring Hub</p>
-        </div>
-        <div style="display: flex; gap: 8px;">
-            <button onclick="addNewMonitorSlot()" class="btn primary" style="font-size: 12px; padding: 8px 14px;">+ Add Slot</button>
-            <button onclick="resetAllMonitors()" class="btn" style="font-size: 12px; padding: 8px 14px;">Reset All</button>
-        </div>
+    <div>
+        <h2 style="margin: 0;">LIVE PREVIEW ROOM</h2>
+        <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 12px;">Multi-Channel Stream Monitoring Hub</p>
     </div>
+    <div style="display: flex; gap: 8px;">
+        <button onclick="addNewMonitorSlot()" class="btn primary">+ Add Slot</button>
+        <button onclick="manualSaveMonitors()" class="btn">💾 Save Layout</button>
+        <button onclick="resetAllMonitors()" class="btn">Reset All</button>
+    </div>
+</div>
 
     <!-- Monitor Cards Grid -->
     <div id="monitorGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
@@ -6095,9 +6095,13 @@ if (typeof window.loadAdminLiveCommissions === 'function') {
     // ==========================================
     // LIVE WEB PREVIEW ROOM CONTROLLER ENGINE
     // ==========================================
-    let monitorSlots = []; // Starts completely empty with no presets
-
+    let monitorSlots = JSON.parse(localStorage.getItem('admin_monitor_slots')) || [];
     let activeTargetSlotId = null;
+
+    // Helper function to persist changes
+    function saveMonitorSlots() {
+        localStorage.setItem('admin_monitor_slots', JSON.stringify(monitorSlots));
+    }
   
   window.renderMonitorGrid = function() {
         const grid = document.getElementById('monitorGrid');
@@ -6164,22 +6168,8 @@ if (typeof window.loadAdminLiveCommissions === 'function') {
 window.deleteSlot = function(event, slotId) {
         event.stopPropagation();
         monitorSlots = monitorSlots.filter(s => s.id !== slotId);
+        saveMonitorSlots();
         renderMonitorGrid();
-    };
-
-    window.openStreamModal = function(slotId) {
-        activeTargetSlotId = slotId;
-        const input = document.getElementById('streamInputUrl');
-        if (input) input.value = '';
-        const modal = document.getElementById('streamModal');
-        if (modal) modal.style.display = 'flex';
-        if (input) input.focus();
-    };
-
-    window.closeStreamModal = function() {
-        const modal = document.getElementById('streamModal');
-        if (modal) modal.style.display = 'none';
-        activeTargetSlotId = null;
     };
 
     window.confirmAddMonitor = function() {
@@ -6222,6 +6212,7 @@ window.deleteSlot = function(event, slotId) {
         }
         
         closeStreamModal();
+        saveMonitorSlots();
         renderMonitorGrid();
     };
 
@@ -6233,17 +6224,20 @@ window.deleteSlot = function(event, slotId) {
             targetSlot.name = "";
             targetSlot.platform = "";
         }
+        saveMonitorSlots();
         renderMonitorGrid();
     };
 
     window.addNewMonitorSlot = function() {
         const newId = monitorSlots.length > 0 ? Math.max(...monitorSlots.map(s => s.id)) + 1 : 1;
         monitorSlots.push({ id: newId, active: false, url: "", name: "", platform: "" });
+        saveMonitorSlots();
         renderMonitorGrid();
     };
 
     window.resetAllMonitors = function() {
         monitorSlots = [];
+        saveMonitorSlots();
         renderMonitorGrid();
     };
 
@@ -6254,6 +6248,11 @@ window.deleteSlot = function(event, slotId) {
         const left = window.screen.width - width - 40;
         const top = 40;
         window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+    };
+
+  window.manualSaveMonitors = function() {
+        saveMonitorSlots();
+        alert("Monitoring slots layout saved successfully!");
     };
 
     // Initial render
