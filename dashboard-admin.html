@@ -6095,11 +6095,7 @@ if (typeof window.loadAdminLiveCommissions === 'function') {
     // ==========================================
     // LIVE WEB PREVIEW ROOM CONTROLLER ENGINE
     // ==========================================
-      let monitorSlots = [
-        { id: 1, active: true, url: "https://www.tiktok.com/@momomfood", name: "@momomfood", platform: "TikTok Live" },
-        { id: 2, active: false, url: "", name: "", platform: "" },
-        { id: 3, active: false, url: "", name: "", platform: "" }
-    ];
+    let monitorSlots = []; // Starts completely empty with no presets
 
     let activeTargetSlotId = null;
   
@@ -6109,11 +6105,21 @@ if (typeof window.loadAdminLiveCommissions === 'function') {
         
         grid.innerHTML = '';
         
+        if (monitorSlots.length === 0) {
+            grid.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted, #7488b6); border: 2px dashed var(--line, #000); border-radius: 12px; background: var(--navy-800, #f4f4f5);">
+                    <p style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">No stream monitors active.</p>
+                    <p style="font-size: 12px; margin-bottom: 16px;">Click the "+ Add Slot" button above to add a TikTok, Shopee, or Lazada live stream.</p>
+                </div>
+            `;
+            return;
+        }
+
         monitorSlots.forEach(slot => {
             const card = document.createElement('div');
             card.style.cssText = "background: var(--navy-800, #f4f4f5); border: 1px solid var(--line, #000000); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 320px; position: relative;";
         
-        if (slot.active) {
+            if (slot.active) {
                 card.innerHTML = `
                     <div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -6237,11 +6243,7 @@ window.deleteSlot = function(event, slotId) {
     };
 
     window.resetAllMonitors = function() {
-        monitorSlots = [
-            { id: 1, active: false, url: "", name: "", platform: "" },
-            { id: 2, active: false, url: "", name: "", platform: "" },
-            { id: 3, active: false, url: "", name: "", platform: "" }
-        ];
+        monitorSlots = [];
         renderMonitorGrid();
     };
 
