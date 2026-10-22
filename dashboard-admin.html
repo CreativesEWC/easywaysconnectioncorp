@@ -652,7 +652,7 @@ aside.sidebar.collapsed ~ main.main-content {
     </div>
     
    <nav class="sidebar-nav">
-  
+
   <!-- HOME ACCORDION -->
   <div class="nav-accordion">
     <button type="button" class="nav-group-btn open" onclick="toggleSubNav('homeSubMenu', this)">
@@ -663,36 +663,42 @@ aside.sidebar.collapsed ~ main.main-content {
       <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
     
+    <!-- SUB-MENU (ONLY CONTAINS MAIN DASHBOARD AND LIVE PREVIEW ROOM) -->
     <div id="homeSubMenu" class="sub-nav-group open">
       <button type="button" data-tab="home" class="active" onclick="switchTab('home')">
-        <span>•</span> Main Dashboard
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        <span>Main Dashboard</span>
       </button>
-      
-    <button type="button" data-tab="live-preview" onclick="switchTab('live-preview')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M23 7l-7 5 7 5V7z"></path>
-    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-  </svg>
-  <span>Live Preview Room</span>
-</button>
 
-  <!-- ATTENDANCE -->
-  <button data-tab="attendance">
+      <button type="button" data-tab="live-preview" onclick="switchTab('live-preview')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"></path>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+        </svg>
+        <span>Live Preview Room</span>
+      </button>
+    </div> <!-- CLOSE homeSubMenu HERE -->
+  </div> <!-- CLOSE nav-accordion HERE -->
+
+  <!-- ATTENDANCE (NOW OUTSIDE HOME) -->
+  <button data-tab="attendance" onclick="switchTab('attendance')">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
     <span>Attendance</span>
   </button>
 
   <!-- NOTIFICATIONS -->
-  <button data-tab="notifications">
+  <button data-tab="notifications" onclick="switchTab('notifications')">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
     <span>Notifications</span>
   </button>
-     
+
   <!-- AI VIDEO MATRIX (DEV ONLY) -->
-      <button id="aiMatrixNavBtn" onclick="window.location.href='ai-video-matrix.html'" style="color: var(--mint-500);">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7v5h-2v-5a5 5 0 0 0-5-5h-1v1.27a2 2 0 1 1-2 0V7H8a5 5 0 0 0-5 5v5H1v-5a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 12 2z"/><rect x="8" y="16" width="8" height="6" rx="1"/></svg>
-        <span>AI Video Matrix</span>
-      </button>
+  <button id="aiMatrixNavBtn" onclick="window.location.href='ai-video-matrix.html'" style="color: var(--mint-500);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7v5h-2v-5a5 5 0 0 0-5-5h-1v1.27a2 2 0 1 1-2 0V7H8a5 5 0 0 0-5 5v5H1v-5a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 12 2z"/><rect x="8" y="16" width="8" height="6" rx="1"/></svg>
+    <span>AI Video Matrix</span>
+  </button>
+
+  <!-- OTHER ACCORDIONS BELOW... -->
 
   <!-- TEAM MANAGEMENT ACCORDION -->
   <div class="nav-accordion">
