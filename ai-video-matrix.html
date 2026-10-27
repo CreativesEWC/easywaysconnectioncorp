@@ -38,6 +38,13 @@
   .col-inbox { width: 320px; background: var(--navy-900); border-right: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; }
   .inbox-header { padding: 15px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; color: var(--amber-400); text-transform: uppercase; letter-spacing: 0.1em; display: flex; justify-content: space-between; }
   .inbox-list { flex: 1; overflow-y: auto; }
+  .inbox-search { padding: 10px 15px; border-bottom: 1px solid var(--line); position: relative; flex-shrink: 0; }
+  .inbox-search input { width: 100%; background: var(--navy-800); border: 1px solid var(--line); color: var(--paper); padding: 9px 30px 9px 12px; border-radius: 6px; font-size: 13px; font-family: var(--font-body); outline: none; }
+  .inbox-search input::placeholder { color: var(--text-muted); }
+  .inbox-search input:focus { border-color: var(--amber-500); }
+  .inbox-search .search-clear { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); font-size: 18px; line-height: 1; cursor: pointer; display: none; padding: 0; }
+  .inbox-search .search-clear:hover { color: var(--paper); }
+  .no-match { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; display: none; }
   .vid-item { padding: 15px; border-bottom: 1px solid var(--line); cursor: pointer; transition: 0.2s; display: flex; gap: 12px; align-items: center; }
   .vid-item:hover { background: var(--navy-800); }
   .vid-item.active { background: var(--navy-800); border-left: 4px solid var(--mint-500); }
@@ -79,6 +86,10 @@
   <div class="col-inbox">
     <div class="inbox-header">
       Pending Audits <span id="pendingCount">0</span>
+    </div>
+    <div class="inbox-search">
+      <input type="text" id="inboxSearch" placeholder="Search by name..." autocomplete="off" oninput="filterQueue()">
+      <button class="search-clear" id="searchClear" title="Clear search" onclick="clearSearch()">&times;</button>
     </div>
     <div class="inbox-list" id="videoInbox">
       <div style="padding: 20px; text-align: center; color: var(--text-muted); font-style: italic;">Loading queue...</div>
@@ -231,6 +242,35 @@
       else { statusEl.textContent = "❌ UNUSABLE"; statusEl.style.color = "var(--coral-500)"; }
   }
 
+  // 2.5 Search filter (names)
+  function filterQueue() {
+      const input = document.getElementById('inboxSearch');
+      const term = input.value.trim().toLowerCase();
+      document.getElementById('searchClear').style.display = term ? 'block' : 'none';
+
+      const items = document.querySelectorAll('#videoInbox .vid-item');
+      let visible = 0;
+      items.forEach(el => {
+          const match = !term || (el.dataset.name || '').includes(term);
+          el.style.display = match ? '' : 'none';
+          if (match) visible++;
+      });
+
+      const noMatch = document.getElementById('noMatchMsg');
+      if (noMatch) noMatch.style.display = (items.length && !visible) ? 'block' : 'none';
+
+      if (items.length) {
+          document.getElementById('pendingCount').textContent = term ? `${visible} / ${items.length}` : items.length;
+      }
+  }
+
+  function clearSearch() {
+      const input = document.getElementById('inboxSearch');
+      input.value = '';
+      filterQueue();
+      input.focus();
+  }
+
   // 3. Load Pending Videos
   async function loadPendingQueue() {
       const inbox = document.getElementById('videoInbox');
@@ -258,14 +298,15 @@
               const empName = v.employees?.name || 'Unknown Seller';
               const dateFmt = new Date(v.created_at).toLocaleDateString([], {month:'short', day:'numeric'});
               return `
-              <div class="vid-item" id="vid-${v.id}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
+              <div class="vid-item" id="vid-${v.id}" data-name="${escapeHtml(empName.toLowerCase())}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
                   <div class="vid-thumb">▶</div>
                   <div class="vid-info">
                       <div class="vid-name">${escapeHtml(empName)}</div>
                       <div class="vid-meta">Uploaded: ${dateFmt}</div>
                   </div>
               </div>`;
-          }).join('');
+          }).join('') + `<div class="no-match" id="noMatchMsg">No names match your search.</div>`;
+          filterQueue(); // re-apply any active search after a reload
       } catch (err) {
           console.error("Queue load error:", err);
           inbox.innerHTML = `<div style="padding: 20px; color: var(--coral-500);">Error: ${err.message}</div>`;
