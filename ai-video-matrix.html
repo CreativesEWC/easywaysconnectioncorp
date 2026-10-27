@@ -768,12 +768,20 @@
           });
 
           // NEW: Instantly delete the temporary video from Supabase to save space
-          const filePath = activeRawVideoUrl.split('temp-ai-videos/')[1];
-          if (filePath) {
-              await supabaseClient.storage.from('temp-ai-videos').remove([filePath]);
+          const marker = 'temp-ai-videos/';
+          const idx = activeRawVideoUrl.indexOf(marker);
+          if (idx !== -1) {
+            const filePath = decodeURIComponent(
+              activeRawVideoUrl.slice(idx + marker.length).split('?')[0]
+              );
+            const { data, error } = await supabaseClient.storage
+            .from('temp-ai-videos')
+            .remove([filePath]);
+            if (error || !data || data.length === 0) {
+              console.warn('Video cleanup failed:', error || 'no file removed (check storage delete policy)');
+              }
           }
 
-          btn.textContent = 'Saved Successfully!';
           btn.textContent = 'Saved Successfully!';
           
           // Clear screen and load next video
