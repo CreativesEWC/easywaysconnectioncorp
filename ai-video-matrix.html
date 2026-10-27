@@ -44,6 +44,10 @@
   .inbox-search input:focus { border-color: var(--amber-500); }
   .inbox-search .search-clear { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); font-size: 18px; line-height: 1; cursor: pointer; display: none; padding: 0; }
   .inbox-search .search-clear:hover { color: var(--paper); }
+  .inbox-sort { padding: 8px 15px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .inbox-sort label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; white-space: nowrap; }
+  .inbox-sort select { flex: 1; background: var(--navy-800); color: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: var(--font-body); outline: none; cursor: pointer; }
+  .inbox-sort select:focus { border-color: var(--amber-500); }
   .no-match { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; display: none; }
   .vid-item { padding: 15px; border-bottom: 1px solid var(--line); cursor: pointer; transition: 0.2s; display: flex; gap: 12px; align-items: center; }
   .vid-item:hover { background: var(--navy-800); }
@@ -52,6 +56,13 @@
   .vid-info { flex: 1; min-width: 0; }
   .vid-name { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vid-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Auto-fail flags */
+  .dq-box { margin-top: 16px; padding: 12px; border: 1px solid var(--coral-700); border-radius: 8px; background: rgba(217,97,79,0.06); }
+  .dq-title { font-family: var(--font-mono); font-size: 10px; color: var(--coral-500); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .dq-card { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; cursor: pointer; font-size: 13px; line-height: 1.3; }
+  .dq-card:hover { color: var(--coral-500); }
+  .dq-cb { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--coral-500); cursor: pointer; }
 
   /* Col 2: Video Player */
   .col-player { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
@@ -90,6 +101,13 @@
     <div class="inbox-search">
       <input type="text" id="inboxSearch" placeholder="Search by name..." autocomplete="off" oninput="filterQueue()">
       <button class="search-clear" id="searchClear" title="Clear search" onclick="clearSearch()">&times;</button>
+    </div>
+    <div class="inbox-sort">
+      <label for="sortOrder">Sort by video date</label>
+      <select id="sortOrder" onchange="renderQueue()">
+        <option value="desc">Newest first (Descending)</option>
+        <option value="asc">Oldest first (Ascending)</option>
+      </select>
     </div>
     <div class="inbox-list" id="videoInbox">
       <div style="padding: 20px; text-align: center; color: var(--text-muted); font-style: italic;">Loading queue...</div>
@@ -138,6 +156,7 @@
     
     <div class="qa-scroll">
       <div id="qaChecklist"></div>
+      <div id="dqChecklist"></div>
       
       <div style="margin-top: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
@@ -206,6 +225,36 @@
 
   let activeRules = ruleSets.creative; // Default selection
 
+  // Auto-fail flags: apply to ALL brands and ALL grading modes.
+  // If any one is ticked, the video is REJECTED no matter what the /10 score is.
+  const disqualifiers = [
+      { key: 'oa',                 short: 'OA',                 label: 'Over-Active (OA): Exaggerated acting, over-the-top expressions or gestures.' },
+      { key: 'yelling',            short: 'Yelling',            label: 'Yelling: Shouting or screaming instead of speaking naturally.' },
+      { key: 'clumsy',             short: 'Clumsy',             label: 'Clumsy: Fumbling, dropping the product, awkward handling, or unprepared delivery.' },
+      { key: 'exaggerated_claims', short: 'Exaggerated Claims', label: 'Exaggerated Claims: Unrealistic or unproven promises (e.g., "100% guaranteed", "instant results", "cures").' },
+      { key: 'hyper',              short: 'Hyper',              label: 'Hyper: Frantic, rushed, or hyperactive energy that feels unnatural.' }
+  ];
+
+  function renderDisqualifiers() {
+      document.getElementById('dqChecklist').innerHTML = `
+          <div class="dq-box">
+              <div class="dq-title">🚫 Auto-Fail Flags (any one = Rejected)</div>
+              ${disqualifiers.map(d => `
+                  <label class="dq-card">
+                      <input type="checkbox" class="dq-cb" data-key="${d.key}" onchange="calculateScore()">
+                      <span>${d.label}</span>
+                  </label>`).join('')}
+          </div>`;
+      calculateScore();
+  }
+
+  function getRaisedFlags() {
+      return disqualifiers.filter(d => {
+          const cb = document.querySelector(`.dq-cb[data-key="${d.key}"]`);
+          return cb && cb.checked;
+      });
+  }
+
   // 1. Initialize Form
   const checklistContainer = document.getElementById('qaChecklist');
   
@@ -229,13 +278,23 @@
 
   // Initial render
   renderChecklist();
+  renderDisqualifiers();
 
   // 2. Score Calculator
   function calculateScore() {
       const checked = document.querySelectorAll('.rule-cb:checked').length;
       document.getElementById('liveScore').textContent = checked;
-      
+
       const statusEl = document.getElementById('liveStatus');
+      const flags = getRaisedFlags();
+
+      // Any auto-fail flag overrides the score
+      if (flags.length) {
+          statusEl.textContent = "🚫 FAILED: " + flags.map(f => f.short).join(', ');
+          statusEl.style.color = "var(--coral-500)";
+          return;
+      }
+
       if (checked >= 9) { statusEl.textContent = "✅ EXCELLENT"; statusEl.style.color = "var(--mint-500)"; }
       else if (checked >= 6) { statusEl.textContent = "✅ APPROVED"; statusEl.style.color = "var(--mint-500)"; }
       else if (checked >= 4) { statusEl.textContent = "⚠️ NEEDS WORK"; statusEl.style.color = "var(--amber-400)"; }
@@ -272,6 +331,8 @@
   }
 
   // 3. Load Pending Videos
+  let queueVids = []; // last fetched queue, kept so sorting doesn't need a refetch
+
   async function loadPendingQueue() {
       const inbox = document.getElementById('videoInbox');
       inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Loading queue...</div>`;
@@ -286,31 +347,55 @@
 
           if (error) throw error;
 
-          const queueCount = vids ? vids.length : 0;
-          document.getElementById('pendingCount').textContent = queueCount;
-
-          if (queueCount === 0) {
-              inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Queue is empty! 🎉</div>`;
-              return;
-          }
-
-          inbox.innerHTML = vids.map(v => {
-              const empName = v.employees?.name || 'Unknown Seller';
-              const dateFmt = new Date(v.created_at).toLocaleDateString([], {month:'short', day:'numeric'});
-              return `
-              <div class="vid-item" id="vid-${v.id}" data-name="${escapeHtml(empName.toLowerCase())}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
-                  <div class="vid-thumb">▶</div>
-                  <div class="vid-info">
-                      <div class="vid-name">${escapeHtml(empName)}</div>
-                      <div class="vid-meta">Uploaded: ${dateFmt}</div>
-                  </div>
-              </div>`;
-          }).join('') + `<div class="no-match" id="noMatchMsg">No names match your search.</div>`;
-          filterQueue(); // re-apply any active search after a reload
+          queueVids = vids || [];
+          renderQueue();
       } catch (err) {
           console.error("Queue load error:", err);
           inbox.innerHTML = `<div style="padding: 20px; color: var(--coral-500);">Error: ${err.message}</div>`;
       }
+  }
+
+  // Turns the portal's upload_date ('YYYY-MM-DD') into a local Date without timezone shifting.
+  // Falls back to created_at if a row has no upload_date.
+  function videoDateOf(v) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v.upload_date || '');
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+      const c = new Date(v.created_at);
+      return new Date(c.getFullYear(), c.getMonth(), c.getDate());
+  }
+
+  // Sorts by upload_date (the date the employee entered in the portal);
+  // videos sharing the same date are ordered by when they reached the system (created_at).
+  function renderQueue() {
+      const inbox = document.getElementById('videoInbox');
+      const dir = document.getElementById('sortOrder').value === 'asc' ? 1 : -1;
+
+      document.getElementById('pendingCount').textContent = queueVids.length;
+
+      if (queueVids.length === 0) {
+          inbox.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-muted);">Queue is empty! 🎉</div>`;
+          return;
+      }
+
+      const sorted = [...queueVids].sort((a, b) => {
+          const diff = (videoDateOf(a) - videoDateOf(b)) || (new Date(a.created_at) - new Date(b.created_at));
+          return (diff || String(a.id).localeCompare(String(b.id))) * dir;
+      });
+
+      inbox.innerHTML = sorted.map(v => {
+          const empName = v.employees?.name || 'Unknown Seller';
+          const dateFmt = videoDateOf(v).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+          return `
+          <div class="vid-item${v.id === activeVideoId ? ' active' : ''}" id="vid-${v.id}" data-name="${escapeHtml(empName.toLowerCase())}" onclick="loadVideoToPlayer('${v.id}', '${v.video_file_url}', '${v.employee_id}', '${v.upload_date}')">
+              <div class="vid-thumb">▶</div>
+              <div class="vid-info">
+                  <div class="vid-name">${escapeHtml(empName)}</div>
+                  <div class="vid-meta">Video Date: ${dateFmt}</div>
+              </div>
+          </div>`;
+      }).join('') + `<div class="no-match" id="noMatchMsg">No names match your search.</div>`;
+
+      filterQueue(); // re-apply any active name search
   }
 
  // 4. Load Video to Main View
@@ -346,9 +431,111 @@
   // 4.5 Reset Form Logic
   function resetForm() {
       document.querySelectorAll('.rule-cb').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.dq-cb').forEach(cb => cb.checked = false);
       const notesEl = document.getElementById('qaNotes');
       if (notesEl) notesEl.value = '';
       calculateScore();
+  }
+
+  // 4.8 Video analysis helpers (frames, cuts, loudness, pace)
+  const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // sees images, max 5 per request
+  const TEXT_MODEL   = "openai/gpt-oss-20b";                          // fallback when frames can't be read
+
+  async function analyzeVideoVisuals(blob) {
+      const url = URL.createObjectURL(blob);
+      try {
+          const v = document.createElement('video');
+          v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+          await new Promise((res, rej) => {
+              v.onloadeddata = res;
+              v.onerror = () => rej(new Error('This browser cannot decode the video format.'));
+              setTimeout(() => rej(new Error('Video took too long to load.')), 20000);
+          });
+
+          const dur = v.duration;
+          if (!isFinite(dur) || dur <= 0 || !v.videoWidth) throw new Error('Unreadable video duration.');
+
+          const seekTo = (t) => new Promise(res => {
+              const done = () => { v.removeEventListener('seeked', done); res(); };
+              v.addEventListener('seeked', done);
+              v.currentTime = Math.min(Math.max(t, 0.05), Math.max(dur - 0.05, 0.05));
+              setTimeout(done, 2500); // never hang on a stuck seek
+          });
+
+          // (a) Cut / transition detection: compare tiny thumbnails over time
+          const tw = 48, th = Math.max(8, Math.round(48 * v.videoHeight / v.videoWidth));
+          const small = document.createElement('canvas'); small.width = tw; small.height = th;
+          const sctx = small.getContext('2d', { willReadFrequently: true });
+          const step = Math.max(0.5, dur / 60);
+          let prev = null, cuts = 0, diffSum = 0, diffN = 0;
+          for (let t = 0.05; t < dur; t += step) {
+              await seekTo(t);
+              sctx.drawImage(v, 0, 0, tw, th);
+              const d = sctx.getImageData(0, 0, tw, th).data;
+              if (prev) {
+                  let sum = 0;
+                  for (let i = 0; i < d.length; i += 4) {
+                      sum += Math.abs(d[i] - prev[i]) + Math.abs(d[i+1] - prev[i+1]) + Math.abs(d[i+2] - prev[i+2]);
+                  }
+                  const diff = sum / ((d.length / 4) * 3 * 255);
+                  diffSum += diff; diffN++;
+                  if (diff > 0.2) cuts++;
+              }
+              prev = new Uint8ClampedArray(d);
+          }
+
+          // (b) Five key frames: hook, 25%, 50%, 75%, ending
+          const fw = 480, fh = Math.round(480 * v.videoHeight / v.videoWidth);
+          const big = document.createElement('canvas'); big.width = fw; big.height = fh;
+          const bctx = big.getContext('2d');
+          const times = [0.3, dur * 0.25, dur * 0.5, dur * 0.75, dur - 0.7];
+          const frames = [];
+          for (const t of times) {
+              await seekTo(t);
+              bctx.drawImage(v, 0, 0, fw, fh);
+              frames.push(big.toDataURL('image/jpeg', 0.7));
+          }
+
+          return { frames, duration: dur, cuts, avgChange: diffN ? diffSum / diffN : 0 };
+      } finally {
+          URL.revokeObjectURL(url);
+      }
+  }
+
+  async function analyzeAudioEnergy(blob) {
+      if (blob.size > 60 * 1024 * 1024) return null; // too heavy to decode in the browser
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      const ctx = new Ctx();
+      try {
+          const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+          const data = buf.getChannelData(0);
+          const win = Math.floor(buf.sampleRate * 0.1);
+          const rmsList = [];
+          let clipped = 0;
+          for (let i = 0; i + win <= data.length; i += win) {
+              let sum = 0;
+              for (let j = i; j < i + win; j++) {
+                  const x = data[j];
+                  sum += x * x;
+                  if (Math.abs(x) >= 0.98) clipped++;
+              }
+              rmsList.push(Math.sqrt(sum / win));
+          }
+          const voiced = rmsList.filter(r => r > 0.01).sort((a, b) => a - b);
+          if (voiced.length < 5) return null;
+          const db = x => 20 * Math.log10(x);
+          return {
+              medianDb: db(voiced[Math.floor(voiced.length * 0.5)]),
+              peakDb: db(voiced[Math.floor(voiced.length * 0.95)]),
+              loudSharePct: 100 * voiced.filter(r => r > 0.2).length / voiced.length,
+              clipPct: 100 * clipped / (rmsList.length * win)
+          };
+      } catch (e) {
+          return null;
+      } finally {
+          ctx.close();
+      }
   }
 
  // 5. Submit to Groq API (3-Mode Auto-Grading Engine)
@@ -383,6 +570,7 @@
           const audioData = new FormData();
           audioData.append("file", videoBlob, "video.mp4");
           audioData.append("model", "whisper-large-v3-turbo");
+          audioData.append("response_format", "verbose_json");
 
           const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
               method: 'POST',
@@ -391,31 +579,69 @@
           });
           const transcriptJson = await whisperRes.json();
           if (transcriptJson.error) throw new Error(transcriptJson.error.message);
-          const actualTranscript = transcriptJson.text || "[No speech detected]";
+          const actualTranscript = (transcriptJson.text || '').trim() || "[No speech detected]";
+
+          // Speaking pace (words per minute of actual speech)
+          const wordCount = actualTranscript.split(/\s+/).filter(Boolean).length;
+          const speechSecs = (transcriptJson.segments || []).reduce((a, sg) => a + Math.max(0, sg.end - sg.start), 0);
+          const wpm = speechSecs > 2 ? Math.round(wordCount / (speechSecs / 60)) : null;
+
+          // Visual + audio signals (non-fatal: falls back to transcript-only if the browser can't read the file)
+          btn.textContent = 'EWC AI is watching the video...';
+          let visuals = null, audioStats = null, visualWarning = '';
+          try { visuals = await analyzeVideoVisuals(videoBlob); }
+          catch (e) { visualWarning = e.message; console.warn('Visual analysis skipped:', e); }
+          audioStats = await analyzeAudioEnergy(videoBlob);
 
           btn.textContent = 'EWC AI is grading...';
           const selectedMode = document.querySelector('input[name="aiMode"]:checked').value.toUpperCase();
 
           const brandContexts = {
-              general: "Generic e-commerce product evaluation.",
-              seoul: "Brand: Seoul Secrets. Products: Skincare, body lotion, sunscreen, whitening soap, bleaching products, face/body/hair care. AUDIENCE: Highly inclusive (Women, Men, LGBTQ+). Do NOT enforce gender norms. Judge favorably if the hook appeals universally.",
-              momom: "Brand: Momom Foods. Products: Cereal krunch, chocolates, biscuits, wafer chocolates, candies, gummies. Focus on taste, craving satisfaction, and food appeal.",
-              wowlinis: "Brand: WowLinis. Products: Home cleaning. Focus on effective stain removal, easy home maintenance, and cleanliness.",
-              puti: "Brand: Puti Plus. Products: Laundry cleaning. Focus on bright whites, tough stain removal on clothes, and fresh scent.",
-              coffee: "Brand: ME Coffee & Joco Coffee. Products: Chocolate coffee, black coffee, crema. Focus on morning energy, rich flavor, and brewing experience."
+              general: "Generic e-commerce product evaluation. Exaggerated claims = guarantees, 'instant' or '100%' results, miracle or cure language.",
+              seoul: "Brand: Seoul Secrets. Products: Skincare, body lotion, sunscreen, whitening soap, bleaching products, face/body/hair care. AUDIENCE: Highly inclusive (Women, Men, LGBTQ+). Do NOT enforce gender norms. Judge favorably if the hook appeals universally. EXAGGERATED CLAIMS for this brand: guaranteed or overnight whitening, 'instant' results, 'removes all dark spots/scars', medical or cure claims, 'permanent', or implying a specific skin tone is better.",
+              momom: "Brand: Momom Foods. Products: Cereal krunch, chocolates, biscuits, wafer chocolates, candies, gummies. Focus on taste, craving satisfaction, and food appeal. EXAGGERATED CLAIMS for this brand: health, diet, weight-loss or medicinal claims, 'healthiest', 'best in the world', or false superlatives.",
+              wowlinis: "Brand: WowLinis. Products: Home cleaning. Focus on effective stain removal, easy home maintenance, and cleanliness. EXAGGERATED CLAIMS for this brand: '100% stain removal', 'kills 99.9% of germs' or similar unsubstantiated disinfecting claims, 'works instantly on everything'.",
+              puti: "Brand: Puti Plus. Products: Laundry cleaning. Focus on bright whites, tough stain removal on clothes, and fresh scent. EXAGGERATED CLAIMS for this brand: '100% stain removal', guaranteed 'whiter than new', or 'works on every stain'.",
+              coffee: "Brand: ME Coffee & Joco Coffee. Products: Chocolate coffee, black coffee, crema. Focus on morning energy, rich flavor, and brewing experience. EXAGGERATED CLAIMS for this brand: fat-burning, weight-loss, health-cure or medicinal claims, or unrealistic energy promises."
           };
           const selectedBrand = document.getElementById('brandContext').value;
           const targetContext = brandContexts[selectedBrand];
 
+          const signalLines = [
+              `Video length: ${visuals ? visuals.duration.toFixed(1) + 's' : 'unknown'}`,
+              visuals ? `Visual cuts/transitions detected (sampled, so a minimum): ${visuals.cuts}. Average frame-to-frame change: ${(visuals.avgChange * 100).toFixed(0)}% (higher = busier/faster editing).` : `Visual analysis unavailable (${visualWarning || 'unknown reason'}). Judge only from the transcript and say so in feedback.`,
+              wpm ? `Speaking pace: ~${wpm} words/min (Taglish natural range is roughly 130-190; above ~200 can indicate hyper or rushed delivery).` : 'Speaking pace: unknown.',
+              audioStats ? `Audio level: median ${audioStats.medianDb.toFixed(0)} dBFS, loud peaks ${audioStats.peakDb.toFixed(0)} dBFS, ${audioStats.loudSharePct.toFixed(0)}% of speech very loud, ${audioStats.clipPct.toFixed(2)}% clipped samples (sustained very loud speech with clipping suggests yelling; platform loudness normalization makes this a hint only).` : 'Audio level: unavailable.'
+          ].join('\n          ');
+
           const SYSTEM_PROMPT = `
-          You are an AI Video Auditor. Evaluate the transcript against the following ${selectedMode} rubric.
+          You are an AI Video Auditor. Evaluate this video against the following ${selectedMode} rubric.
           BRAND CONTEXT: ${targetContext}
           Ensure your evaluation and feedback respects this specific product category and target audience.
-          
-          VIDEO TRANSCRIPT: "${actualTranscript}"
-          RUBRIC: ${activeRules.join('\n')}
-          OUTPUT JSON: { "score": 0, "rules": [true,false,true,false,true,false,true,false,true,false], "feedback": "Max 400 chars." }
+
+          WHAT YOU HAVE:
+          - SPOKEN TRANSCRIPT: "${actualTranscript}"
+          - ${visuals ? '5 FRAMES from the video, in order: opening hook, 25%, 50%, 75%, ending. Read all on-screen text, captions, overlays, product packaging and label design, setting, and the person\'s expression and body language.' : 'No frames available.'}
+          - SIGNALS:
+          ${signalLines}
+
+          RUBRIC (score one true/false per line, in order):
+          ${activeRules.join('\n')}
+
+          AUTO-FAIL FLAGS (apply to ALL brands and ALL modes; set true ONLY when clearly present, natural enthusiasm is NOT a flag):
+          - oa: Over-Active. Exaggerated acting, over-the-top expressions or gestures.
+          - yelling: Shouting or screaming instead of speaking naturally.
+          - clumsy: Fumbling, dropping the product, awkward handling, unprepared or messy delivery.
+          - exaggerated_claims: Unrealistic or unproven promises in the SPOKEN words OR in ON-SCREEN TEXT (check the brand-specific list above).
+          - hyper: Frantic, rushed, hyperactive energy that feels unnatural.
+          Any true flag means the video fails regardless of score.
+
+          OUTPUT JSON ONLY: { "score": 0, "rules": [true,false,true,false,true,false,true,false,true,false], "flags": { "oa": false, "yelling": false, "clumsy": false, "exaggerated_claims": false, "hyper": false }, "feedback": "Max 400 chars. Name every raised flag and quote the offending claim or moment briefly." }
           `;
+
+          const messageContent = visuals
+              ? [{ type: 'text', text: SYSTEM_PROMPT }, ...visuals.frames.map(f => ({ type: 'image_url', image_url: { url: f } }))]
+              : SYSTEM_PROMPT;
 
           const evalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
               method: 'POST',
@@ -424,10 +650,10 @@
                   'Authorization': `Bearer ${GROQ_API_KEY}`
               },
               body: JSON.stringify({
-                  model: "openai/gpt-oss-20b",
-                  messages: [{ role: "user", content: SYSTEM_PROMPT }],
+                  model: visuals ? VISION_MODEL : TEXT_MODEL,
+                  messages: [{ role: "user", content: messageContent }],
                   response_format: { type: "json_object" },
-                  temperature: 0 // <-- this line to enforce strict consistency
+                  temperature: 0 // enforce strict consistency
               })
           });
 
@@ -452,6 +678,13 @@
                   checkboxes[idx].dispatchEvent(new Event('change')); 
               }
           });
+
+          // Tick the auto-fail flags the AI raised
+          const aiFlags = analysis.flags || {};
+          document.querySelectorAll('.dq-cb').forEach(cb => {
+              cb.checked = Boolean(aiFlags[cb.dataset.key]);
+          });
+          calculateScore();
 
           // Populate feedback box with the AI feedback
           const feedbackEl = document.getElementById('qaNotes');
@@ -487,8 +720,10 @@
 
       // Reads whatever is CURRENTLY checked on the screen (including human edits)
       const finalScore = document.querySelectorAll('.rule-cb:checked').length;
-      const status = finalScore >= 6 ? 'approved' : 'rejected';
-      const feedbackNotes = document.getElementById('qaNotes').value.trim() || 'Evaluation completed.';
+      const raisedFlags = getRaisedFlags();
+      const status = (finalScore >= 6 && raisedFlags.length === 0) ? 'approved' : 'rejected';
+      const flagText = raisedFlags.length ? `[AUTO-FAIL: ${raisedFlags.map(f => f.short).join(', ')}] ` : '';
+      const feedbackNotes = flagText + (document.getElementById('qaNotes').value.trim() || 'Evaluation completed.');
 
       try {
           const { error: dbErr } = await supabaseClient
@@ -563,8 +798,10 @@
           }
       });
 
+      const raisedFlagNames = getRaisedFlags().map(f => f.label);
       const PROMPT = `
       You are a supportive QA Coach for EWC Creatives. 
+      AUTO-FAIL FLAGS RAISED (video is rejected because of these, explain them first and kindly): ${raisedFlagNames.length ? raisedFlagNames.join(' | ') : 'None'}
       A video was just graded. 
       PASSED CRITERIA: ${passedRules.length > 0 ? passedRules.join(', ') : 'None'}
       FAILED CRITERIA: ${failedRules.length > 0 ? failedRules.join(', ') : 'None'}
