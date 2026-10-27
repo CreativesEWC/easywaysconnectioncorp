@@ -10,7 +10,7 @@
   :root {
     --navy-950: #000000; --navy-900: #000000; --navy-800: #121212;
     --line: #262626; --paper: #ffffff; --text-muted: #a8a8a8;
-    --amber-500: #e8a13a; --amber-400: #f2b854; --coral-500: #d9614f;
+    --mint-500: #4caf84; --font-mono: ui-monospace, Menlo, Consolas, monospace; --amber-500: #e8a13a; --amber-400: #f2b854; --coral-500: #d9614f;
     --font-display: 'Rockwell', Georgia, serif; 
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
@@ -40,6 +40,8 @@
     <h1>Dedicated Video Portal</h1>
     <p>Upload video files directly to Google Drive (Max 30MB per video).</p>
   </div>
+
+<div id="slotStatus" style="text-align:center; font-size:12px; font-family: var(--font-mono); color: var(--text-muted); margin: -8px 0 16px 0;">Checking video slots...</div>
 
 <!-- BACK BUTTON -->
   <button type="button" onclick="window.location.href='dashboard-employee.html'" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px; margin-bottom: 15px; padding: 0; font-family: var(--font-body); transition: color 0.2s;" onmouseover="this.style.color='var(--paper)'" onmouseout="this.style.color='var(--text-muted)'">
@@ -82,11 +84,55 @@
         return;
     }
 
+  // ---------- V1-V15 SLOT HELPERS (cycle = 28th -> 27th) ----------
+    const SLOT_LIMIT = 15;
+    let slotsFull = false;
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmtD = dt => `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+
+    function cycleStartOf(dateStr) {               // dateStr = YYYY-MM-DD
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return fmtD(d >= 28 ? new Date(y, m - 1, 28) : new Date(y, m - 2, 28));
+    }
+    function cycleLabel(cycleStartStr) {
+        const [y, m, d] = cycleStartStr.split('-').map(Number);
+        const f = dt => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${f(new Date(y, m - 1, d))} - ${f(new Date(y, m, 27))}`;
+    }
+    async function getUsedSlots(cycleStart) {
+        const { data, error } = await supabaseClient
+            .from('video_submissions').select('video_no')
+            .eq('employee_id', emp.id).eq('cycle_start', cycleStart);
+        if (error) throw error;
+        return new Set((data || []).map(r => r.video_no));
+    }
+    async function refreshSlotStatus() {
+        const el = document.getElementById('slotStatus');
+        const cs = cycleStartOf(fmtD(new Date()));
+        try {
+            const used = await getUsedSlots(cs);
+            let next = null;
+            for (let n = 1; n <= SLOT_LIMIT; n++) { if (!used.has(n)) { next = n; break; } }
+            slotsFull = next === null;
+            el.style.color = slotsFull ? 'var(--coral-500)' : 'var(--text-muted)';
+            el.textContent = slotsFull
+                ? `Cycle ${cycleLabel(cs)}: ${SLOT_LIMIT}/${SLOT_LIMIT} slots used. FULL. Delete an old or wrong video in the dashboard to free a slot.`
+                : `Cycle ${cycleLabel(cs)}: ${used.size}/${SLOT_LIMIT} slots used. Next upload will be V${next}.`;
+            document.getElementById('vidSubmitBtn').disabled = slotsFull;
+            document.getElementById('addVideoRowBtn').disabled = slotsFull;
+        } catch (err) {
+            el.textContent = '';
+            console.error('Slot status error:', err);
+        }
+    }
+    refreshSlotStatus();
+
   // Add Multiple Rows Logic
     document.getElementById('addVideoRowBtn').addEventListener('click', () => {
         const container = document.getElementById('videoRowsContainer');
         const rowCount = container.querySelectorAll('.video-upload-row').length;
         
+        if (slotsFull) { alert('All 15 video slots for this cycle are used. Delete an old or wrong video first.'); return; }
         if (rowCount >= 5) {
             alert('Maximum 5 videos per batch.');
             return;
@@ -109,6 +155,18 @@
         
         newRow.querySelector('.remove-vid-row').addEventListener('click', () => newRow.remove());
         container.appendChild(newRow);
+    });
+
+    // If the link is edited after fetching, the fetched video no longer matches: reset it
+    document.addEventListener('input', (e) => {
+        if (!e.target.classList.contains('vid-link')) return;
+        const row = e.target.closest('.video-upload-row');
+        if (!row.querySelector('.vid-direct-mp4').value) return;
+        row.querySelector('.vid-direct-mp4').value = '';
+        const btn = row.querySelector('.auto-fetch-btn');
+        btn.textContent = '📥 Auto-Fetch'; btn.disabled = false; btn.style.background = 'var(--amber-500)';
+        const st = row.querySelector('.fetch-status');
+        st.textContent = 'Link changed. Click Auto-Fetch again.'; st.style.color = 'var(--amber-400)';
     });
 
     // 1. Handle the Auto-Fetch Button Click
@@ -138,9 +196,20 @@
                     }
                 });
                 
-                const data = await response.json();
-                
-                if (!data.data || !data.data.play) throw new Error("Could not extract video. Ensure the video is public.");
+                let data = {};
+                try { data = await response.json(); } catch (_) {}
+
+                if (!response.ok || !data.data || !data.data.play) {
+                    console.error('Auto-Fetch failed:', response.status, data);
+                    const apiMsg = String(data.message || data.msg || '');
+                    if (response.status === 429 || /quota|rate limit|exceeded/i.test(apiMsg)) {
+                        throw new Error("The auto-fetch service has reached its limit (not a problem with your video). Try again later and tell your admin.");
+                    }
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error("The auto-fetch service rejected the request. Tell your admin.");
+                    }
+                    throw new Error(apiMsg || "Could not extract video. Ensure the video is public.");
+                }
 
                 hiddenMp4.value = data.data.play; 
                 
@@ -161,85 +230,121 @@
     // 2. Submit Button Logic
     document.getElementById('dedicatedVideoForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const rows = document.querySelectorAll('.video-upload-row');
+        const rows = [...document.querySelectorAll('.video-upload-row')];
         const submitBtn = document.getElementById('vidSubmitBtn');
         submitBtn.disabled = true;
-        let successCount = 0;
+        const assigned = [];
 
         try {
+            // ---- PRE-CHECK (nothing is uploaded until every row passes) ----
+            const usedByCycle = {};
+            const plan = [];
             for (let i = 0; i < rows.length; i++) {
-                submitBtn.textContent = `Processing Video ${i + 1} of ${rows.length}...`;
-                
                 const row = rows[i];
                 const rowDate = row.querySelector('.vid-date').value;
                 const linkInput = row.querySelector('.vid-link').value;
                 const directMp4Url = row.querySelector('.vid-direct-mp4').value;
-
                 if (!rowDate || !linkInput) continue;
                 if (!directMp4Url) throw new Error(`Row ${i + 1} requires you to click Auto-Fetch first.`);
 
-                // Format Date to MM-DD-YYYY to avoid illegal slash characters
+                const cs = cycleStartOf(rowDate);
+                if (!usedByCycle[cs]) usedByCycle[cs] = await getUsedSlots(cs);
+                let slot = null;
+                for (let n = 1; n <= SLOT_LIMIT; n++) { if (!usedByCycle[cs].has(n)) { slot = n; break; } }
+                if (slot === null) {
+                    throw new Error(`Cycle ${cycleLabel(cs)} is full (${SLOT_LIMIT}/${SLOT_LIMIT}). Delete an old or wrong video in the dashboard to free a slot.`);
+                }
+                usedByCycle[cs].add(slot);
+                plan.push({ row, rowDate, linkInput, directMp4Url, slot });
+            }
+            if (plan.length === 0) throw new Error('Nothing to submit.');
+
+            // ---- UPLOAD ONE BY ONE ----
+            for (let k = 0; k < plan.length; k++) {
+                const { row, rowDate, linkInput, directMp4Url, slot } = plan[k];
+                submitBtn.textContent = `Processing Video ${k + 1} of ${plan.length}...`;
+
                 const [year, month, day] = rowDate.split('-');
                 const formattedDate = `${month}-${day}-${year}`;
                 const firstName = emp.name.split(' ')[0].toUpperCase();
 
-               // Custom Filename: DATE_FIRSTNAME_1.mp4 (Added index in case they upload 5 videos at once)
-                const fileName = `${formattedDate}_${firstName}_${i + 1}.mp4`;
-                
-                // NEW: Fetch the raw video data to create the vidBlob
+                // Drive file name: DATE_FIRSTNAME_V#.mp4
+                const fileName = `${formattedDate}_${firstName}_V${slot}.mp4`;
+                // Storage path includes the employee id so two people can never overwrite each other
+                const storagePath = `public/${emp.id}_${fileName}`;
+
                 const vidResponse = await fetch(directMp4Url);
+                if (!vidResponse.ok) throw new Error(`Could not download the video for V${slot} (HTTP ${vidResponse.status}). Click Auto-Fetch again.`);
                 const vidBlob = await vidResponse.blob();
 
-                // 1. UPLOAD TO SUPABASE (Strictly for AI to access)
+                // 1. UPLOAD TO SUPABASE (for the AI)
                 const { error: uploadErr } = await supabaseClient.storage
                     .from('temp-ai-videos')
-                    .upload(`public/${fileName}`, vidBlob, { upsert: true });
+                    .upload(storagePath, vidBlob, { upsert: false });
                 if (uploadErr) throw uploadErr;
 
                 const { data: publicUrlData } = supabaseClient.storage
                     .from('temp-ai-videos')
-                    .getPublicUrl(`public/${fileName}`);
-                    
+                    .getPublicUrl(storagePath);
                 const supabaseVideoUrl = publicUrlData.publicUrl;
 
-                // 2. PING GOOGLE DRIVE TO FETCH IT FROM SUPABASE (No Base64 crashing!)
-                submitBtn.textContent = `Syncing Video ${i + 1} to Drive...`;
-                const gDriveResponse = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        action: "fetch_url",
-                        directMp4Url: supabaseVideoUrl,
-                        fileName: fileName,
-                        employeeName: emp.name // Triggers your Smart Router to organize the folder
+                // 2. SYNC TO GOOGLE DRIVE
+                submitBtn.textContent = `Syncing Video ${k + 1} to Drive...`;
+                let finalGDriveUrl = null;
+                try {
+                    const gDriveResponse = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({
+                            action: "fetch_url",
+                            directMp4Url: supabaseVideoUrl,
+                            fileName: fileName,
+                            employeeName: emp.name
+                        })
+                    });
+                    const driveResult = await gDriveResponse.json();
+                    finalGDriveUrl = driveResult.status === "success" ? driveResult.url : null;
+                } catch (driveErr) {
+                    console.warn('Drive sync failed:', driveErr);
+                }
+
+                // 3. SAVE TO DB (the database assigns the final V# and enforces the 15 limit)
+                const { data: saved, error: dbErr } = await supabaseClient
+                    .from('video_submissions')
+                    .insert({
+                        employee_id: emp.id,
+                        upload_date: rowDate,
+                        video_link: linkInput,
+                        video_file_url: supabaseVideoUrl,
+                        gdrive_url: finalGDriveUrl,
+                        status: 'pending'
                     })
-                });
+                    .select('video_no')
+                    .single();
 
-                const driveResult = await gDriveResponse.json();
-                const finalGDriveUrl = driveResult.status === "success" ? driveResult.url : null;
+                if (dbErr) {
+                    // Don't leave an orphan file behind if the row was rejected
+                    await supabaseClient.storage.from('temp-ai-videos').remove([storagePath]);
+                    if (String(dbErr.message).includes('VIDEO_SLOTS_FULL')) {
+                        throw new Error('All 15 video slots for this cycle are used. Delete an old or wrong video first.');
+                    }
+                    throw dbErr;
+                }
 
-                // 3. SAVE BOTH URLS TO SUPABASE DB
-                const { error: dbErr } = await supabaseClient.from('video_submissions').insert({
-                    employee_id: emp.id,
-                    upload_date: rowDate,
-                    video_link: linkInput,
-                    video_file_url: supabaseVideoUrl, // Original Supabase Link for the AI
-                    gdrive_url: finalGDriveUrl,       // New GDrive Link for the Admin Viewer
-                    status: 'pending'
-                });
-                
-                if (dbErr) throw dbErr;
-                successCount++;
+                assigned.push(`V${saved?.video_no ?? slot}`);
+                row.remove();   // already submitted: never send it twice if a later row fails
             }
 
-            alert(`Success! ${successCount} videos sent to QA.`);
-            window.location.reload(); 
+            alert(`Success! ${assigned.join(', ')} sent to QA.`);
+            window.location.reload();
 
         } catch (err) {
-            alert(`Process failed: ${err.message}`);
+            const done = assigned.length ? `\n\nAlready submitted: ${assigned.join(', ')}.` : '';
+            alert(`Process failed: ${err.message}${done}`);
+            refreshSlotStatus();
         } finally {
             submitBtn.textContent = 'Upload & Submit to QA';
-            submitBtn.disabled = false;
+            if (!slotsFull) submitBtn.disabled = false;
         }
     });
 })();
