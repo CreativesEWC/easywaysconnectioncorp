@@ -6,6 +6,7 @@
 <title>AI Video Matrix QA | EWC Dev</title>
 <link rel="icon" type="image/svg+xml" href="easyway_icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <style>
   :root {
     --navy-950: #050812;
@@ -58,11 +59,11 @@
   .vid-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 
   /* Auto-fail flags */
-  .dq-box { margin-top: 16px; padding: 12px; border: 1px solid var(--coral-700); border-radius: 8px; background: rgba(217,97,79,0.06); }
-  .dq-title { font-family: var(--font-mono); font-size: 10px; color: var(--coral-500); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .dq-box { margin-top: 16px; padding: 12px; border: 1px solid var(--amber-500); border-radius: 8px; background: rgba(232,161,58,0.06); }
+  .dq-title { font-family: var(--font-mono); font-size: 10px; color: var(--amber-400); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
   .dq-card { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; cursor: pointer; font-size: 13px; line-height: 1.3; }
-  .dq-card:hover { color: var(--coral-500); }
-  .dq-cb { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--coral-500); cursor: pointer; }
+  .dq-card:hover { color: var(--amber-400); }
+  .dq-cb { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--mint-500); cursor: pointer; }
 
   /* Col 2: Video Player */
   .col-player { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
@@ -168,7 +169,7 @@
     
     <div class="qa-footer">
       <div class="score-display">
-        <div><span id="liveScore">0</span><span style="font-size: 16px; color: var(--text-muted);">/10</span></div>
+        <div><span id="liveScore">0</span><span style="font-size: 16px; color: var(--text-muted);">/10</span><span id="liveBonus" style="font-size: 12px; color: var(--amber-400); font-family: var(--font-mono);"></span></div>
         <div id="liveStatus" class="score-status" style="color: var(--coral-500);">Unusable</div>
       </div>
       <div style="display: flex; gap: 10px; width: 100%;">
@@ -225,21 +226,21 @@
 
   let activeRules = ruleSets.creative; // Default selection
 
-  // Auto-fail flags: apply to ALL brands and ALL grading modes.
-  // If any one is ticked, the video is REJECTED no matter what the /10 score is.
-  const disqualifiers = [
-      { key: 'oa',                 short: 'OA',                 label: 'Over-Active (OA): Exaggerated acting, over-the-top expressions or gestures.' },
-      { key: 'yelling',            short: 'Yelling',            label: 'Yelling: Shouting or screaming instead of speaking naturally.' },
-      { key: 'clumsy',             short: 'Clumsy',             label: 'Clumsy: Fumbling, dropping the product, awkward handling, or unprepared delivery.' },
-      { key: 'exaggerated_claims', short: 'Exaggerated Claims', label: 'Exaggerated Claims: Unrealistic or unproven promises (e.g., "100% guaranteed", "instant results", "cures").' },
-      { key: 'hyper',              short: 'Hyper',              label: 'Hyper: Frantic, rushed, or hyperactive energy that feels unnatural.' }
+  // Hype bonus traits: apply to ALL brands and ALL grading modes.
+  // Each trait present adds +1 to the score (total is capped at 10).
+  const bonusTraits = [
+      { key: 'oa',                 short: 'OA',                 label: 'Over-Active (OA): Big, animated acting, expressions, and gestures that grab attention.' },
+      { key: 'yelling',            short: 'Yelling',            label: 'Yelling: Loud, excited shouting that sells the hype.' },
+      { key: 'clumsy',             short: 'Clumsy',             label: 'Clumsy: Relatable fumbles or goofy, unpolished moments that feel real and funny.' },
+      { key: 'exaggerated_claims', short: 'Exaggerated Claims', label: 'Exaggerated Claims: Bold, dramatic hype about the product (e.g., "best ever!", "sobrang ganda!").' },
+      { key: 'hyper',              short: 'Hyper',              label: 'Hyper: Fast, high-energy, excited delivery.' }
   ];
 
-  function renderDisqualifiers() {
+  function renderBonuses() {
       document.getElementById('dqChecklist').innerHTML = `
           <div class="dq-box">
-              <div class="dq-title">🚫 Auto-Fail Flags (any one = Rejected)</div>
-              ${disqualifiers.map(d => `
+              <div class="dq-title">⚡ Hype Bonus (+1 point each)</div>
+              ${bonusTraits.map(d => `
                   <label class="dq-card">
                       <input type="checkbox" class="dq-cb" data-key="${d.key}" onchange="calculateScore()">
                       <span>${d.label}</span>
@@ -248,11 +249,18 @@
       calculateScore();
   }
 
-  function getRaisedFlags() {
-      return disqualifiers.filter(d => {
+  function getBonusTraits() {
+      return bonusTraits.filter(d => {
           const cb = document.querySelector(`.dq-cb[data-key="${d.key}"]`);
           return cb && cb.checked;
       });
+  }
+
+  // Base rubric points + hype bonus, capped at 10
+  function getTotals() {
+      const base = document.querySelectorAll('.rule-cb:checked').length;
+      const bonus = getBonusTraits().length;
+      return { base, bonus, total: Math.min(10, base + bonus) };
   }
 
   // 1. Initialize Form
@@ -278,26 +286,19 @@
 
   // Initial render
   renderChecklist();
-  renderDisqualifiers();
+  renderBonuses();
 
   // 2. Score Calculator
   function calculateScore() {
-      const checked = document.querySelectorAll('.rule-cb:checked').length;
-      document.getElementById('liveScore').textContent = checked;
+      const { bonus, total } = getTotals();
+      document.getElementById('liveScore').textContent = total;
+      const bonusEl = document.getElementById('liveBonus');
+      if (bonusEl) bonusEl.textContent = bonus ? ` (+${bonus} hype)` : '';
 
       const statusEl = document.getElementById('liveStatus');
-      const flags = getRaisedFlags();
-
-      // Any auto-fail flag overrides the score
-      if (flags.length) {
-          statusEl.textContent = "🚫 FAILED: " + flags.map(f => f.short).join(', ');
-          statusEl.style.color = "var(--coral-500)";
-          return;
-      }
-
-      if (checked >= 9) { statusEl.textContent = "✅ EXCELLENT"; statusEl.style.color = "var(--mint-500)"; }
-      else if (checked >= 6) { statusEl.textContent = "✅ APPROVED"; statusEl.style.color = "var(--mint-500)"; }
-      else if (checked >= 4) { statusEl.textContent = "⚠️ NEEDS WORK"; statusEl.style.color = "var(--amber-400)"; }
+      if (total >= 9) { statusEl.textContent = "✅ EXCELLENT"; statusEl.style.color = "var(--mint-500)"; }
+      else if (total >= 6) { statusEl.textContent = "✅ APPROVED"; statusEl.style.color = "var(--mint-500)"; }
+      else if (total >= 4) { statusEl.textContent = "⚠️ NEEDS WORK"; statusEl.style.color = "var(--amber-400)"; }
       else { statusEl.textContent = "❌ UNUSABLE"; statusEl.style.color = "var(--coral-500)"; }
   }
 
@@ -438,8 +439,7 @@
   }
 
   // 4.8 Video analysis helpers (frames, cuts, loudness, pace)
-  const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // sees images, max 5 per request
-  const TEXT_MODEL   = "openai/gpt-oss-20b";                          // fallback when frames can't be read
+  const TEXT_MODEL = "openai/gpt-oss-20b"; // same free-tier model as the original version
 
   async function analyzeVideoVisuals(blob) {
       const url = URL.createObjectURL(blob);
@@ -485,7 +485,7 @@
           }
 
           // (b) Five key frames: hook, 25%, 50%, 75%, ending
-          const fw = 480, fh = Math.round(480 * v.videoHeight / v.videoWidth);
+          const fw = 720, fh = Math.round(720 * v.videoHeight / v.videoWidth);
           const big = document.createElement('canvas'); big.width = fw; big.height = fh;
           const bctx = big.getContext('2d');
           const times = [0.3, dur * 0.25, dur * 0.5, dur * 0.75, dur - 0.7];
@@ -493,13 +493,34 @@
           for (const t of times) {
               await seekTo(t);
               bctx.drawImage(v, 0, 0, fw, fh);
-              frames.push(big.toDataURL('image/jpeg', 0.7));
+              frames.push(big.toDataURL('image/jpeg', 0.8));
           }
 
           return { frames, duration: dur, cuts, avgChange: diffN ? diffSum / diffN : 0 };
       } finally {
           URL.revokeObjectURL(url);
       }
+  }
+
+  // Reads on-screen text (captions, overlays, claims) from the key frames, free and in-browser
+  async function readOnScreenText(frames) {
+      const labels = ['opening', '25%', '50%', '75%', 'ending'];
+      const seen = new Set();
+      const parts = [];
+      for (let i = 0; i < frames.length; i++) {
+          const { data } = await Tesseract.recognize(frames[i], 'eng');
+          const fresh = data.text.split('\n')
+              .map(l => l.trim())
+              .filter(l => l.length >= 4 && /[A-Za-z]{3,}/.test(l))
+              .filter(l => {
+                  const key = l.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+              });
+          if (fresh.length) parts.push(`[${labels[i]}] ` + fresh.join(' / '));
+      }
+      return parts.join('\n          ');
   }
 
   async function analyzeAudioEnergy(blob) {
@@ -593,16 +614,23 @@
           catch (e) { visualWarning = e.message; console.warn('Visual analysis skipped:', e); }
           audioStats = await analyzeAudioEnergy(videoBlob);
 
+          let ocrText = '';
+          if (visuals && window.Tesseract) {
+              btn.textContent = 'EWC AI is reading on-screen text...';
+              try { ocrText = await readOnScreenText(visuals.frames); }
+              catch (e) { console.warn('OCR skipped:', e); }
+          }
+
           btn.textContent = 'EWC AI is grading...';
           const selectedMode = document.querySelector('input[name="aiMode"]:checked').value.toUpperCase();
 
           const brandContexts = {
-              general: "Generic e-commerce product evaluation. Exaggerated claims = guarantees, 'instant' or '100%' results, miracle or cure language.",
-              seoul: "Brand: Seoul Secrets. Products: Skincare, body lotion, sunscreen, whitening soap, bleaching products, face/body/hair care. AUDIENCE: Highly inclusive (Women, Men, LGBTQ+). Do NOT enforce gender norms. Judge favorably if the hook appeals universally. EXAGGERATED CLAIMS for this brand: guaranteed or overnight whitening, 'instant' results, 'removes all dark spots/scars', medical or cure claims, 'permanent', or implying a specific skin tone is better.",
-              momom: "Brand: Momom Foods. Products: Cereal krunch, chocolates, biscuits, wafer chocolates, candies, gummies. Focus on taste, craving satisfaction, and food appeal. EXAGGERATED CLAIMS for this brand: health, diet, weight-loss or medicinal claims, 'healthiest', 'best in the world', or false superlatives.",
-              wowlinis: "Brand: WowLinis. Products: Home cleaning. Focus on effective stain removal, easy home maintenance, and cleanliness. EXAGGERATED CLAIMS for this brand: '100% stain removal', 'kills 99.9% of germs' or similar unsubstantiated disinfecting claims, 'works instantly on everything'.",
-              puti: "Brand: Puti Plus. Products: Laundry cleaning. Focus on bright whites, tough stain removal on clothes, and fresh scent. EXAGGERATED CLAIMS for this brand: '100% stain removal', guaranteed 'whiter than new', or 'works on every stain'.",
-              coffee: "Brand: ME Coffee & Joco Coffee. Products: Chocolate coffee, black coffee, crema. Focus on morning energy, rich flavor, and brewing experience. EXAGGERATED CLAIMS for this brand: fat-burning, weight-loss, health-cure or medicinal claims, or unrealistic energy promises."
+              general: "Generic e-commerce product evaluation. Hype style: big reactions, dramatic enthusiasm, bold 'best ever' statements.",
+              seoul: "Brand: Seoul Secrets. Products: Skincare, body lotion, sunscreen, whitening soap, bleaching products, face/body/hair care. AUDIENCE: Highly inclusive (Women, Men, LGBTQ+). Do NOT enforce gender norms. Judge favorably if the hook appeals universally. HYPE STYLE: dramatic glow-up reactions, excited 'ang smooth/ang bango!' energy, big enthusiastic product reveals.",
+              momom: "Brand: Momom Foods. Products: Cereal krunch, chocolates, biscuits, wafer chocolates, candies, gummies. Focus on taste, craving satisfaction, and food appeal. HYPE STYLE: over-the-top 'grabe sarap!' reactions, loud crunch moments, can't-stop-eating energy.",
+              wowlinis: "Brand: WowLinis. Products: Home cleaning. Focus on effective stain removal, easy home maintenance, and cleanliness. HYPE STYLE: 'wow ang kintab!' reactions, dramatic before/after reveals, energetic cleaning montage.",
+              puti: "Brand: Puti Plus. Products: Laundry cleaning. Focus on bright whites, tough stain removal on clothes, and fresh scent. HYPE STYLE: excited 'ang puti agad!' reactions, dramatic stain-vs-clean reveals, energetic laundry-day delivery.",
+              coffee: "Brand: ME Coffee & Joco Coffee. Products: Chocolate coffee, black coffee, crema. Focus on morning energy, rich flavor, and brewing experience. HYPE STYLE: 'gising na gising!' energy, dramatic first-sip reactions, loud enthusiastic taste reviews."
           };
           const selectedBrand = document.getElementById('brandContext').value;
           const targetContext = brandContexts[selectedBrand];
@@ -610,8 +638,8 @@
           const signalLines = [
               `Video length: ${visuals ? visuals.duration.toFixed(1) + 's' : 'unknown'}`,
               visuals ? `Visual cuts/transitions detected (sampled, so a minimum): ${visuals.cuts}. Average frame-to-frame change: ${(visuals.avgChange * 100).toFixed(0)}% (higher = busier/faster editing).` : `Visual analysis unavailable (${visualWarning || 'unknown reason'}). Judge only from the transcript and say so in feedback.`,
-              wpm ? `Speaking pace: ~${wpm} words/min (Taglish natural range is roughly 130-190; above ~200 can indicate hyper or rushed delivery).` : 'Speaking pace: unknown.',
-              audioStats ? `Audio level: median ${audioStats.medianDb.toFixed(0)} dBFS, loud peaks ${audioStats.peakDb.toFixed(0)} dBFS, ${audioStats.loudSharePct.toFixed(0)}% of speech very loud, ${audioStats.clipPct.toFixed(2)}% clipped samples (sustained very loud speech with clipping suggests yelling; platform loudness normalization makes this a hint only).` : 'Audio level: unavailable.'
+              wpm ? `Speaking pace: ~${wpm} words/min (Taglish natural range is roughly 130-190; above ~200 suggests hyper, fast-talking energy).` : 'Speaking pace: unknown.',
+              audioStats ? `Audio level: median ${audioStats.medianDb.toFixed(0)} dBFS, loud peaks ${audioStats.peakDb.toFixed(0)} dBFS, ${audioStats.loudSharePct.toFixed(0)}% of speech very loud, ${audioStats.clipPct.toFixed(2)}% clipped samples (sustained very loud speech with clipping suggests loud/yelling delivery; platform loudness normalization makes this a hint only).` : 'Audio level: unavailable.'
           ].join('\n          ');
 
           const SYSTEM_PROMPT = `
@@ -621,27 +649,22 @@
 
           WHAT YOU HAVE:
           - SPOKEN TRANSCRIPT: "${actualTranscript}"
-          - ${visuals ? '5 FRAMES from the video, in order: opening hook, 25%, 50%, 75%, ending. Read all on-screen text, captions, overlays, product packaging and label design, setting, and the person\'s expression and body language.' : 'No frames available.'}
+          - ON-SCREEN TEXT read by OCR from 5 frames (opening, 25%, 50%, 75%, ending). You cannot see the video itself, so judge acting, energy and handling from the transcript and SIGNALS below: ${ocrText || 'none detected or OCR unavailable'}
           - SIGNALS:
           ${signalLines}
 
           RUBRIC (score one true/false per line, in order):
           ${activeRules.join('\n')}
 
-          AUTO-FAIL FLAGS (apply to ALL brands and ALL modes; set true ONLY when clearly present, natural enthusiasm is NOT a flag):
-          - oa: Over-Active. Exaggerated acting, over-the-top expressions or gestures.
-          - yelling: Shouting or screaming instead of speaking naturally.
-          - clumsy: Fumbling, dropping the product, awkward handling, unprepared or messy delivery.
-          - exaggerated_claims: Unrealistic or unproven promises in the SPOKEN words OR in ON-SCREEN TEXT (check the brand-specific list above).
-          - hyper: Frantic, rushed, hyperactive energy that feels unnatural.
-          Any true flag means the video fails regardless of score.
+          HYPE BONUS TRAITS (apply to ALL brands and ALL modes). These are POSITIVE: they are what makes TikTok content engaging, and they must NEVER lower the rubric score. Set true only when the transcript, on-screen text or SIGNALS clearly support it (each adds +1 point):
+          - oa: Over-Active. Big, animated acting, expressions, and gestures.
+          - yelling: Loud, excited shouting or projecting like a hype seller.
+          - clumsy: Relatable fumbles or goofy, unpolished moments that feel real.
+          - exaggerated_claims: Bold, dramatic hype about the product in the SPOKEN words or ON-SCREEN TEXT (like "best ever!" or "sobrang ganda!"). Do NOT award this for medical, cure, or guaranteed-result claims (e.g., "cures acne", "100% whitening in 3 days"); mention those in feedback as a compliance concern instead.
+          - hyper: Fast, high-energy, excited delivery.
 
-          OUTPUT JSON ONLY: { "score": 0, "rules": [true,false,true,false,true,false,true,false,true,false], "flags": { "oa": false, "yelling": false, "clumsy": false, "exaggerated_claims": false, "hyper": false }, "feedback": "Max 400 chars. Name every raised flag and quote the offending claim or moment briefly." }
+          OUTPUT JSON ONLY: { "score": 0, "rules": [true,false,true,false,true,false,true,false,true,false], "bonus": { "oa": false, "yelling": false, "clumsy": false, "exaggerated_claims": false, "hyper": false }, "feedback": "Max 400 chars. Praise any hype bonus traits earned and say what to improve." }
           `;
-
-          const messageContent = visuals
-              ? [{ type: 'text', text: SYSTEM_PROMPT }, ...visuals.frames.map(f => ({ type: 'image_url', image_url: { url: f } }))]
-              : SYSTEM_PROMPT;
 
           const evalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
               method: 'POST',
@@ -650,8 +673,8 @@
                   'Authorization': `Bearer ${GROQ_API_KEY}`
               },
               body: JSON.stringify({
-                  model: visuals ? VISION_MODEL : TEXT_MODEL,
-                  messages: [{ role: "user", content: messageContent }],
+                  model: TEXT_MODEL,
+                  messages: [{ role: "user", content: SYSTEM_PROMPT }],
                   response_format: { type: "json_object" },
                   temperature: 0 // enforce strict consistency
               })
@@ -679,10 +702,10 @@
               }
           });
 
-          // Tick the auto-fail flags the AI raised
-          const aiFlags = analysis.flags || {};
+          // Tick the hype bonus traits the AI found
+          const aiBonus = analysis.bonus || {};
           document.querySelectorAll('.dq-cb').forEach(cb => {
-              cb.checked = Boolean(aiFlags[cb.dataset.key]);
+              cb.checked = Boolean(aiBonus[cb.dataset.key]);
           });
           calculateScore();
 
@@ -719,11 +742,11 @@
       btn.textContent = 'Saving Verified Score...';
 
       // Reads whatever is CURRENTLY checked on the screen (including human edits)
-      const finalScore = document.querySelectorAll('.rule-cb:checked').length;
-      const raisedFlags = getRaisedFlags();
-      const status = (finalScore >= 6 && raisedFlags.length === 0) ? 'approved' : 'rejected';
-      const flagText = raisedFlags.length ? `[AUTO-FAIL: ${raisedFlags.map(f => f.short).join(', ')}] ` : '';
-      const feedbackNotes = flagText + (document.getElementById('qaNotes').value.trim() || 'Evaluation completed.');
+      const { total: finalScore, bonus: bonusCount } = getTotals();
+      const status = finalScore >= 6 ? 'approved' : 'rejected';
+      const bonusNames = getBonusTraits().map(f => f.short);
+      const bonusText = bonusCount ? `[HYPE +${bonusCount}: ${bonusNames.join(', ')}] ` : '';
+      const feedbackNotes = bonusText + (document.getElementById('qaNotes').value.trim() || 'Evaluation completed.');
 
       try {
           const { error: dbErr } = await supabaseClient
@@ -798,10 +821,10 @@
           }
       });
 
-      const raisedFlagNames = getRaisedFlags().map(f => f.label);
+      const earnedBonusNames = getBonusTraits().map(f => f.short);
       const PROMPT = `
       You are a supportive QA Coach for EWC Creatives. 
-      AUTO-FAIL FLAGS RAISED (video is rejected because of these, explain them first and kindly): ${raisedFlagNames.length ? raisedFlagNames.join(' | ') : 'None'}
+      HYPE BONUS TRAITS EARNED (extra points, praise these warmly): ${earnedBonusNames.length ? earnedBonusNames.join(', ') : 'None'}
       A video was just graded. 
       PASSED CRITERIA: ${passedRules.length > 0 ? passedRules.join(', ') : 'None'}
       FAILED CRITERIA: ${failedRules.length > 0 ? failedRules.join(', ') : 'None'}
