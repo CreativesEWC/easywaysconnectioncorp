@@ -1083,7 +1083,8 @@ aside.sidebar.collapsed ~ main.main-content {
             <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 20px 0; max-width: 400px; margin-left: auto; margin-right: auto;">
                 To ensure fast upload speeds and preserve system performance, large MP4 video files are now processed through our dedicated high-speed media server.
           </p>
-            <button onclick="window.open('video-portal.html', '_blank')" class="btn2 primary" style="width: auto; padding: 12px 30px; display: inline-block;">Open Video Uploader &rarr;</button>
+            <button id="openVideoPortalBtn" onclick="window.open('video-portal.html', '_blank')" class="btn2 primary" style="width: auto; padding: 12px 30px; display: inline-block;">Open Video Uploader &rarr;</button>
+            <div id="videoSlotCounter" style="margin-top: 14px; font-size: 12px; font-family: var(--font-mono); color: var(--text-muted);">Checking video slots...</div>
         </div>
         
         </section>
@@ -1100,6 +1101,7 @@ aside.sidebar.collapsed ~ main.main-content {
             <table style="width: 100%; border-collapse: collapse; min-width: 650px;">
               <thead>
                 <tr>
+                  <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">No.</th>
                   <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Upload Date</th>
                   <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Link</th>
                   <th style="padding: 10px 8px; border-bottom: 1px solid var(--line);">Status</th>
@@ -1108,7 +1110,7 @@ aside.sidebar.collapsed ~ main.main-content {
                 </tr>
               </thead>
               <tbody id="myVideoHistoryBody">
-                <tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Loading video records...</td></tr>
+                <tr class="empty-row"><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Loading video records...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1503,18 +1505,41 @@ aside.sidebar.collapsed ~ main.main-content {
 <script>
 
   window.deleteSubmission = async function(vidId) {
-      if (!confirm("Are you sure you want to delete this pending submission?")) return;
-      
+      if (!confirm("Delete this pending video? Its slot (V#) will be freed and the uploaded file will be removed.")) return;
+
       try {
-          const { error } = await supabaseClient
+          // 1. Get the stored file URL before the row disappears
+          const { data: row, error: fetchErr } = await supabaseClient
+              .from('video_submissions')
+              .select('id, video_no, video_file_url, status')
+              .eq('id', vidId)
+              .maybeSingle();
+          if (fetchErr) throw fetchErr;
+          if (!row) throw new Error("Submission not found.");
+
+          // 2. Delete the database row (this frees the V# slot)
+          const { data: deleted, error } = await supabaseClient
               .from('video_submissions')
               .delete()
-              .eq('id', vidId);
-              
+              .eq('id', vidId)
+              .select('id');
           if (error) throw error;
-          
-          alert("Submission permanently deleted.");
-          location.reload(); 
+          if (!deleted || deleted.length === 0) {
+              throw new Error("Nothing was deleted (permission blocked).");
+          }
+
+          // 3. Remove the temp video file from storage
+          if (row.video_file_url && row.video_file_url.includes('/daily-videos/')) {
+              const filePath = decodeURIComponent(row.video_file_url.split('/daily-videos/')[1].split('?')[0]);
+              const { data: removed, error: rmErr } = await supabaseClient
+                  .storage.from('daily-videos').remove([filePath]);
+              if (rmErr || !removed || removed.length === 0) {
+                  console.warn("Row deleted, but the stored file was not removed:", rmErr || 'blocked by storage policy', filePath);
+              }
+          }
+
+          alert(`V${row.video_no ?? ''} deleted. That slot is free again.`);
+          loadMyVideoSubmissions();
       } catch (err) {
           alert("Failed to delete: " + err.message);
       }
@@ -4247,38 +4272,84 @@ window.loadTodayOverallTotal = async function() {
       loadMyVideoSubmissions();
   };
 
+  // ---- 28th -> 27th cycle helpers ----
+  const VIDEO_SLOT_LIMIT = 15;
+  const _pad2 = n => String(n).padStart(2, '0');
+  const _fmtDate = dt => `${dt.getFullYear()}-${_pad2(dt.getMonth() + 1)}-${_pad2(dt.getDate())}`;
+
+  function getCurrentCycleStart() {
+      const t = new Date();
+      const startD = t.getDate() >= 28 ? new Date(t.getFullYear(), t.getMonth(), 28)
+                                       : new Date(t.getFullYear(), t.getMonth() - 1, 28);
+      return _fmtDate(startD);
+  }
+
+  function cycleLabel(cycleStartStr) {
+      if (!cycleStartStr) return '';
+      const [y, m, d] = cycleStartStr.split('-').map(Number);
+      const a = new Date(y, m - 1, d);
+      const b = new Date(y, m, 27);
+      const f = dt => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${f(a)} - ${f(b)}`;
+  }
+
+  // Shows "X/15 used" for the CURRENT cycle and locks the uploader when full
+  window.refreshVideoSlotCounter = async function() {
+      const el = document.getElementById('videoSlotCounter');
+      const openBtn = document.getElementById('openVideoPortalBtn');
+      if (!emp || !emp.id) return;
+      try {
+          const { data, error } = await supabaseClient
+              .from('video_submissions')
+              .select('video_no')
+              .eq('employee_id', emp.id)
+              .eq('cycle_start', getCurrentCycleStart());
+          if (error) throw error;
+
+          const usedNos = new Set((data || []).map(r => r.video_no));
+          let nextFree = null;
+          for (let n = 1; n <= VIDEO_SLOT_LIMIT; n++) { if (!usedNos.has(n)) { nextFree = n; break; } }
+          const full = nextFree === null;
+          window.videoSlotsFull = full;
+
+          if (el) {
+              el.style.color = full ? 'var(--coral-500)' : 'var(--text-muted)';
+              el.textContent = full
+                  ? `Cycle ${cycleLabel(getCurrentCycleStart())}: ${VIDEO_SLOT_LIMIT}/${VIDEO_SLOT_LIMIT} slots used. FULL. Delete an old or wrong pending video to free a slot.`
+                  : `Cycle ${cycleLabel(getCurrentCycleStart())}: ${usedNos.size}/${VIDEO_SLOT_LIMIT} slots used. Next upload will be V${nextFree}.`;
+          }
+          if (openBtn) {
+              openBtn.disabled = full;
+              openBtn.style.opacity = full ? '0.5' : '';
+              openBtn.style.cursor = full ? 'not-allowed' : '';
+              openBtn.title = full ? 'All 15 video slots are used for this cycle.' : '';
+          }
+      } catch (err) {
+          console.error('Slot counter error:', err);
+          if (el) el.textContent = '';
+      }
+  };
+
   window.loadMyVideoSubmissions = async function() {
       const tbody = document.getElementById('myVideoHistoryBody');
       if (!tbody || !emp || !emp.id) return;
 
+      refreshVideoSlotCounter();
+
       try {
-          // Base query
           let query = supabaseClient
               .from('video_submissions')
-              .select('id, upload_date, video_link, status, ai_score, ai_notes, created_at')
-              .eq('employee_id', emp.id)
-              .order('created_at', { ascending: false });
+              .select('id, video_no, cycle_start, upload_date, video_link, status, ai_score, ai_notes, created_at')
+              .eq('employee_id', emp.id);
 
-          /// Apply cycle filter (28th to 27th) ONLY if we are NOT viewing archives
           if (!showingVideoArchive) {
-              const today = new Date();
-              const y = today.getFullYear();
-              const m = today.getMonth();
-              const d = today.getDate();
-              
-              let startD;
-              // If we are past the 28th, we are in the current month's cycle
-              if (d >= 28) {
-                  startD = new Date(y, m, 28);
-              } else {
-                  // If we are before the 28th, we are still in last month's cycle
-                  startD = new Date(y, m - 1, 28);
-              }
-              
-              const pad = n => String(n).padStart(2, '0');
-              const startOfCycle = `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-${pad(startD.getDate())}`;
-              
-              query = query.gte('created_at', startOfCycle);
+              // Current 28th -> 27th cycle only, shown V1, V2, V3...
+              query = query.eq('cycle_start', getCurrentCycleStart())
+                           .order('video_no', { ascending: true });
+          } else {
+              // Archives: newest cycle first, V1.. within each cycle
+              query = query.order('cycle_start', { ascending: false })
+                           .order('video_no', { ascending: true });
           }
 
           const { data: vids, error } = await query;
@@ -4286,7 +4357,7 @@ window.loadTodayOverallTotal = async function() {
           if (error) throw error;
 
           if (!vids || vids.length === 0) {
-              tbody.innerHTML = '<tr class="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No video submissions found for this period.</td></tr>';
+              tbody.innerHTML = '<tr class="empty-row"><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">No video submissions found for this period.</td></tr>';
               return;
           }
 
@@ -4328,6 +4399,7 @@ window.loadTodayOverallTotal = async function() {
 
               return `
               <tr style="border-bottom: 1px solid var(--line); font-size: 12px;">
+                  <td style="padding: 10px 8px; font-family: var(--font-mono); font-weight: 700; color: var(--amber-400);">V${escapeHtml(v.video_no ?? '?')}${showingVideoArchive ? `<div style="font-size: 9px; font-weight: 400; color: var(--text-muted);">${escapeHtml(cycleLabel(v.cycle_start))}</div>` : ''}</td>
                   <td style="padding: 10px 8px; font-family: var(--font-mono);">${escapeHtml(dateStr)}</td>
                   <td style="padding: 10px 8px;">${linkBtn}</td>
                   <td style="padding: 10px 8px;">${badgeHtml}</td>
@@ -4338,7 +4410,7 @@ window.loadTodayOverallTotal = async function() {
 
       } catch (err) {
           console.error("Error loading video history:", err);
-          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load history: ${err.message}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--coral-500);">Failed to load history: ${err.message}</td></tr>`;
       }
   };
 
