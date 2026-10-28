@@ -84,12 +84,7 @@
     // RapidAPI keys. Each key only works for the APIs its RapidAPI account is subscribed to.
     // If one account is subscribed to both APIs, put the same key on both lines.
     const TIKTOK_RAPIDAPI_KEY = '17E346C617msh384997af246d614p1d4476jsn1ed84a849fc8';
-    const SHOPEE_RAPIDAPI_KEY = 'f4d71571cdmsh11807e4fe4fac11p14c2cajsn80c9c95600e9';
     const TIKTOK_HOST  = 'tiktok-video-no-watermark2.p.rapidapi.com';
-    const SHOPEE_HOST  = 'shopee-video-downloader1.p.rapidapi.com';
-    // Shopee endpoint: change these two lines if the API's Playground shows a different path/parameter
-    const SHOPEE_PATH  = '/download';
-    const SHOPEE_PARAM = 'url';
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyaYKxaB_Qpha-mZMB0U2PL5LXASs6agtQT7DLI-dsRa-PIxOYtZds4M9f4KuBtQ3Nqrg/exec";
 
@@ -310,40 +305,42 @@
             statusText.style.color = "var(--amber-400)";
 
             try {
-                const host = platform === 'tiktok' ? TIKTOK_HOST : SHOPEE_HOST;
-                const apiKey = platform === 'tiktok' ? TIKTOK_RAPIDAPI_KEY : SHOPEE_RAPIDAPI_KEY;
-                const endpoint = platform === 'tiktok'
-                    ? `https://${host}/?url=${encodeURIComponent(linkInput)}`
-                    : `https://${host}${SHOPEE_PATH}?${SHOPEE_PARAM}=${encodeURIComponent(linkInput)}`;
+                let videoUrl;
 
-                const response = await fetch(endpoint, {
-                    method: 'GET',
-                    headers: { 'x-rapidapi-key': apiKey, 'x-rapidapi-host': host }
-                });
-
-                let data = {};
-                try { data = await response.json(); } catch (_) {}
-                console.log(`${platform} Auto-Fetch response:`, response.status, data);
-
-                const videoUrl = platform === 'tiktok'
-                    ? (data && data.data && data.data.play)
-                    : pickVideoUrl(data, linkInput);
-
-                if (!response.ok || !videoUrl) {
-                    console.error('Auto-Fetch failed:', platform, response.status, data);
-                    const apiMsg = String((data && (data.message || data.msg || data.error)) || '');
-                    if (response.status === 429 || /quota|rate limit|exceeded/i.test(apiMsg)) {
-                        throw new Error("The auto-fetch service has reached its limit (not a problem with your video). Try again later and tell your admin.");
+                if (platform === 'shopee') {
+                    // Shopee goes through our own Supabase Edge Function (keeps the API token off the page)
+                    const { data: fnData, error: fnErr } = await supabaseClient.functions.invoke('shopee-fetch', {
+                        body: { url: linkInput }
+                    });
+                    console.log('Shopee Auto-Fetch response:', fnData, fnErr);
+                    if (fnErr) throw new Error('Could not reach the auto-fetch service. Try again, and tell your admin if it keeps happening.');
+                    if (!fnData || fnData.error || !fnData.videoUrl) {
+                        throw new Error((fnData && fnData.error) || 'Could not find a video in that Shopee link. Make sure it is a public Shopee Video link.');
                     }
-                    if (response.status === 401 || response.status === 403) {
-                        throw new Error("The auto-fetch service rejected the request (key not subscribed to this API). Tell your admin.");
+                    videoUrl = fnData.videoUrl;
+                } else {
+                    const endpoint = `https://${TIKTOK_HOST}/?url=${encodeURIComponent(linkInput)}`;
+                    const response = await fetch(endpoint, {
+                        method: 'GET',
+                        headers: { 'x-rapidapi-key': TIKTOK_RAPIDAPI_KEY, 'x-rapidapi-host': TIKTOK_HOST }
+                    });
+
+                    let data = {};
+                    try { data = await response.json(); } catch (_) {}
+                    console.log('tiktok Auto-Fetch response:', response.status, data);
+
+                    videoUrl = data && data.data && data.data.play;
+                    if (!response.ok || !videoUrl) {
+                        console.error('Auto-Fetch failed:', platform, response.status, data);
+                        const apiMsg = String((data && (data.message || data.msg || data.error)) || '');
+                        if (response.status === 429 || /quota|rate limit|exceeded/i.test(apiMsg)) {
+                            throw new Error("The auto-fetch service has reached its limit (not a problem with your video). Try again later and tell your admin.");
+                        }
+                        if (response.status === 401 || response.status === 403) {
+                            throw new Error("The auto-fetch service rejected the request (key not subscribed to this API). Tell your admin.");
+                        }
+                        throw new Error(apiMsg || "Could not extract video. Ensure the video is public.");
                     }
-                    if (response.status === 404 && platform === 'shopee') {
-                        throw new Error("Shopee fetch endpoint not found. Tell your admin to check the Shopee endpoint path.");
-                    }
-                    throw new Error(apiMsg || (platform === 'shopee'
-                        ? "Could not find a video in that Shopee link. Make sure it is a public Shopee Video link."
-                        : "Could not extract video. Ensure the video is public."));
                 }
 
                 hiddenMp4.value = videoUrl;
