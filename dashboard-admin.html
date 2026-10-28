@@ -1351,6 +1351,7 @@ aside.sidebar.collapsed ~ main.main-content {
         <h2 style="color: var(--amber-400); margin: 0;">Video Commission Tracker</h2>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
           <select id="videoTrackerCycle" onchange="loadFinanceVideoTracker()" title="Cutoff cycle (28th to 27th)" style="font-size: 12px; padding: 6px 10px; border-radius: 6px; background: var(--navy-800, #121212); color: var(--paper, #fff); border: 1px solid var(--line); width: auto;"></select>
+        <button id="videoTrackerRefreshBtn" class="btn2" onclick="refreshVideoTracker()" title="Reload the tracker (keeps the selected cycle)" style="font-size: 12px; padding: 6px 12px; font-weight: bold; width: auto;">🔄 Refresh</button>
         <button class="btn2 primary" onclick="exportVideoTrackerCSV()" style="font-size: 12px; padding: 6px 12px; font-weight: bold; background: var(--amber-500); color: #000; border: none;">📥 Export CSV</button>
         </div>
       </div>
@@ -5227,6 +5228,17 @@ if (saveScheduleBtn) {
   }
 
   window.loadFinanceVideoTracker = loadFinanceVideoTracker;
+
+  // Manual refresh: reloads the table for the cycle currently selected in the dropdown
+  window.refreshVideoTracker = async function() {
+    const btn = document.getElementById('videoTrackerRefreshBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing...'; }
+    try {
+      await loadFinanceVideoTracker();
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh'; }
+    }
+  };
 
     // ---- EXPORT VIDEO TRACKER CSV ----
   window.exportVideoTrackerCSV = function() {
