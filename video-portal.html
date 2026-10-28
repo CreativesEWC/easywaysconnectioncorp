@@ -45,6 +45,11 @@
 
 <div id="slotStatus" style="text-align:center; font-size:12px; font-family: var(--font-mono); color: var(--text-muted); margin: -8px 0 16px 0;">Checking video slots...</div>
 
+<div style="display:flex; gap:10px; align-items:center; justify-content:center; margin: 0 0 16px 0; flex-wrap:wrap;">
+    <label for="cycleSelect" style="font-size:12px; color: var(--text-muted); font-family: var(--font-mono);">Upload to:</label>
+    <select id="cycleSelect" style="background: var(--navy-800); color: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 13px; width:auto; max-width:100%;"></select>
+  </div>
+
 <!-- BACK BUTTON -->
   <button type="button" onclick="window.location.href='dashboard-employee.html'" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px; margin-bottom: 15px; padding: 0; font-family: var(--font-body); transition: color 0.2s;" onmouseover="this.style.color='var(--paper)'" onmouseout="this.style.color='var(--text-muted)'">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
@@ -102,6 +107,42 @@
         const f = dt => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         return `${f(new Date(y, m - 1, d))} - ${f(new Date(y, m, 27))}`;
     }
+    function cycleEndOf(cs) {                      // cs = YYYY-MM-DD (the 28th)
+        const [y, m] = cs.split('-').map(Number);
+        return fmtD(new Date(y, m, 27));
+    }
+    function prevCycleStart(cs) {
+        const [y, m] = cs.split('-').map(Number);
+        return fmtD(new Date(y, m - 2, 28));
+    }
+    const CURRENT_CYCLE = cycleStartOf(fmtD(new Date()));
+    const LAST_CYCLE = prevCycleStart(CURRENT_CYCLE);
+    let selectedCycle = CURRENT_CYCLE;
+
+    (function buildCycleOptions() {
+        const sel = document.getElementById('cycleSelect');
+        sel.innerHTML = `
+            <option value="${CURRENT_CYCLE}">Current cycle (${cycleLabel(CURRENT_CYCLE)})</option>
+            <option value="${LAST_CYCLE}">Last cycle (${cycleLabel(LAST_CYCLE)})</option>`;
+        sel.addEventListener('change', () => {
+            selectedCycle = sel.value;
+            applyDateLimits(true);
+            refreshSlotStatus();
+        });
+    })();
+
+    // Only dates inside the selected cycle can be picked (also stops wrong-year typos)
+    function applyDateLimits(clearOutOfRange) {
+        const min = selectedCycle;
+        const end = cycleEndOf(selectedCycle);
+        const today = fmtD(new Date());
+        const max = end < today ? end : today;
+        document.querySelectorAll('.vid-date').forEach(inp => {
+            inp.min = min; inp.max = max;
+            if (clearOutOfRange && inp.value && (inp.value < min || inp.value > max)) inp.value = '';
+        });
+    }
+
     async function getUsedSlots(cycleStart) {
         const { data, error } = await supabaseClient
             .from('video_submissions').select('video_no')
@@ -111,16 +152,19 @@
     }
     async function refreshSlotStatus() {
         const el = document.getElementById('slotStatus');
-        const cs = cycleStartOf(fmtD(new Date()));
+        const cs = selectedCycle;
+        const tag = cs === CURRENT_CYCLE ? '' : ' (last cycle)';
+        applyDateLimits(false);
         try {
             const used = await getUsedSlots(cs);
-            let next = null;
-            for (let n = 1; n <= SLOT_LIMIT; n++) { if (!used.has(n)) { next = n; break; } }
-            slotsFull = next === null;
+            const free = [];
+            for (let n = 1; n <= SLOT_LIMIT; n++) { if (!used.has(n)) free.push(n); }
+            slotsFull = free.length === 0;
             el.style.color = slotsFull ? 'var(--coral-500)' : 'var(--text-muted)';
             el.textContent = slotsFull
-                ? `Cycle ${cycleLabel(cs)}: ${SLOT_LIMIT}/${SLOT_LIMIT} slots used. FULL. Delete an old or wrong video in the dashboard to free a slot.`
-                : `Cycle ${cycleLabel(cs)}: ${used.size}/${SLOT_LIMIT} slots used. Next upload will be V${next}.`;
+                ? `Cycle ${cycleLabel(cs)}${tag}: ${SLOT_LIMIT}/${SLOT_LIMIT} slots used. FULL. Delete an old or wrong video in the dashboard to free a slot.`
+                : `Cycle ${cycleLabel(cs)}${tag}: ${used.size}/${SLOT_LIMIT} slots used. ` +
+                  (free.length <= 6 ? `Free: ${free.map(n => 'V' + n).join(', ')}.` : `Next upload will be V${free[0]}.`);
             document.getElementById('vidSubmitBtn').disabled = slotsFull;
             document.getElementById('addVideoRowBtn').disabled = slotsFull;
         } catch (err) {
@@ -131,29 +175,25 @@
         updateRowSlotLabels();
     }
 
-    // Shows which slot (V#) each row will take, based on that row's date/cycle
+    // Shows which slot (V#) each row will take in the SELECTED cycle (lowest free first)
     let labelRun = 0;
     async function updateRowSlotLabels() {
         const run = ++labelRun;
         const rows = [...document.querySelectorAll('.video-upload-row')];
-        const usedByCycle = {};
+        let used = null;
+        try { used = await getUsedSlots(selectedCycle); } catch (_) {}
+        if (run !== labelRun) return;   // a newer update started; drop this one
         for (const row of rows) {
-            const d = row.querySelector('.vid-date').value || fmtD(new Date());
-            const cs = cycleStartOf(d);
-            if (usedByCycle[cs] === undefined) {
-                try { usedByCycle[cs] = await getUsedSlots(cs); } catch (_) { usedByCycle[cs] = null; }
-            }
-            if (run !== labelRun) return;   // a newer update started; drop this one
             const badge = row.querySelector('.slot-badge');
             if (!badge) continue;
-            if (!usedByCycle[cs]) { badge.textContent = 'V?'; continue; }
+            if (!used) { badge.textContent = 'V?'; continue; }
             let slot = null;
-            for (let n = 1; n <= SLOT_LIMIT; n++) { if (!usedByCycle[cs].has(n)) { slot = n; break; } }
+            for (let n = 1; n <= SLOT_LIMIT; n++) { if (!used.has(n)) { slot = n; break; } }
             if (slot === null) {
                 badge.textContent = 'FULL';
                 badge.classList.add('full');
             } else {
-                usedByCycle[cs].add(slot);
+                used.add(slot);
                 badge.textContent = 'V' + slot;
                 badge.classList.remove('full');
             }
@@ -162,6 +202,7 @@
     document.addEventListener('change', (e) => {
         if (e.target.classList && e.target.classList.contains('vid-date')) updateRowSlotLabels();
     });
+    applyDateLimits(false);
     refreshSlotStatus();
 
   // Add Multiple Rows Logic
@@ -193,6 +234,7 @@
         
         newRow.querySelector('.remove-vid-row').addEventListener('click', () => { newRow.remove(); updateRowSlotLabels(); });
         container.appendChild(newRow);
+        applyDateLimits(false);
         await updateRowSlotLabels();
         if (newRow.querySelector('.slot-badge').classList.contains('full')) {
             newRow.remove();
@@ -235,7 +277,7 @@
                 const response = await fetch(`https://tiktok-video-no-watermark2.p.rapidapi.com/?url=${encodeURIComponent(linkInput)}`, {
                     method: 'GET',
                     headers: {
-                        'x-rapidapi-key': '17e346c617msh384997af246d614p1d4476jsn1ed84a849fc8',
+                        'x-rapidapi-key': 'af4bdcd5ccmshd6c4e40e3ea867fp1b1477jsn5fa2407650bb',
                         'x-rapidapi-host': 'tiktok-video-no-watermark2.p.rapidapi.com'
                     }
                 });
@@ -292,6 +334,9 @@
                 if (!directMp4Url) throw new Error(`Row ${i + 1} requires you to click Auto-Fetch first.`);
 
                 const cs = cycleStartOf(rowDate);
+                if (cs !== selectedCycle) {
+                    throw new Error(`Row ${i + 1}: the date must be inside the selected cycle (${cycleLabel(selectedCycle)}). Change the date or the "Upload to" cycle.`);
+                }
                 if (!usedByCycle[cs]) usedByCycle[cs] = await getUsedSlots(cs);
                 let slot = null;
                 for (let n = 1; n <= SLOT_LIMIT; n++) { if (!usedByCycle[cs].has(n)) { slot = n; break; } }
@@ -310,7 +355,10 @@
 
                 const [year, month, day] = rowDate.split('-');
                 const formattedDate = `${month}-${day}-${year}`;
-                const firstName = emp.name.split(' ')[0].toUpperCase();
+                // First name only, letters/numbers only (accents and symbols would break Storage file keys)
+                const firstName = (String(emp.name || '').trim().split(/\s+/)[0] || 'EMP')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'EMP';
 
                 // File name: V#_MM-DD-YYYY_NAME.mp4  (same name in Storage and Google Drive)
                 const fileName = `V${slot}_${formattedDate}_${firstName}.mp4`;
