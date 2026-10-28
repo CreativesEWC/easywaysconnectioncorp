@@ -1349,7 +1349,10 @@ aside.sidebar.collapsed ~ main.main-content {
     <section class="panel" style="border-color: var(--amber-500);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2 style="color: var(--amber-400); margin: 0;">Video Commission Tracker</h2>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <select id="videoTrackerCycle" onchange="loadFinanceVideoTracker()" title="Cutoff cycle (28th to 27th)" style="font-size: 12px; padding: 6px 10px; border-radius: 6px; background: var(--navy-800, #121212); color: var(--paper, #fff); border: 1px solid var(--line); width: auto;"></select>
         <button class="btn2 primary" onclick="exportVideoTrackerCSV()" style="font-size: 12px; padding: 6px 12px; font-weight: bold; background: var(--amber-500); color: #000; border: none;">📥 Export CSV</button>
+        </div>
       </div>
       <div style="overflow-x: auto;">
         <table style="width:100%; border-collapse:collapse; text-align: center; min-width: 1000px;">
@@ -5088,31 +5091,38 @@ if (saveScheduleBtn) {
     }
   };
 
+  // Dropdown of 28th->27th cycles (current + 5 older) for previewing past cutoffs
+  function buildVideoTrackerCycleOptions() {
+    const sel = document.getElementById('videoTrackerCycle');
+    if (!sel || sel.options.length) return;
+    const t = new Date();
+    const cur = t.getDate() >= 28 ? new Date(t.getFullYear(), t.getMonth(), 28)
+                                  : new Date(t.getFullYear(), t.getMonth() - 1, 28);
+    const f = dt => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const iso = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    for (let i = 0; i < 6; i++) {
+      const st = new Date(cur.getFullYear(), cur.getMonth() - i, 28);
+      const en = new Date(st.getFullYear(), st.getMonth() + 1, 27);
+      const tag = i === 0 ? 'Current cycle: ' : (i === 1 ? 'Last cycle: ' : '');
+      const opt = document.createElement('option');
+      opt.value = iso(st);
+      opt.textContent = `${tag}${f(st)} - ${f(en)}, ${en.getFullYear()}`;
+      sel.appendChild(opt);
+    }
+  }
+
   async function loadFinanceVideoTracker() {
     const tbody = document.getElementById('videoCommiTable');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="18" class="loading-note">Loading monthly video matrix...</td></tr>';
     
-    // CUSTOM VIDEO COMMISSION CUTOFF (28th to 27th)
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const d = now.getDate();
-    
-    let startD, endD;
-    // If we are currently past the 28th, we are in the new cycle ending next month
-    if (d >= 28) {
-        startD = new Date(y, m, 28);
-        endD = new Date(y, m + 1, 27);
-    } else {
-        // If we are before the 28th, we are in the cycle that started last month
-        startD = new Date(y, m - 1, 28);
-        endD = new Date(y, m, 27);
-    }
-    
+    // CUSTOM VIDEO COMMISSION CUTOFF (28th to 27th): chosen in the dropdown (default = current cycle)
     const pad = n => String(n).padStart(2, '0');
-    const firstDay = `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-${pad(startD.getDate())}`;
-    const lastDay = `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`;
+    const fmtCycleDate = dt => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+    buildVideoTrackerCycleOptions();
+    const firstDay = document.getElementById('videoTrackerCycle').value;   // the 28th that starts the cycle
+    const [cycY, cycM] = firstDay.split('-').map(Number);
+    const lastDay = fmtCycleDate(new Date(cycY, cycM, 27));                 // the 27th that ends it
 
     // Fetch live sellers and all submissions within the custom cutoff
     const { data: emps, error: empErr } = await supabaseClient
@@ -5122,10 +5132,9 @@ if (saveScheduleBtn) {
 
     const { data: vids, error: vidErr } = await supabaseClient
       .from('video_submissions')
-      .select('id, employee_id, status, upload_date, created_at, video_file_url, gdrive_url, video_link')
-      .gte('upload_date', firstDay)
-      .lte('upload_date', lastDay)
-      .order('created_at', { ascending: true });
+      .select('id, employee_id, status, upload_date, created_at, video_file_url, gdrive_url, video_link, video_no, cycle_start')
+      .eq('cycle_start', firstDay)
+      .order('video_no', { ascending: true });
 
     if (empErr || vidErr) {
       tbody.innerHTML = `<tr><td colspan="18" class="error-note">Failed to load video matrix: ${(empErr || vidErr).message}</td></tr>`;
@@ -5153,15 +5162,24 @@ if (saveScheduleBtn) {
     tbody.innerHTML = sellers.map(seller => {
       const mySubmissions = (vids || []).filter(v => v.employee_id === seller.id);
       
-      // FIX: Sort chronologically so V1 is the very first video submitted that month
-      mySubmissions.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      // Each video sits in its own V# cell. A deleted V13 stays empty (—) instead of
+      // shifting V14 into its place. Rows with no number yet fill the first empty cells.
+      const slots = new Array(15).fill(null);
+      const unnumbered = [];
+      mySubmissions.forEach(v => {
+        const n = Number(v.video_no);
+        if (n >= 1 && n <= 15 && !slots[n - 1]) slots[n - 1] = v;
+        else if (!v.video_no) unnumbered.push(v);
+      });
+      unnumbered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      unnumbered.forEach(v => { const k = slots.indexOf(null); if (k !== -1) slots[k] = v; });
       
       let matrixCells = '';
       let approvedCount = 0;
       let rejectedCount = 0;
       
       for (let i = 0; i < 15; i++) {
-        const targetVid = mySubmissions[i];
+        const targetVid = slots[i];
         
         if (targetVid) {
           const status = (targetVid.status || '').toLowerCase();
@@ -5208,6 +5226,8 @@ if (saveScheduleBtn) {
     }).join('');
   }
 
+  window.loadFinanceVideoTracker = loadFinanceVideoTracker;
+
     // ---- EXPORT VIDEO TRACKER CSV ----
   window.exportVideoTrackerCSV = function() {
       // Find the closest table element wrapping the video matrix
@@ -5247,11 +5267,16 @@ if (saveScheduleBtn) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       
-      const now = new Date();
-      const monthStr = now.toLocaleString('default', { month: 'short', year: 'numeric' });
+      const cycStart = document.getElementById('videoTrackerCycle')?.value || '';
+      let cycEnd = '';
+      if (cycStart) {
+          const [cy, cm] = cycStart.split('-').map(Number);
+          const e = new Date(cy, cm, 27);
+          cycEnd = `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, '0')}-${String(e.getDate()).padStart(2, '0')}`;
+      }
       
       link.setAttribute("href", url);
-      link.setAttribute("download", `Video_Commission_${monthStr.replace(' ', '_')}.csv`);
+      link.setAttribute("download", `Video_Commission_${cycStart}_to_${cycEnd}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
