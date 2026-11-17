@@ -576,164 +576,167 @@ aside.sidebar.collapsed ~ main.main-content {
       </div>
     </div>
     
-   <nav class="sidebar-nav">
+  <nav class="sidebar-nav">
 
-       <!-- Home  -->
-      <button type="button" data-tab="home" class="active" onclick="switchTab('home')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-        <span>Home</span>
-      </button>
+  <!-- HOME -->
+  <button type="button" data-tab="home" class="active" onclick="switchTab('home')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+    <span>Home</span>
+  </button>
 
   <!-- IMPORTANTS ACCORDION -->
   <div class="nav-accordion">
-    <button type="button" class="nav-group-btn open" onclick="toggleSubNav('homeSubMenu', this)">
+    <button type="button" class="nav-group-btn open" onclick="toggleSubNav('homeSubMenu', this)" aria-expanded="true" aria-controls="homeSubMenu">
       <div style="display: flex; align-items: center; gap: 10px;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-        <span>Importats</span>
+        <span>Importants</span>
       </div>
       <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
-    
-    <!-- SUB-MENU (ONLY CONTAINS MAIN DASHBOARD AND LIVE PREVIEW ROOM) -->
+
     <div id="homeSubMenu" class="sub-nav-group open">
-      
-      <!-- ATTENDANCE (NOW OUTSIDE HOME) -->
-  <button data-tab="attendance" onclick="switchTab('attendance')">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-    <span>Attendance</span>
-  </button>
 
-  <!-- NOTIFICATIONS -->
-  <button data-tab="notifications" onclick="switchTab('notifications')">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-    <span>Notifications</span>
-  </button>
+      <!-- ATTENDANCE -->
+      <button type="button" data-tab="attendance" onclick="switchTab('attendance')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Attendance</span>
+      </button>
 
-  <!-- AI VIDEO MATRIX (DEV ONLY) -->
-  <button id="aiMatrixNavBtn" onclick="window.location.href='ai-video-matrix.html'" style="color: var(--mint-500);">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7v5h-2v-5a5 5 0 0 0-5-5h-1v1.27a2 2 0 1 1-2 0V7H8a5 5 0 0 0-5 5v5H1v-5a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 12 2z"/><rect x="8" y="16" width="8" height="6" rx="1"/></svg>
-    <span>AI Video Matrix</span>
-  </button>      
+      <!-- NOTIFICATIONS -->
+      <button type="button" data-tab="notifications" onclick="switchTab('notifications')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span>Notifications</span>
+      </button>
 
+      <!-- AI VIDEO MATRIX (DEV ONLY) -->
+      <button type="button" id="aiMatrixNavBtn" onclick="window.location.href='ai-video-matrix.html'" style="color: var(--mint-500);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7v5h-2v-5a5 5 0 0 0-5-5h-1v1.27a2 2 0 1 1-2 0V7H8a5 5 0 0 0-5 5v5H1v-5a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 12 2z"/><rect x="8" y="16" width="8" height="6" rx="1"/></svg>
+        <span>AI Video Matrix</span>
+      </button>
+
+      <!-- LIVE PREVIEW ROOM -->
       <button type="button" data-tab="live-preview" onclick="switchTab('live-preview')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 7l-7 5 7 5V7z"></path>
-          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-        </svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
         <span>Live Preview Room</span>
       </button>
-    </div> <!-- CLOSE homeSubMenu HERE -->
-  </div> <!-- CLOSE nav-accordion HERE -->
 
-  <!-- OTHER ACCORDIONS BELOW... -->
+    </div> <!-- /homeSubMenu -->
+  </div> <!-- /Importants accordion -->
+
 
   <!-- TEAM MANAGEMENT ACCORDION -->
   <div class="nav-accordion">
-    <button type="button" class="nav-group-btn" onclick="toggleSubNav('teamManagementNav', this)">
+    <button type="button" class="nav-group-btn" onclick="toggleSubNav('teamManagementNav', this)" aria-expanded="false" aria-controls="teamManagementNav">
       <div style="display: flex; align-items: center; gap: 10px;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         <span>Team Management</span>
       </div>
       <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
-    
+
     <div id="teamManagementNav" class="sub-nav-group">
+
       <!-- ANNOUNCEMENTS -->
-      <button data-tab="announcements">
+      <button type="button" data-tab="announcements" onclick="switchTab('announcements')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         <span>Announcements</span>
       </button>
-      
+
       <!-- ROSTER -->
-      <button data-tab="roster">
+      <button type="button" data-tab="roster" onclick="switchTab('roster')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         <span>Roster [Employees]</span>
       </button>
 
-<!-- FINANCE ACCORDION -->
+      <!-- FINANCE ACCORDION -->
       <div class="nav-accordion">
-        <button type="button" class="nav-group-btn" onclick="toggleSubNav('financeSubMenu', this)">
+        <button type="button" class="nav-group-btn" onclick="toggleSubNav('financeSubMenu', this)" aria-expanded="false" aria-controls="financeSubMenu">
           <div style="display: flex; align-items: center; gap: 10px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
-            <span id="financeNavText">Finance & Payroll</span>
+            <span id="financeNavText">Finance &amp; Payroll</span>
           </div>
           <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
-        
+
         <div id="financeSubMenu" class="sub-nav-group">
           <button type="button" onclick="openFinanceTab('finance-master', this)" class="active">Master Total Sheet</button>
           <button type="button" onclick="openFinanceTab('finance-live', this)">Live Commission</button>
           <button type="button" onclick="openFinanceTab('finance-video', this)">Video Commission</button>
           <button type="button" onclick="openFinanceTab('finance-cutoff', this)">Cutoff Manager</button>
         </div>
-      </div>
+      </div> <!-- /Finance accordion -->
 
-      <!-- SUBMISSION FORMS FOLDER -->
-      <button type="button" class="nav-group-btn" onclick="toggleSubNav('submissionsNav', this)">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          <span>Submissions</span>
+      <!-- SUBMISSIONS ACCORDION -->
+      <div class="nav-accordion">
+        <button type="button" class="nav-group-btn" onclick="toggleSubNav('submissionsNav', this)" aria-expanded="false" aria-controls="submissionsNav">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Submissions</span>
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+
+        <div id="submissionsNav" class="sub-nav-group">
+          <button type="button" data-tab="tickets" onclick="switchTab('tickets')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Tickets</span>
+          </button>
+          <button type="button" data-tab="live-commission" onclick="switchTab('live-commission')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>Live Commission</span>
+          </button>
         </div>
-        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-      
-      <!-- THE HIDDEN CONTAINER -->
-      <div id="submissionsNav" class="sub-nav-group">
-        <button data-tab="tickets">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <span>Tickets</span>
-        </button>
-        <button data-tab="live-commission">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          <span>Live Commission</span>
-        </button>
-        </div>
+      </div> <!-- /Submissions accordion -->
 
- <!-- WEBDEV TOOLS FOLDER -->
-      <button id="webdevToolsToggle" type="button" class="nav-group-btn" onclick="toggleSubNav('webdevToolsNav', this)">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <!-- A code/web icon -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-          <span>Webdev Tools</span>
-        </div>
-        <!-- The Dropdown Arrow -->
-        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-      
-      <!-- THE HIDDEN CONTAINER -->
-      <div id="webdevToolsNav" class="sub-nav-group">
-        
-        <!-- CAREER POSTINGS -->
-        <button data-tab="careers">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Career Postings</span>
+      <!-- WEBDEV TOOLS ACCORDION -->
+      <div class="nav-accordion">
+        <button id="webdevToolsToggle" type="button" class="nav-group-btn" onclick="toggleSubNav('webdevToolsNav', this)" aria-expanded="false" aria-controls="webdevToolsNav">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span>Webdev Tools</span>
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
 
-        <!-- APPLICATIONS -->
-        <button data-tab="applications">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <span>Applications <span class="badge-count" id="appBadge" style="display:none;">0</span></span>
-        </button>
+        <div id="webdevToolsNav" class="sub-nav-group">
 
-        <!-- SITE PHOTOS -->
-        <button data-tab="photos">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <span>Site Photos</span>
-        </button>
+          <!-- CAREER POSTINGS -->
+          <button type="button" data-tab="careers" onclick="switchTab('careers')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Career Postings</span>
+          </button>
 
-        <!-- BLOG POSTS -->
-        <button data-tab="blog">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
-          <span>Blog & News</span>
-        </button>
+          <!-- APPLICATIONS -->
+          <button type="button" data-tab="applications" onclick="switchTab('applications')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Applications <span class="badge-count" id="appBadge" style="display:none;">0</span></span>
+          </button>
 
-        <!-- TIMELINE -->
-        <button data-tab="timeline">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Company Timeline</span>
-        </button>
+          <!-- SITE PHOTOS -->
+          <button type="button" data-tab="photos" onclick="switchTab('photos')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Site Photos</span>
+          </button>
 
-</nav> <!-- Nav closes here -->
+          <!-- BLOG & NEWS -->
+          <button type="button" data-tab="blog" onclick="switchTab('blog')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
+            <span>Blog &amp; News</span>
+          </button>
+
+          <!-- COMPANY TIMELINE -->
+          <button type="button" data-tab="timeline" onclick="switchTab('timeline')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Company Timeline</span>
+          </button>
+
+        </div> <!-- /webdevToolsNav -->
+      </div> <!-- /Webdev accordion -->
+
+    </div> <!-- /teamManagementNav -->
+  </div> <!-- /Team Management accordion -->
+
+</nav>
   </div>
   <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
     <button id="switchViewBtn" class="btn" style="display:none; width:100%; border-color: var(--amber-500); color: var(--amber-500);">Switch to Employee View</button>
