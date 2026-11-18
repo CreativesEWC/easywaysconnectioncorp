@@ -986,7 +986,8 @@ aside.sidebar.collapsed ~ main.main-content {
     <section class="panel">
       <h2>Attendance Log <span class="count" id="attendanceCount">—</span></h2>
       <div class="form-row">
-        <input type="date" id="attendanceDate">
+        <input type="date" id="attendanceDate" title="Filter by Day">
+        <input type="text" id="attendanceSearch" placeholder="Search by name or badge ID..." style="flex:1; min-width:180px;">
         <button class="btn" id="attendanceTodayBtn">Today</button>
         <button class="btn" id="exportCsvBtn" style="margin-left:auto;">Export CSV</button>
       </div>
@@ -2209,8 +2210,23 @@ function toggleSubNav(containerId, btnElement) {
 
   document.getElementById('authGate').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
-  document.getElementById('whoLine').textContent =
-    'Signed in as ' + emp.name.split(' ')[0] + ' . ' + (emp.role === 'president' ? 'President' : 'Admin');
+
+  if (emp.role === 'guard') {
+    document.getElementById('whoLine').textContent = 'Signed in as ' + emp.name.split(' ')[0] + ' · Guard';
+    
+    // Hide all sidebar accordions and tabs except Attendance
+    document.querySelectorAll('.sidebar-nav .nav-accordion, .sidebar-nav button[data-tab]').forEach(el => {
+      el.style.display = 'none';
+    });
+    const attBtn = document.querySelector('.sidebar-nav button[data-tab="attendance"]');
+    if (attBtn) {
+      attBtn.style.display = 'flex';
+      attBtn.click(); // Automatically switch to Attendance view
+    }
+  } else {
+    document.getElementById('whoLine').textContent =
+      'Signed in as ' + emp.name.split(' ')[0] + ' . ' + (emp.role === 'president' ? 'President' : 'Admin');
+  }
 
   // ---- Clock ----
   function tickClock(){
