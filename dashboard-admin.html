@@ -43,6 +43,37 @@
     --coral-500: #d9614f; --coral-700: #a63e2f;
   }
 
+  @media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    max-width: 82vw;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar.open,
+  .sidebar.active {
+    transform: translateX(0);
+  }
+
+  .main,
+  .main-content,
+  .content {
+    width: 100% !important;
+    margin-left: 0 !important;
+    min-width: 0;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+}
+
   /* Smooth transition when toggling */
   html { transition: background-color 0.3s ease, color 0.3s ease; }
   .panel, aside.sidebar, header, .emp-card { transition: background-color 0.3s ease, border-color 0.3s ease; }
