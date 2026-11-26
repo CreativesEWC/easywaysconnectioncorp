@@ -118,21 +118,236 @@
   <div id="kioskScreen">
     <div class="kiosk-header">
       <div class="brand">
-        <div class="brand-mark"><img src="data:image/png;base64,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
+         <div class="brand-mark"><img src="easyway_icon.svg" alt="EWC"></div>
+        <div>
+          <h1>EWC Corp.</h1>
+          <div class="sub">Face Biometrics</div>
+        </div>
+      </div>
+      <div class="clock">
+        <div class="time" id="clockTime">--:--:--</div>
+        <div class="date" id="clockDate"></div>
+      </div>
+    </div>
 
-  <script src="supabase-config.js"></script>   <!-- only add this if it isn't already in the file -->
+    <div class="scan-zone">
+      <div class="camera-frame">
+        <video id="webcam" autoplay muted playsinline></video>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div class="instructions">
+        <div class="icon">🙂</div>
+        <h2 id="statusTitle">Look at the camera</h2>
+        <p id="statusText">Stand about an arm's length away, face forward.</p>
+      </div>
+    </div>
 
-  <script>
-    (async () => {
+    <div class="kiosk-footer">
+      <span>EWC Corp. Face Biometrics</span>
+      <button type="button" onclick="location.reload()">Restart</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation badge -->
+<div id="confirmOverlay">
+  <div class="badge-card">
+    <div class="badge-top">
+      <span class="co-name">EWC Corp.</span>
+      <span class="badge-id" id="bId">—</span>
+    </div>
+    <div class="badge-body">
+      <div class="avatar" id="bAvatar">?</div>
+      <div>
+        <div class="badge-name" id="bName">—</div>
+        <div class="badge-position" id="bPos">—</div>
+      </div>
+    </div>
+    <div class="stamp-row">
+      <div class="stamp-box">
+        <div class="label">Status</div>
+        <span class="stamp-mark in" id="bStamp">TIME IN</span>
+      </div>
+      <div class="stamp-box">
+        <div class="label">Time</div>
+        <div class="value" id="bTime">--:--</div>
+      </div>
+    </div>
+    <div class="badge-message" id="bMsg">Recorded successfully.</div>
+  </div>
+</div>
+
+<script src="supabase-config.js"></script>
+
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+  const MATCH_THRESHOLD = 0.5;      // lower = stricter
+  const COOLDOWN_MS = 15000;        // ignore same person for 15s after a scan
+
+  let matcher = null, employees = [], busy = false;
+  const lastSeen = {};
+
+  // ---- Clock ----
+  setInterval(() => {
+    const n = new Date();
+    $('clockTime').textContent = n.toLocaleTimeString();
+    $('clockDate').textContent = n.toLocaleDateString(undefined,
+      { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+  }, 1000);
+
+  // ---- Auth gate ----
+  $('setupScreen').style.display = 'none';
+  try {
+    const me = await getMyEmployeeRecord();
+    if (!me) { $('authGate').textContent = 'Access denied. Please sign in first.'; return; }
+    $('authGate').style.display = 'none';
+    $('setupScreen').style.display = 'flex';
+  } catch (e) {
+    $('authGate').textContent = 'Auth check failed: ' + e.message;
+    return;
+  }
+
+  // ---- Start kiosk ----
+  $('startKioskBtn').addEventListener('click', async () => {
+    const btn = $('startKioskBtn');
+    btn.disabled = true;
+    try {
+      btn.textContent = 'Loading AI models...';
+      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+      btn.textContent = 'Loading enrolled faces...';
+      await loadEnrolledFaces();
+
+      btn.textContent = 'Starting camera...';
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const video = $('webcam');
+      video.srcObject = stream;
+      await video.play();
+
+      $('setupScreen').style.display = 'none';
+      $('kioskScreen').classList.add('active');
+      recognitionLoop();
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      btn.textContent = 'Launch Face Kiosk';
+      alert('Could not start kiosk: ' + err.message);
+    }
+  });
+
+  async function loadEnrolledFaces() {
+    const { data, error } = await supabaseClient
+      .from('employees')
+      .select('id, name, badge_id, position, face_descriptor')
+      .not('face_descriptor', 'is', null);
+    if (error) throw error;
+
+    employees = data || [];
+    const labeled = [];
+    for (const emp of employees) {
       try {
-        if (typeof getMyEmployeeRecord !== 'function') return;
-        const emp = await getMyEmployeeRecord();
-        const btn = document.getElementById('kioskAdminBtn');
-        if (btn && emp && (emp.role === 'admin' || emp.role === 'president')) {
-          btn.style.display = 'inline-block';
-        }
-      } catch (e) { console.warn('Role check failed:', e); }
-    })();
-  </script>
+        const arr = typeof emp.face_descriptor === 'string'
+          ? JSON.parse(emp.face_descriptor) : emp.face_descriptor;
+        labeled.push(new faceapi.LabeledFaceDescriptors(String(emp.id), [new Float32Array(arr)]));
+      } catch (e) { console.warn('Bad descriptor for', emp.name); }
+    }
+    if (!labeled.length) throw new Error('No enrolled faces found. Register faces first.');
+    matcher = new faceapi.FaceMatcher(labeled, MATCH_THRESHOLD);
+  }
+
+  // ---- Recognition loop ----
+  async function recognitionLoop() {
+    const video = $('webcam'), canvas = $('overlay');
+    const size = { width: video.videoWidth, height: video.videoHeight };
+    faceapi.matchDimensions(canvas, size);
+
+    setInterval(async () => {
+      if (busy || video.paused) return;
+      const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!det) {
+        $('statusTitle').textContent = 'Look at the camera';
+        return;
+      }
+      const resized = faceapi.resizeResults(det, size);
+      const best = matcher.findBestMatch(det.descriptor);
+      const known = best.label !== 'unknown';
+      new faceapi.draw.DrawBox(resized.detection.box, {
+        label: known ? 'Recognized' : 'Unknown',
+        boxColor: known ? '#059669' : '#dc2626'
+      }).draw(canvas);
+
+      if (!known) { $('statusTitle').textContent = 'Face not recognized'; return; }
+
+      const emp = employees.find(e => String(e.id) === best.label);
+      if (!emp) return;
+      const now = Date.now();
+      if (lastSeen[emp.id] && now - lastSeen[emp.id] < COOLDOWN_MS) return;
+      lastSeen[emp.id] = now;
+
+      busy = true;
+      try { await recordAttendance(emp); }
+      catch (e) { console.error(e); $('statusTitle').textContent = 'Error: ' + e.message; }
+      finally { busy = false; }
+    }, 700);
+  }
+
+  // ---- Attendance (ADJUST table/column names to match kiosk-live.html) ----
+  async function recordAttendance(emp) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    const { data: logs, error: qErr } = await supabaseClient
+      .from('attendance_logs')                 // <-- your table name
+      .select('id, time_in, time_out')
+      .eq('employee_id', emp.id)
+      .gte('time_in', today.toISOString())
+      .order('time_in', { ascending: false })
+      .limit(1);
+    if (qErr) throw qErr;
+
+    const open = logs && logs[0] && !logs[0].time_out;
+    const nowIso = new Date().toISOString();
+
+    if (open) {
+      const { error } = await supabaseClient
+        .from('attendance_logs').update({ time_out: nowIso }).eq('id', logs[0].id);
+      if (error) throw error;
+      showBadge(emp, 'out');
+    } else {
+      const { error } = await supabaseClient
+        .from('attendance_logs').insert({ employee_id: emp.id, time_in: nowIso });
+      if (error) throw error;
+      showBadge(emp, 'in');
+    }
+  }
+
+  function showBadge(emp, type) {
+    const initials = (emp.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    $('bId').textContent = emp.badge_id || '';
+    $('bAvatar').textContent = initials;
+    $('bName').textContent = emp.name;
+    $('bPos').textContent = emp.position || '';
+    $('bStamp').textContent = type === 'in' ? 'TIME IN' : 'TIME OUT';
+    $('bStamp').className = 'stamp-mark ' + type;
+    $('bTime').textContent = new Date().toLocaleTimeString();
+    $('bMsg').textContent = type === 'in' ? 'Welcome! Have a great day.' : 'Goodbye! See you next time.';
+    $('confirmOverlay').classList.add('show');
+    setTimeout(() => $('confirmOverlay').classList.remove('show'), 3500);
+  }
+
+  // ---- Admin button (role check) ----
+  try {
+    const emp = await getMyEmployeeRecord();
+    const btn = $('kioskAdminBtn');
+    if (btn && emp && (emp.role === 'admin' || emp.role === 'president')) btn.style.display = 'inline-block';
+  } catch (e) { console.warn('Role check failed:', e); }
+})();
+</script>
 </body>
-</html>                                 
+</html>                      
