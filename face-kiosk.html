@@ -89,8 +89,13 @@
 }
 .kiosk-nav .nav-btn:hover{ border-color:var(--amber-500); color:var(--amber-400); }
 .kiosk-nav .spacer{ flex:1; }
-#kioskAdminBtn{ display:none; }   /* shown by JS for admins only */
+#kioskAdminBtn, #kioskRegisterBtn{ display:none; }   /* shown by JS for admins only */
   
+
+  .badge-card.reject .badge-top{ background:#fee2e2; }
+  .badge-card.reject .avatar{ background:#dc2626; border-color:#b91c1c; color:#fff; }
+  .badge-card.reject .badge-name{ color:#dc2626; }
+  .badge-card.birthday .badge-top{ background:linear-gradient(90deg,var(--amber-500),var(--coral-500)); }
 </style>
 </head>
 <body>
@@ -100,7 +105,7 @@
   <div class="kiosk-nav">
   <button type="button" class="nav-btn" onclick="window.location.href='kiosk-live.html'">← Back</button>
   <div class="spacer"></div>
-  <button type="button" class="nav-btn" onclick="window.location.href='register-face.html'">Register Face</button>
+  <button type="button" class="nav-btn" id="kioskRegisterBtn" onclick="window.location.href='register-face.html'">Register Face</button>
   <button type="button" class="nav-btn" id="kioskAdminBtn" onclick="window.location.href='dashboard-admin.html'">Admin</button>
 </div>
   
@@ -151,30 +156,7 @@
 
 <!-- Confirmation badge -->
 <div id="confirmOverlay">
-  <div class="badge-card">
-    <div class="badge-top">
-      <span class="co-name">EWC Corp.</span>
-      <span class="badge-id" id="bId">—</span>
-    </div>
-    <div class="badge-body">
-      <div class="avatar" id="bAvatar">?</div>
-      <div>
-        <div class="badge-name" id="bName">—</div>
-        <div class="badge-position" id="bPos">—</div>
-      </div>
-    </div>
-    <div class="stamp-row">
-      <div class="stamp-box">
-        <div class="label">Status</div>
-        <span class="stamp-mark in" id="bStamp">TIME IN</span>
-      </div>
-      <div class="stamp-box">
-        <div class="label">Time</div>
-        <div class="value" id="bTime">--:--</div>
-      </div>
-    </div>
-    <div class="badge-message" id="bMsg">Recorded successfully.</div>
-  </div>
+  <div class="badge-card" id="badgeCard"></div>
 </div>
 
 <script src="supabase-config.js"></script>
@@ -183,37 +165,89 @@
 (async () => {
   const $ = id => document.getElementById(id);
   const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-  const MATCH_THRESHOLD = 0.5;      // lower = stricter
-  const COOLDOWN_MS = 15000;        // ignore same person for 15s after a scan
+  const MATCH_THRESHOLD   = 0.45;   // lower = stricter (0.4-0.5 is typical)
+  const CONFIRM_FRAMES    = 3;      // same person must be matched this many frames in a row
+  const REJECT_FRAMES     = 5;      // unknown face must persist this many frames before showing a reject card
+  const COOLDOWN_MS       = 15000;  // same person ignored for 15s after a scan
+  const REJECT_COOLDOWN_MS= 6000;   // reject card at most once every 6s
+  const MIN_MINUTES_BEFORE_OUT = 5; // same rule as kiosk-live
 
-  let matcher = null, employees = [], busy = false;
-  const lastSeen = {};
+  let matcher = null, employees = [], busy = false, streak = { label: null, n: 0 }, unknownStreak = 0, lastReject = 0;
+  const recentScans = {};
+  let dismissTimer = null;
 
-  // ---- Clock ----
+  // ---------- helpers (same as kiosk-live) ----------
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  const nowIso = () => new Date().toISOString();
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function firstNameOnly(n){ return (String(n||'').trim().split(/\s+/)[0]) || ''; }
+  function firstAndLast(n){
+    const p = String(n||'').trim().split(/\s+/).filter(Boolean);
+    const display = p.length > 1 ? p[0] + ' ' + p[p.length-1] : (p[0] || '');
+    const initials = ((p[0]||'?')[0] + (p.length > 1 ? p[p.length-1][0] : '')).toUpperCase();
+    return { display, initials };
+  }
+  function isBirthdayToday(b){
+    if(!b) return false;
+    const d = new Date(b + 'T00:00:00'), n = new Date();
+    return d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  }
+  function speak(t){ try{ if(!('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }catch(e){} }
+  function daypart(){ const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
+
+  // ---------- late / OT (copied from kiosk-live) ----------
+  function calculateDynamicShiftHours(inStr, outStr, startStr, endStr){
+    const tin = new Date(inStr), tout = new Date(outStr);
+    const ss = new Date(inStr); const [sh, sm] = startStr.split(':'); ss.setHours(parseInt(sh), parseInt(sm), 0, 0);
+    const se = new Date(outStr); const [eh, em] = endStr.split(':'); se.setHours(parseInt(eh), parseInt(em), 0, 0);
+    let late = 0, ot = 0;
+    if (tin > ss) late = Math.ceil(((tin - ss) / 60000) / 5) * 5;
+    if (tout > se) ot = Math.floor(((tout - se) / 60000) / 30) * 30;
+    return { latePenalty: late, earnedOt: ot };
+  }
+  function calculateFixedShiftHours(inStr, outStr){
+    const tin = new Date(inStr), tout = new Date(outStr);
+    const ss = new Date(inStr); ss.setHours(9, 0, 0, 0);
+    const se = new Date(outStr); se.setHours(18, 0, 0, 0);
+    let late = 0, ot = 0;
+    if (tin > ss) late = Math.ceil(((tin - ss) / 60000) / 5) * 5;
+    if (tout > se) ot = Math.floor(((tout - se) / 60000) / 30) * 30;
+    return { latePenalty: late, earnedOt: ot };
+  }
+
+  // ---------- clock ----------
   setInterval(() => {
     const n = new Date();
     $('clockTime').textContent = n.toLocaleTimeString();
-    $('clockDate').textContent = n.toLocaleDateString(undefined,
-      { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+    $('clockDate').textContent = n.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'short', day:'numeric' });
   }, 1000);
 
-  // ---- Auth gate ----
+  // ---------- auth gate ----------
   $('setupScreen').style.display = 'none';
+  let me = null;
   try {
-    const me = await getMyEmployeeRecord();
-    if (!me) { $('authGate').textContent = 'Access denied. Please sign in first.'; return; }
+    me = await getMyEmployeeRecord();
+    if (!me) { window.location.href = 'login.html'; return; }
     $('authGate').style.display = 'none';
     $('setupScreen').style.display = 'flex';
+    if (['admin','dev','president'].includes(String(me.role||'').toLowerCase().trim())) {
+      $('kioskAdminBtn').style.display = 'inline-block';
+      $('kioskRegisterBtn').style.display = 'inline-block';
+    }
   } catch (e) {
     $('authGate').textContent = 'Auth check failed: ' + e.message;
     return;
   }
 
-  // ---- Start kiosk ----
+  // ---------- start ----------
   $('startKioskBtn').addEventListener('click', async () => {
     const btn = $('startKioskBtn');
     btn.disabled = true;
     try {
+      if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u); }
       btn.textContent = 'Loading AI models...';
       await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -242,7 +276,7 @@
   async function loadEnrolledFaces() {
     const { data, error } = await supabaseClient
       .from('employees')
-      .select('id, name, badge_id, position, face_descriptor')
+      .select('*, positions(name)')
       .not('face_descriptor', 'is', null);
     if (error) throw error;
 
@@ -250,8 +284,8 @@
     const labeled = [];
     for (const emp of employees) {
       try {
-        const arr = typeof emp.face_descriptor === 'string'
-          ? JSON.parse(emp.face_descriptor) : emp.face_descriptor;
+        const arr = typeof emp.face_descriptor === 'string' ? JSON.parse(emp.face_descriptor) : emp.face_descriptor;
+        if (!Array.isArray(arr) || arr.length !== 128) throw new Error('bad length');
         labeled.push(new faceapi.LabeledFaceDescriptors(String(emp.id), [new Float32Array(arr)]));
       } catch (e) { console.warn('Bad descriptor for', emp.name); }
     }
@@ -259,7 +293,7 @@
     matcher = new faceapi.FaceMatcher(labeled, MATCH_THRESHOLD);
   }
 
-  // ---- Recognition loop ----
+  // ---------- recognition loop ----------
   async function recognitionLoop() {
     const video = $('webcam'), canvas = $('overlay');
     const size = { width: video.videoWidth, height: video.videoHeight };
@@ -267,11 +301,14 @@
 
     setInterval(async () => {
       if (busy || video.paused) return;
-      const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
       const ctx = canvas.getContext('2d');
+      let det;
+      try { det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor(); }
+      catch (e) { return; }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (!det) {
+        streak = { label: null, n: 0 }; unknownStreak = 0;
         $('statusTitle').textContent = 'Look at the camera';
         return;
       }
@@ -283,71 +320,168 @@
         boxColor: known ? '#059669' : '#dc2626'
       }).draw(canvas);
 
-      if (!known) { $('statusTitle').textContent = 'Face not recognized'; return; }
+      // ---- UNREGISTERED / UNKNOWN FACE: never writes to the database ----
+      if (!known) {
+        streak = { label: null, n: 0 };
+        unknownStreak++;
+        $('statusTitle').textContent = 'Face not recognized';
+        if (unknownStreak >= REJECT_FRAMES && Date.now() - lastReject > REJECT_COOLDOWN_MS) {
+          lastReject = Date.now(); unknownStreak = 0;
+          showCard(renderRejectCard(), true, 3000);
+          speak('Face not registered.');
+        }
+        return;
+      }
+      unknownStreak = 0;
+
+      // ---- require the same person in several consecutive frames ----
+      if (streak.label === best.label) streak.n++; else streak = { label: best.label, n: 1 };
+      if (streak.n < CONFIRM_FRAMES) { $('statusTitle').textContent = 'Verifying...'; return; }
 
       const emp = employees.find(e => String(e.id) === best.label);
       if (!emp) return;
+
       const now = Date.now();
-      if (lastSeen[emp.id] && now - lastSeen[emp.id] < COOLDOWN_MS) return;
-      lastSeen[emp.id] = now;
+      if (recentScans[emp.id] && now - recentScans[emp.id] < COOLDOWN_MS) return;
+      recentScans[emp.id] = now;
+      streak = { label: null, n: 0 };
 
       busy = true;
       try { await recordAttendance(emp); }
-      catch (e) { console.error(e); $('statusTitle').textContent = 'Error: ' + e.message; }
+      catch (e) {
+        console.error(e);
+        delete recentScans[emp.id];
+        showCard(`<div class="badge-top"><span class="co-name">System Error</span></div>
+          <div class="badge-body" style="justify-content:center"><div class="badge-name">Operation Failed</div></div>
+          <div class="badge-message">${esc(e.message)}</div>`, true, 6000);
+      }
       finally { busy = false; }
     }, 700);
   }
 
-  // ---- Attendance (ADJUST table/column names to match kiosk-live.html) ----
+  // ---------- attendance: SAME RULES AS kiosk-live handleScan ----------
   async function recordAttendance(emp) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = todayStr();
 
-    const { data: logs, error: qErr } = await supabaseClient
-      .from('attendance_logs')                 // <-- your table name
-      .select('id, time_in, time_out')
+    const { data: latestShift, error: shiftErr } = await supabaseClient
+      .from('attendance_logs').select('*')
       .eq('employee_id', emp.id)
-      .gte('time_in', today.toISOString())
       .order('time_in', { ascending: false })
-      .limit(1);
-    if (qErr) throw qErr;
+      .limit(1).maybeSingle();
+    if (shiftErr) throw new Error('DB Error fetching shift: ' + shiftErr.message);
 
-    const open = logs && logs[0] && !logs[0].time_out;
-    const nowIso = new Date().toISOString();
-
-    if (open) {
-      const { error } = await supabaseClient
-        .from('attendance_logs').update({ time_out: nowIso }).eq('id', logs[0].id);
-      if (error) throw error;
-      showBadge(emp, 'out');
-    } else {
-      const { error } = await supabaseClient
-        .from('attendance_logs').insert({ employee_id: emp.id, time_in: nowIso });
-      if (error) throw error;
-      showBadge(emp, 'in');
+    let row, kind;
+    let isGhostShift = false;
+    if (latestShift && latestShift.time_in && !latestShift.time_out) {
+      const hoursOpen = (Date.now() - new Date(latestShift.time_in).getTime()) / 3600000;
+      if (hoursOpen > 18) isGhostShift = true;
     }
+
+    if (latestShift && latestShift.time_in && !latestShift.time_out && !isGhostShift) {
+      // already timed in -> guard against an instant Time Out (e.g. just scanned by barcode)
+      const minutesOpen = (Date.now() - new Date(latestShift.time_in).getTime()) / 60000;
+      if (minutesOpen < MIN_MINUTES_BEFORE_OUT) {
+        showCard(`<div class="badge-top"><span class="co-name">Easy Ways Connection Corp.</span><span class="badge-id">${esc(emp.badge_id)}</span></div>
+          <div class="badge-body"><div><div class="badge-name">ALREADY TIMED IN</div><div class="badge-position">Attendance Confirmed</div></div></div>
+          <div class="badge-message">Your Time In was just recorded. Have a great shift!</div>`, false, 3000);
+        speak('Already verified.');
+        return;
+      }
+
+      const exactTimeOut = nowIso();
+      const payload = { time_out: exactTimeOut };
+      const posName = emp.positions ? emp.positions.name : '';
+
+      if (posName === 'Multimedia Artist' || posName === 'RTS Admin') {
+        const d = calculateFixedShiftHours(latestShift.time_in, exactTimeOut);
+        payload.late_penalty_minutes = d.latePenalty; payload.earned_ot_minutes = d.earnedOt;
+      } else if (posName === 'Live Seller' || posName === 'CSR' || posName === 'Customer Service Representative') {
+        const table = (posName === 'Live Seller') ? 'live_seller_schedule' : 'csr_schedules';
+        const { data: sched } = await supabaseClient.from(table)
+          .select('shift_start, shift_end').eq('employee_id', emp.id).eq('schedule_date', today).maybeSingle();
+        if (sched && sched.shift_start && sched.shift_end) {
+          const d = calculateDynamicShiftHours(latestShift.time_in, exactTimeOut, sched.shift_start, sched.shift_end);
+          payload.late_penalty_minutes = d.latePenalty; payload.earned_ot_minutes = d.earnedOt;
+        }
+      }
+
+      const { data: updated, error: updErr } = await supabaseClient
+        .from('attendance_logs').update(payload).eq('id', latestShift.id).select().single();
+      if (updErr) throw new Error('DB Error updating Time Out: ' + updErr.message);
+      row = updated; kind = 'out';
+    }
+    else if (latestShift && latestShift.log_date === today && latestShift.time_out) {
+      // already completed today -> NO new row (prevents duplicate Time In)
+      row = latestShift; kind = 'complete';
+    }
+    else {
+      const { data: inserted, error: insErr } = await supabaseClient
+        .from('attendance_logs').insert({ employee_id: emp.id, log_date: today, time_in: nowIso() })
+        .select().single();
+      if (insErr) throw new Error('DB Error saving Time In: ' + insErr.message);
+      row = inserted; kind = 'in';
+    }
+
+    const birthday = isBirthdayToday(emp.birthday);
+    showCard(renderAcceptedCard(emp, row, kind, birthday), false, birthday ? 6000 : 4000, birthday ? 'birthday' : '');
+    const who = firstNameOnly(emp.name);
+    if (birthday) speak(`Happy birthday, ${who}!`);
+    else if (kind === 'in') speak(`${daypart()}, ${who}. Time in recorded.`);
+    else if (kind === 'out') speak(`${daypart()}, ${who}. Time out recorded.`);
+    else speak(`${who}, you already completed your attendance for today.`);
   }
 
-  function showBadge(emp, type) {
-    const initials = (emp.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    $('bId').textContent = emp.badge_id || '';
-    $('bAvatar').textContent = initials;
-    $('bName').textContent = emp.name;
-    $('bPos').textContent = emp.position || '';
-    $('bStamp').textContent = type === 'in' ? 'TIME IN' : 'TIME OUT';
-    $('bStamp').className = 'stamp-mark ' + type;
-    $('bTime').textContent = new Date().toLocaleTimeString();
-    $('bMsg').textContent = type === 'in' ? 'Welcome! Have a great day.' : 'Goodbye! See you next time.';
-    $('confirmOverlay').classList.add('show');
-    setTimeout(() => $('confirmOverlay').classList.remove('show'), 3500);
+  // ---------- cards ----------
+  function showCard(html, isReject, autoMs, extra){
+    const overlay = $('confirmOverlay'), card = $('badgeCard');
+    card.className = 'badge-card' + (isReject ? ' reject' : '') + (extra ? ' ' + extra : '');
+    card.innerHTML = html;
+    overlay.classList.add('show');
+    clearTimeout(dismissTimer);
+    dismissTimer = setTimeout(() => overlay.classList.remove('show'), autoMs || 4000);
+  }
+  $('confirmOverlay').addEventListener('click', () => { clearTimeout(dismissTimer); $('confirmOverlay').classList.remove('show'); });
+
+  function renderAcceptedCard(emp, row, kind, birthday){
+    const { display, initials } = firstAndLast(emp.name);
+    const fmt = t => new Date(t).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
+    const inVal  = row.time_in  ? `<div class="stamp-mark in">IN · ${fmt(row.time_in)}</div>`   : `<div class="value">— not yet —</div>`;
+    const outVal = row.time_out ? `<div class="stamp-mark out">OUT · ${fmt(row.time_out)}</div>` : `<div class="value">— not yet —</div>`;
+    const message = kind === 'in' ? 'Time In recorded. See you later today!'
+                  : kind === 'out' ? 'Time Out recorded. Have a good rest!'
+                  : 'Attendance already completed for today.';
+    const pos = emp.positions ? emp.positions.name : '';
+    const bday = birthday ? `<div class="birthday-banner">🎉 Happy Birthday, ${esc(firstNameOnly(emp.name))}! 🎂</div>` : '';
+    let avatar = esc(initials);
+    if (emp.avatar_url) {
+      const url = emp.avatar_url.startsWith('http') ? emp.avatar_url
+        : supabaseClient.storage.from('avatars').getPublicUrl(emp.avatar_url).data.publicUrl;
+      avatar = `<img src="${esc(url)}" alt="${esc(display)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    }
+    return `
+      <div class="badge-top"><span class="co-name">Easy Ways Connection Corp.</span><span class="badge-id">${esc(emp.badge_id)}</span></div>
+      ${bday}
+      <div class="badge-body">
+        <div class="avatar" style="padding:0;overflow:hidden;">${avatar}</div>
+        <div><div class="badge-name">${esc(display)}</div><div class="badge-position">${esc(pos)}</div></div>
+      </div>
+      <div class="stamp-row">
+        <div class="stamp-box"><div class="label">Time In</div>${inVal}</div>
+        <div class="stamp-box"><div class="label">Time Out</div>${outVal}</div>
+      </div>
+      <div class="badge-message">${message}</div>`;
   }
 
-  // ---- Admin button (role check) ----
-  try {
-    const emp = await getMyEmployeeRecord();
-    const btn = $('kioskAdminBtn');
-    if (btn && emp && (emp.role === 'admin' || emp.role === 'president')) btn.style.display = 'inline-block';
-  } catch (e) { console.warn('Role check failed:', e); }
+  function renderRejectCard(){
+    return `
+      <div class="badge-top"><span class="co-name">Easy Ways Connection Corp.</span><span class="badge-id">Not recognized</span></div>
+      <div class="badge-body" style="flex-direction:column;text-align:center;padding-top:30px;">
+        <div class="avatar">✕</div>
+        <div><div class="badge-name">Face Not Registered</div></div>
+      </div>
+      <div class="badge-message">No match on file. Please see an administrator, or use your badge on the barcode kiosk.</div>`;
+  }
 })();
 </script>
 </body>
-</html>                      
+</html>
