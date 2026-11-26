@@ -236,12 +236,12 @@
       await loadEmployees();
 
       // 2. Load face-api.js models
-      statusBanner.textContent = "Loading AI facial detection models...";
-      const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models/';
-      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmarkNet.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-      modelsLoaded = true;
+statusBanner.textContent = "Loading AI facial detection models...";
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);   // <- fixed name
+await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+modelsLoaded = true;
 
       // 3. Start Webcam
       statusBanner.textContent = "Starting camera...";
